@@ -1,0 +1,72 @@
+/* Conversation workspace refresh: presentation only, preserving the existing WhatsApp controls and patient-safe rules. */
+.inbox-page {
+  border: 0;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 20px 54px #0a375416;
+}
+
+.inbox-toolbar {
+  height: 66px;
+  padding: 0 24px;
+  border-bottom-color: #dfe9ec;
+  background: linear-gradient(105deg, #fff 0%, #f4fbfb 64%, #f2f7ff 100%);
+}
+
+.inbox-toolbar > div:first-child { gap: 10px; }
+.inbox-toolbar b { color: #102f48; font-size: .83rem; }
+.inbox-toolbar small { font-size: .7rem; }
+.inbox-toolbar-actions > span { font-size: .7rem; }
+.inbox-toolbar-actions button { border-radius: 11px; padding: 10px 13px; background: linear-gradient(105deg, #45d9c9, #5a9cf5); color: #062d48; box-shadow: 0 8px 18px #28749620; }
+
+.inbox-grid {
+  height: calc(100% - 66px);
+  grid-template-columns: minmax(270px, 310px) minmax(430px, 1fr) 276px;
+}
+
+.inbox-list { background: linear-gradient(180deg, #ffffff, #f7fbfb); }
+.new-conversation-button { min-height: 43px; margin-top: 17px; border-radius: 12px; background: linear-gradient(105deg, #45d9c9, #5a9cf5); color: #062d48; font-size: .72rem; box-shadow: 0 8px 18px #28749620; }
+.inbox-search { min-height: 42px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 5px 14px #173f5509; }
+.inbox-search input { font-size: .76rem; }
+.inbox-filter { gap: 17px; padding-bottom: 13px; font-size: .7rem; }
+.inbox-filter b { color: #1785aa; }
+.inbox-rows > button { min-height: 74px; padding: 14px 17px; transition: background .16s ease, box-shadow .16s ease; }
+.inbox-rows > button:hover, .inbox-rows > button.active { background: linear-gradient(90deg, #eafaf8, #edf5ff); box-shadow: inset 3px 0 #43d8c7; }
+.inbox-rows > button > i, .thread-person > i, .context-person > i { background: linear-gradient(145deg, #45d8c7, #467ee8); box-shadow: 0 6px 14px #176e9e22; }
+.inbox-rows > button b { color: #14344d; font-size: .78rem; }
+.inbox-rows > button small { margin-top: 5px; font-size: .68rem; }
+.inbox-rows time { font-size: .65rem; }
+
+.inbox-thread { background: #edf6f4; }
+.inbox-thread > header { height: 76px; flex-basis: 76px; padding-inline: 22px; border-bottom-color: #dfe9e9; background: #fff; box-shadow: 0 4px 12px #173f5508; }
+.thread-person b { color: #17344c; font-size: .86rem; }
+.thread-person small { font-size: .7rem; }
+.thread-actions select, .thread-actions button { height: 37px; border-radius: 10px; font-size: .69rem; }
+.thread-actions button:hover { border-color: #a7dce8; background: #edf9fa; }
+.message-stream { padding: 24px; background-color: #eef7f5; background-image: radial-gradient(#cddfdb 1px, transparent 1px); }
+.conversation-day { padding: 6px 10px; font-size: .67rem; }
+.message-bubble { max-width: min(72%, 590px); padding: 11px 13px; border-radius: 6px 16px 16px 16px; box-shadow: 0 4px 13px #173f5510; }
+.message-bubble.outgoing { border-radius: 16px 6px 16px 16px; background: #e1f9ed; }
+.message-bubble p { font-size: .8rem; }
+.message-bubble footer { font-size: .65rem; }
+.message-composer { padding: 13px 17px; border-top-color: #dfe9e9; box-shadow: 0 -5px 14px #173f5507; }
+.message-composer textarea { min-height: 50px; border-radius: 13px; font-size: .78rem; }
+.message-composer button { min-height: 43px; border-radius: 11px; background: linear-gradient(105deg, #103852, #0c607a); font-size: .72rem; }
+.message-composer button:hover { background: linear-gradient(105deg, #0b5670, #0c7e91); }
+.ai-compose-toolbar .ai-suggest-button { font-size: .69rem; }
+
+.inbox-context { padding: 22px; background: linear-gradient(180deg, #fff, #f7fbfb); border-left-color: #dfe9e9; }
+.context-person { padding-bottom: 25px; }
+.context-person h3 { color: #16344c; font-size: 1.02rem; }
+.context-person span, .inbox-context section > div { font-size: .7rem; }
+.inbox-context section { padding-block: 18px; }
+.inbox-context > a { font-size: .72rem; }
+
+@media (max-width: 1150px) {
+  .inbox-grid { grid-template-columns: 290px minmax(0, 1fr); }
+}
+
+@media (max-width: 780px) {
+  .inbox-toolbar { height: auto; min-height: 66px; padding: 13px 16px; gap: 10px; flex-wrap: wrap; }
+  .inbox-grid { height: calc(100% - 92px); }
+}

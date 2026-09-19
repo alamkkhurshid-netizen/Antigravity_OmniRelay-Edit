@@ -1,0 +1,70 @@
+/* Readability guardrail for legacy operational surfaces during the Tailwind migration. */
+.app-main :is(.appointment-page,.operations-calendar,.live-roster,.inbox-page) {
+  font-size: 0.9375rem;
+}
+
+.app-main :is(.appointment-page,.operations-calendar,.live-roster,.inbox-page) :is(p, label, input, select, textarea, button) {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.app-main :is(.appointment-page,.operations-calendar,.live-roster,.inbox-page) :is(small, time, .muted, .helper-text) {
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.app-main :is(.appointment-page,.operations-calendar,.live-roster,.inbox-page) :is(h2, h3) {
+  line-height: 1.2;
+}
+
+/* Inbox is a dense operational surface: prevent landing-page heading rules and
+   legacy sub-10px selectors from overriding its readable Tailwind hierarchy. */
+.app-main .inbox-page h2 {
+  font-size: 1rem;
+  line-height: 1.25;
+  letter-spacing: normal;
+  overflow-wrap: anywhere;
+}
+
+.app-main .inbox-page .text-xs { font-size: 0.75rem; }
+.app-main .inbox-page .text-sm { font-size: 0.875rem; }
+.app-main .inbox-page .text-base { font-size: 1rem; }
+.app-main .inbox-page .text-lg { font-size: 1.125rem; }
+
+.app-main .inbox-page .message-bubble p,
+.app-main .inbox-page .message-bubble footer,
+.app-main .inbox-page .inbox-context,
+.app-main .inbox-page .inbox-context p,
+.app-main .inbox-page .inbox-context span,
+.app-main .inbox-page .inbox-context button {
+  font-size: inherit;
+}
+
+/* Automation health must lead to the affected job, not a passive count. */
+.automation-health .automation-queue-link {
+  display: contents;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+.automation-health .automation-queue-link b,
+.automation-health .automation-queue-link span { cursor: pointer; }
+.automation-health .automation-queue-link b {
+  text-decoration: underline;
+  text-decoration-color: #37bba6;
+  text-underline-offset: 4px;
+}
+.automation-health .automation-queue-link:hover b,
+.automation-health .automation-queue-link:hover span { color: #087b70; }
+.automation-runs > header { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #e8eef3; }
+.automation-runs > header h3 { border-bottom:0; }
+.automation-show-all { margin-right:14px; }
+.automation-review-note { color:#8c5b00 !important; }
+.automation-worker-alert button { justify-self:start; background:#9b352d; }
+
+@media (max-width: 640px) {
+  .app-main :is(.appointment-page,.operations-calendar,.live-roster,.inbox-page) :is(p, label, input, select, textarea, button) {
+    font-size: 0.875rem;
+  }
+}

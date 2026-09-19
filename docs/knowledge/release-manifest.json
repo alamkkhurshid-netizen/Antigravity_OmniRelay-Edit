@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "latest_release": "2026-09-13-sales-rag-commercial-source",
+  "releases": [
+    {
+      "id": "2026-09-13-sales-rag-commercial-source",
+      "record": "docs/knowledge/releases/2026-09-13-sales-rag-commercial-source.md",
+      "guide_reviewed_on": "2026-09-13",
+      "product_areas": ["OmniRelay Sales RAG", "Commercial pricing", "Founding offer", "Human handoff"],
+      "guide_articles": [],
+      "rag_impact": "sales_rag_source_lock",
+      "verified_by": ["Founder pricing approval", "Founder handoff-policy approval"]
+    },
+    {
+      "id": "2026-09-13-whatsapp-booking-choice-flow",
+      "record": "docs/knowledge/releases/2026-09-13-whatsapp-booking-choice-flow.md",
+      "guide_reviewed_on": "2026-09-13",
+      "product_areas": ["WhatsApp booking concierge", "Clinic booking setup"],
+      "guide_articles": ["booking-concierge"],
+      "rag_impact": "guide_only",
+      "verified_by": ["Interactive-choice path review", "WhatsApp button-limit review", "Automated test suite"]
+    },
+    {
+      "id": "2026-09-13-whatsapp-interaction-polish",
+      "record": "docs/knowledge/releases/2026-09-13-whatsapp-interaction-polish.md",
+      "guide_reviewed_on": "2026-09-13",
+      "product_areas": ["WhatsApp booking concierge", "Appointments", "Patient payments"],
+      "guide_articles": ["booking-concierge", "appointments"],
+      "rag_impact": "guide_only",
+      "verified_by": ["Interactive-selection policy review", "Appointment payment visibility review", "Automated test suite"]
+    },
+    {
+      "id": "2026-09-13-communication-controls-contextual-replies",
+      "record": "docs/knowledge/releases/2026-09-13-communication-controls-contextual-replies.md",
+      "guide_reviewed_on": "2026-09-13",
+      "product_areas": ["Settings", "Communication Controls", "WhatsApp appointment reminders", "Contextual replies"],
+      "guide_articles": ["communication-controls", "booking-concierge"],
+      "rag_impact": "guide_only",
+      "verified_by": ["Tenant-scoped control policy review", "Contextual reply path review", "Automated test suite"]
+    },
+    {
+      "id": "2026-09-13-clinic-brochure-maps-setup",
+      "record": "docs/knowledge/releases/2026-09-13-clinic-brochure-maps-setup.md",
+      "guide_reviewed_on": "2026-09-13",
+      "product_areas": ["Business setup", "Provider profile", "Public brochure", "Google Maps clinic information"],
+      "guide_articles": ["settings", "booking-concierge"],
+      "rag_impact": "guide_only",
+      "verified_by": ["Tenant-scoped storage policy review", "Public-information boundary review", "Automated test suite"]
+    },
+    {
+      "id": "2026-09-13-whatsapp-clinic-information-menu",
+      "record": "docs/knowledge/releases/2026-09-13-whatsapp-clinic-information-menu.md",
+      "guide_reviewed_on": "2026-09-13",
+      "product_areas": ["WhatsApp booking concierge", "Public clinic brochure", "Clinic information"],
+      "guide_articles": ["booking-concierge"],
+      "rag_impact": "guide_only",
+      "verified_by": ["Menu policy review", "Public-information boundary review", "Automated test suite"]
+    },
+    {
+      "id": "2026-09-13-shadow-billing-controls",
+      "record": "docs/knowledge/releases/2026-09-13-shadow-billing-controls.md",
+      "guide_reviewed_on": "2026-09-13",
+      "product_areas": ["WABA Calc", "Operational billing", "Billing analytics", "Reconciliation"],
+      "guide_articles": ["billing"],
+      "rag_impact": "guide_only",
+      "verified_by": ["Shadow-mode database lock review", "Tenant-isolation policy review", "Automated test suite"]
+    },
+    {
+      "id": "2026-09-12-opd-whatsapp-calculator-planning-model",
+      "record": "docs/knowledge/releases/2026-09-12-opd-whatsapp-calculator-planning-model.md",
+      "guide_reviewed_on": "2026-09-12",
+      "product_areas": ["Home dashboard", "WhatsApp cost calculator", "Operational billing"],
+      "guide_articles": ["billing"],
+      "rag_impact": "guide_only",
+      "verified_by": ["Planning-rate guard review", "Automated test suite"]
+    },
+    {
+      "id": "2026-09-12-dashboard-whatsapp-calculator",
+      "record": "docs/knowledge/releases/2026-09-12-dashboard-whatsapp-calculator.md",
+      "guide_reviewed_on": "2026-09-12",
+      "product_areas": [
+        "Home dashboard",
+        "WhatsApp cost calculator",
+        "Operational billing"
+      ],
+      "guide_articles": [
+        "billing"
+      ],
+      "rag_impact": "guide_only",
+      "verified_by": [
+        "Rate-card read-only policy review",
+        "Automated test suite",
+        "Production deployment verification"
+      ]
+    },
+    {
+      "id": "2026-09-12-operational-wallet-shadow-foundation",
+      "record": "docs/knowledge/releases/2026-09-12-operational-wallet-shadow-foundation.md",
+      "guide_reviewed_on": "2026-09-12",
+      "product_areas": [
+        "Billing workspace",
+        "Operational wallet",
+        "WhatsApp usage observation",
+        "Cost calculator"
+      ],
+      "guide_articles": [
+        "billing"
+      ],
+      "rag_impact": "guide_only",
+      "verified_by": [
+        "Shadow-only database constraint review",
+        "Tenant-isolation policy review",
+        "Automated test suite"
+      ]
+    },
+    {
+      "id": "2026-09-12-guide-rag-foundation",
+      "record": "docs/knowledge/releases/2026-09-12-guide-rag-foundation.md",
+      "guide_reviewed_on": "2026-09-12",
+      "product_areas": [
+        "OmniRelay Guide",
+        "AI Agents knowledge workspace",
+        "Reception Today board",
+        "Multi-doctor OPD",
+        "Follow-up Desk",
+        "Doctor-specific emergency notices"
+      ],
+      "guide_articles": [
+        "reception-board",
+        "multi-doctor-operations",
+        "follow-up-desk",
+        "doctor-emergency-notice",
+        "guide-boundaries"
+      ],
+      "rag_impact": "tenant_indexing",
+      "verified_by": [
+        "262/262 automated tests",
+        "Tenant-bound database migration review",
+        "Production deployment verification"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "OmniRelay Clinic Operations",
+  "short_name": "OmniRelay",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#071426",
+  "theme_color": "#071426",
+  "description": "Clinic operations, patient communications and serious-action review.",
+  "icons": [
+    {
+      "src": "/omnirelay-app-icon-v4.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+.clinic-ops { gap: 23px; }
+.clinic-ops-hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 174px;
+  padding: 32px 35px;
+  border: 1px solid #163e63;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 82% 7%, #4cd8d1 0, #1a8caf 19%, transparent 43%),
+    linear-gradient(120deg, #071c33, #0b3659 56%, #0f4f72);
+  box-shadow: 0 18px 42px rgba(13, 42, 63, .15);
+}
+.clinic-ops-hero::after { position: absolute; right: 10%; bottom: -80px; width: 230px; height: 165px; border: 1px solid rgba(255,255,255,.14); border-radius: 50%; content: ""; transform: rotate(-21deg); }
+.clinic-ops-hero > * { position: relative; z-index: 1; }
+.clinic-ops-hero .app-eyebrow { color: #59e4d0; }
+.clinic-ops-hero h2 { font-size: clamp(2rem, 3vw, 2.55rem); letter-spacing: -.045em; }
+.clinic-ops-hero p { max-width: 550px; color: #c4d9e7; font-size: .9rem; }
+.clinic-ops-filters { display: flex; flex-wrap: wrap; align-items: end; justify-content: flex-end; gap: 10px; }
+.clinic-ops-hero .secondary-button { min-height: 41px; border-color: rgba(255,255,255,.26); border-radius: 10px; background: rgba(255,255,255,.12); color: #fff; font-weight: 800; }
+.clinic-ops-hero label { color: #d8e7f0; font-size: .74rem; }
+.clinic-ops-hero select,.clinic-ops-hero input { min-height: 41px; border-radius: 10px; color: #143653; background: rgba(255,255,255,.96); }
+
+.roster-metrics { gap: 15px; }
+.roster-metrics article { position: relative; overflow: hidden; min-height: 128px; padding: 21px; border-color: #dce6e7; border-radius: 17px; box-shadow: 0 8px 20px rgba(18,44,58,.045); }
+.roster-metrics article::before { position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg,#49dbc4,#4d9af5); content: ""; }
+.roster-metrics span { font-size: .74rem; letter-spacing: .04em; }
+.roster-metrics b { font-size: 2rem; letter-spacing: -.05em; }
+.roster-metrics small { font-size: .75rem; }
+
+.clinic-ops-alerts,.live-roster,.doctor-import { overflow: hidden; border-color: #dbe6e8; border-radius: 19px; box-shadow: 0 10px 26px rgba(18,44,58,.045); }
+.clinic-ops-alerts > header,.live-roster > header,.doctor-import > header { padding-bottom: 18px; border-bottom: 1px solid #e5edef; }
+.live-roster h3,.doctor-import h3 { font-size: 1.5rem; letter-spacing: -.035em; }
+.roster-grid { gap: 15px; }
+.roster-grid > article { position: relative; overflow: hidden; padding: 21px; border-color: #dce6e7; border-radius: 16px; background: linear-gradient(145deg,#fff,#fbfdfd); transition: transform .16s ease, box-shadow .16s ease; }
+.roster-grid > article::before { position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: linear-gradient(90deg,#4edcc7,#4c9df5); content: ""; }
+.roster-grid > article:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(15,53,73,.08); }
+.roster-grid header b { color: #112f49; font-size: .98rem; }
+.roster-grid header span,.roster-grid time { font-size: .76rem; }
+.density { margin: 18px 0; border-top-width: 8px; }
+.density i { height: 8px; top: -8px; background: linear-gradient(90deg,#41d4bf,#4d9bf3); }
+.density span { font-size: .75rem; }
+.roster-grid dl { gap: 5px; }
+.roster-grid dt { font-size: .66rem; }
+.roster-grid dd { color: #16324a; font-size: 1.15rem; }
+.doctor-queue-control { margin-top: 18px; padding: 15px; border: 1px solid #e1ebea; border-radius: 13px; background: #f7fcfb; }
+.doctor-queue-control > div > b { color: #143850; font-size: .74rem; }
+.doctor-queue-control span,.doctor-queue-control small { font-size: .72rem; }
+.doctor-queue-control button,.queue-action-link { min-height: 34px; padding: 8px 11px; border-radius: 9px; font-size: .7rem; }
+.queue-consent-notice { border-radius: 13px; background: linear-gradient(135deg,#f5fcfb,#f4f9ff); }
+
+@media(max-width:900px){.clinic-ops-hero{align-items:flex-start;flex-direction:column}.clinic-ops-filters{justify-content:flex-start}.roster-grid{grid-template-columns:1fr}}@media(max-width:600px){.clinic-ops-hero{padding:24px}.clinic-ops-filters{width:100%;align-items:stretch;flex-direction:column}.clinic-ops-hero .secondary-button,.clinic-ops-hero label,.clinic-ops-hero select,.clinic-ops-hero input{width:100%}.roster-metrics article{min-height:104px}.doctor-queue-control{padding:13px}}
