@@ -19,6 +19,7 @@
     "ci:deploy": "npx vercel --prod --token $VERCEL_TOKEN"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@supabase/ssr": "0.12.3",
     "@supabase/supabase-js": "2.110.8",
     "@xyflow/react": "^12.11.6",
@@ -32,7 +33,8 @@
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "react-joyride": "^3.2.0",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",

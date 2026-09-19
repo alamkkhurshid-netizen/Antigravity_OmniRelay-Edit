@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
     
-    // In a real webhook, org ID would be derived from the auth or webhook token
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -14,47 +14,60 @@ export async function POST(req: Request) {
 
     const orgId = profile.active_organization_id;
 
-    // Parse incoming event (e.g., from WhatsApp or an Order system)
+    // Parse incoming event
     const body = await req.json();
     const { source, event_type, payload } = body;
 
-    console.log(`[Router] Received ${event_type} from ${source}. Forwarding to Hermes Agent...`);
+    console.log(`[Router] Received ${event_type} from ${source}. Processing Intent...`);
 
-    // Bridge to Hermes Agent Microservice
-    const hermesUrl = process.env.HERMES_AGENT_URL || "http://localhost:8000/api/v1/agent/invoke";
+    // Use actual Gemini API for intent routing instead of mocking
+    const apiKey = process.env.GEMINI_API_KEY;
     
-    // Pass the payload and the workspace context so Hermes knows who is asking
-    // and can save the draft to the correct organization using the save_draft skill.
-    const hermesPayload = {
-      user_id: user.id,
-      session_id: `${orgId}-${source}`, // For Honcho dialectic memory
-      message: `Event from ${source}: ${JSON.stringify(payload)}`,
-      context: {
-        workspace_id: orgId,
-        payload_type: event_type
-      }
-    };
+    if (apiKey) {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", generationConfig: { responseMimeType: "application/json" } });
 
-    // We do not wait for the Hermes agent to finish synchronously if it's a long running task, 
-    // but for this architecture we trigger it and return immediately. The Hermes agent will 
-    // autonomously call the 'save_draft' python skill when it's done thinking.
-    fetch(hermesUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(hermesPayload)
-    }).catch(err => {
-      console.error("[Hermes Bridge Error]:", err);
-    });
+      const prompt = `
+        You are the OmniRelay AI Router.
+        Analyze the following incoming event and determine the appropriate action.
+        Source: ${source}
+        Event Type: ${event_type}
+        Payload: ${JSON.stringify(payload)}
 
+        Return a JSON object matching this schema:
+        {
+          "agent_role": "Customer Support | Sales | Clinical",
+          "proposed_action": "Short description of what the AI wants to do",
+          "draft_payload": { "text": "The actual message you want to send" }
+        }
+      `;
+
+      const result = await model.generateContent(prompt);
+      const aiDecision = JSON.parse(result.response.text());
+
+      // Save the draft directly to Action Centre for human approval
+      await supabase.from('ai_agent_drafts').insert({
+        organization_id: orgId,
+        agent_role: aiDecision.agent_role,
+        proposed_action: aiDecision.proposed_action,
+        draft_payload: aiDecision.draft_payload
+      });
+
+      return NextResponse.json({ 
+        success: true, 
+        message: "AI Router successfully processed the event using Gemini 1.5." 
+      });
+    }
+
+    // Fallback if no API key is provided
     return NextResponse.json({ 
-      success: true, 
-      message: "Event forwarded to Hermes Agent. A draft will appear in the Action Centre shortly." 
-    });
+      success: false, 
+      error: "GEMINI_API_KEY is not configured in production." 
+    }, { status: 500 });
 
-  } catch (error: any) {
-    console.error("[Router] Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("[Router] Error:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

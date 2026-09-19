@@ -76,7 +76,7 @@ async function runScrapeGraphPipeline(recordId: string, orgId: string, searchQue
         const result = await scrapeResponse.json();
         try {
           reportPayload = JSON.parse(result.response);
-        } catch (e) {
+        } catch {
           reportPayload = {
             raw_analysis: result.response || "Analysis completed.",
             top_hooks: ["Pain Point Hook", "Us vs Them"],
@@ -108,7 +108,7 @@ async function runScrapeGraphPipeline(recordId: string, orgId: string, searchQue
       })
       .eq("id", recordId);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[ScrapeGraphAI Pipeline Failed]", error);
     await supabase
       .from("trend_intelligence_reports")

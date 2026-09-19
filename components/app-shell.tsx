@@ -84,6 +84,7 @@ export function AppShell({
   const knownCriticalIds = useRef(new Set(criticalNotifications.map((item) => item.id)));
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileNavOpen(false);
     setNotificationsOpen(false);
     setAccountOpen(false);
@@ -193,6 +194,7 @@ export function AppShell({
           <Brand className="hidden h-11 w-44 group-hover:flex group-focus-within:flex max-lg:flex" />
         </div>
         <div className="flex items-center justify-center rounded-2xl border border-[#deddd6] bg-white/70 p-2.5 shadow-[0_7px_18px_rgba(35,46,52,.05)] group-hover:justify-start group-focus-within:justify-start max-lg:justify-start">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-xl bg-[linear-gradient(135deg,#d9f5ee,#bfe3fa)]"><img className="size-full object-contain p-1" src="/omnirelay-mark.png" alt="" /></span>
           <b className="hidden min-w-0 flex-1 flex-col pl-2 text-sm text-[#213548] group-hover:flex group-focus-within:flex max-lg:flex">OmniRelay Workspace<small className="mt-0.5 text-xs font-medium text-[#77848b]">Trial workspace</small></b>
           <ChevronDown className="hidden size-4 text-[#77848b] group-hover:block group-focus-within:block max-lg:block" aria-hidden="true" />

@@ -134,7 +134,7 @@ export default async function TrendRadarPage() {
                             <div className="flex flex-col gap-2">
                               {report.report_payload.top_hooks?.map((hook: string, idx: number) => (
                                 <div key={idx} className="rounded-lg bg-fuchsia-50 p-3 border border-fuchsia-100 text-sm font-medium text-fuchsia-900">
-                                  "{hook}"
+                                  &quot;{hook}&quot;
                                 </div>
                               )) || <p className="text-sm text-slate-400">No hooks extracted.</p>}
                             </div>
@@ -161,7 +161,7 @@ export default async function TrendRadarPage() {
 
                           {report.report_payload.engagement_signals && (
                             <div>
-                              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Why it's going viral (Engagement Signals)</h4>
+                              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Why it&apos;s going viral (Engagement Signals)</h4>
                               <p className="text-sm text-slate-700 bg-amber-50 p-4 rounded-lg border border-amber-100">
                                 {report.report_payload.engagement_signals}
                               </p>
@@ -177,7 +177,7 @@ export default async function TrendRadarPage() {
                   <FileJson className="mx-auto size-12 text-slate-300 mb-4" />
                   <h3 className="text-lg font-bold text-slate-900 mb-2">No Intelligence Reports</h3>
                   <p className="text-sm text-slate-500 max-w-sm mx-auto">
-                    Enter a product niche (like "Ladies Kurti") to let the AI autonomously search the internet and extract what is going viral right now.
+                    Enter a product niche (like &quot;Ladies Kurti&quot;) to let the AI autonomously search the internet and extract what is going viral right now.
                   </p>
                 </div>
               )}

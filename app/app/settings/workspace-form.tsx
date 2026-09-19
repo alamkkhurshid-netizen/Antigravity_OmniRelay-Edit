@@ -294,7 +294,11 @@ export function WorkspaceForm({ organization, profile, locations: initialLocatio
           <div className="provider-toolbar"><label className="provider-picker">{category==="Healthcare"?"Doctor":"Provider"}<select value={providerId} onChange={(e)=>chooseProvider(e.target.value)}>{resources.map((item)=><option value={item.id} key={item.id}>{item.name.trim()||"New doctor"}</option>)}</select></label>{category==="Healthcare"&&<button type="button" className="secondary-button" onClick={addDoctor}>+ Add doctor</button>}</div>
           <div className="provider-main">
           <div className="provider-photo-editor">
-            <div className="provider-photo-preview">{photoPreview?<img src={photoPreview} alt="New provider preview"/>:provider.photo_path?<img src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/provider-photos/${provider.photo_path}`} alt="Provider"/>:<span>{resources.find((item)=>item.id===providerId)?.name.slice(0,1)??"P"}</span>}</div>
+            <div className="provider-photo-preview">{photoPreview?
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={photoPreview} alt="New provider preview"/>:provider.photo_path?
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/provider-photos/${provider.photo_path}`} alt="Provider"/>:<span>{resources.find((item)=>item.id===providerId)?.name.slice(0,1)??"P"}</span>}</div>
             <label className="secondary-button">Upload photo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e)=>{const file=e.target.files?.[0];if(file)void uploadProviderPhoto(file)}}/></label>
             <small>JPG, PNG or WebP · maximum 5 MB</small>
           </div>

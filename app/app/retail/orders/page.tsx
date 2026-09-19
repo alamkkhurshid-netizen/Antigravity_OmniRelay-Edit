@@ -10,7 +10,7 @@ export default async function RetailOrdersPage() {
   if (!organization) redirect("/onboarding");
 
   // Verify they are actually retail
-  const businessCategory = (organization.extra as any)?.business_category;
+  const businessCategory = (organization.extra as Record<string, unknown>)?.business_category;
   if (businessCategory !== "Retail & e-commerce") {
     redirect("/app");
   }

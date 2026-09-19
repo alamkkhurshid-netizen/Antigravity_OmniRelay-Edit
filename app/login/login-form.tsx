@@ -51,6 +51,7 @@ export function LoginForm() {
       <h2 className="mt-3 text-3xl font-semibold tracking-tight">Sign in to your workspace</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">Use your work account to open the clinic workspace.</p>
       <button className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-white px-4 text-sm font-bold hover:bg-muted disabled:opacity-50" onClick={googleSignIn} disabled={busy}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/google-g.png" alt="" className="size-5 object-contain" aria-hidden="true" /> Continue with Google
       </button>
       <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">or</div>

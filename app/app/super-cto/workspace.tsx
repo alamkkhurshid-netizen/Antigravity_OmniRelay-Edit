@@ -44,7 +44,7 @@ export function CtoWorkspace() {
       } else {
         setMessages(prev => [...prev, { role: "cto", text: `**Error:** ${data.error}` }]);
       }
-    } catch (err) {
+    } catch {
       setMessages(prev => [...prev, { role: "cto", text: "**Error:** Failed to connect to the Super CTO brain." }]);
     } finally {
       setLoading(false);
@@ -56,7 +56,7 @@ export function CtoWorkspace() {
       <header className="mb-6">
         <span className="text-xs font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-3 py-1 rounded-full">Meta-Agent Layer</span>
         <h1 className="text-3xl font-black tracking-tight text-slate-900 mt-3">Super CTO Architecture Bot</h1>
-        <p className="text-slate-600 mt-2">Ask detailed questions about OmniRelay's architecture, AI pipelines, and business logic.</p>
+        <p className="text-slate-600 mt-2">Ask detailed questions about OmniRelay&apos;s architecture, AI pipelines, and business logic.</p>
       </header>
 
       <div 

@@ -17,8 +17,8 @@ type EmergencyRecipient={id:string;status:string;failure_reason:string|null;pati
 type Assignment={item_kind:string;subject_id:string;assigned_to:string|null;status:string;updated_at:string};
 type ReadinessCheck={id:string;check_key:string;status:string;notes:string|null;updated_at:string};
 type PilotControl={pilot_owner_name:string;rollback_owner_name:string;planned_start_date:string|null;health_status:"go"|"hold";health_note:string|null;reviewed_at:string};
-type AiDraft={id:string;agent_role:string;proposed_action:string;draft_payload:any;created_at:string};
-type ExceptionItem = {id:string;kind:"care_retry"|"appointment_retry"|"booking_approval"|"waitlist"|"schedule_disruption"|"blocked"|"care_task"|"agent_draft";type:string;name:string;detail:string;priority:string;href:string;status?:string;rank:number;assignment?:Assignment;draft_payload?:any};
+type AiDraft={id:string;agent_role:string;proposed_action:string;draft_payload:Record<string, unknown>;created_at:string};
+type ExceptionItem = {id:string;kind:"care_retry"|"appointment_retry"|"booking_approval"|"waitlist"|"schedule_disruption"|"blocked"|"care_task"|"agent_draft";type:string;name:string;detail:string;priority:string;href:string;status?:string;rank:number;assignment?:Assignment;draft_payload?:Record<string, unknown>};
 
 const when = (value:string) => new Intl.DateTimeFormat("en-IN", { day:"numeric", month:"short", hour:"numeric", minute:"2-digit", timeZone:"Asia/Kolkata" }).format(new Date(value));
 const clinicDay = (value:string) => new Intl.DateTimeFormat("en-CA", { timeZone:"Asia/Kolkata" }).format(new Date(value));
@@ -34,6 +34,7 @@ export function ActionCentreWorkspace({careRuns,appointmentRuns,tasks,deployment
   const isDemo = aiDrafts.some(d => d.draft_payload?.metadata?.demo === true);
   const [runTour, setRunTour] = useState(false);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isDemo) setRunTour(true);
   }, [isDemo]);
 

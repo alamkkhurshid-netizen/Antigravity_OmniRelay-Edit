@@ -11,7 +11,7 @@ export default async function OemDashboard() {
     supabase.from("operational_usage_events").select("estimated_total_paise")
   ]);
 
-  const totalRevenuePaise = (usageEvents || []).reduce((acc: number, curr: any) => acc + (curr.estimated_total_paise || 0), 0);
+  const totalRevenuePaise = (usageEvents || []).reduce((acc: number, curr: { estimated_total_paise: number }) => acc + (curr.estimated_total_paise || 0), 0);
   const totalRevenueINR = (totalRevenuePaise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
   return (
