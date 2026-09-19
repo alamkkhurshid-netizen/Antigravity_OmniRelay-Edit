@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Package, Smartphone, Zap, Store, Sparkles, Building2, Users, TrendingUp, Megaphone, Workflow, Target } from "lucide-react";
+import { ArrowRight, Package, Smartphone, Zap, Store, Sparkles, Building2, Users, TrendingUp, Megaphone, Workflow, Target, CalendarDays } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function RetailDashboard() {
@@ -46,6 +46,12 @@ export default async function RetailDashboard() {
             <Target className="size-6" />
           </div>
           <span className="text-sm font-bold text-slate-700 group-hover:text-blue-600 text-center leading-tight">Meta Ads</span>
+        </Link>
+        <Link href="/app/retail/calendar" className="group flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:border-indigo-300 hover:shadow-md">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 transition-colors group-hover:bg-indigo-100">
+            <CalendarDays className="size-6" />
+          </div>
+          <span className="text-sm font-bold text-slate-700 group-hover:text-indigo-600 text-center leading-tight">Content Calendar</span>
         </Link>
         <Link href="/app/retail/creative" className="group flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:border-fuchsia-300 hover:shadow-md">
           <div className="flex size-12 items-center justify-center rounded-xl bg-fuchsia-50 text-fuchsia-600 transition-colors group-hover:bg-fuchsia-100">

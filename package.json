@@ -14,7 +14,9 @@
     "knowledge:release-gate": "node scripts/verify-product-knowledge-release.mjs",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate"
+    "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
+    "ci:test": "npm run test",
+    "ci:deploy": "npx vercel --prod --token $VERCEL_TOKEN"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.3",
@@ -29,10 +31,12 @@
     "radix-ui": "^1.6.7",
     "react": "19.2.6",
     "react-dom": "19.2.6",
+    "react-joyride": "^3.2.0",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
+    "@faker-js/faker": "^10.6.0",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/qrcode": "^1.5.5",

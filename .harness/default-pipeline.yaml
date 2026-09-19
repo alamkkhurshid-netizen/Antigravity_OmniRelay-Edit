@@ -1,0 +1,104 @@
+pipeline:
+  name: omnirelay-ci-cd
+  identifier: omnirelay_ci_cd
+  projectIdentifier: default
+  orgIdentifier: default
+  tags: {}
+  properties:
+    ci:
+      codebase:
+        connectorRef: <+input>
+        repoName: <+input>
+        build: <+input>
+  stages:
+    - stage:
+        name: Build and Test Nextjs
+        identifier: Build_and_Test_Nextjs
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: <+input>
+              namespace: default
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Install Dependencies
+                  identifier: Install_Dependencies
+                  spec:
+                    connectorRef: <+input>
+                    image: node:20
+                    command: |-
+                      npm install
+              - step:
+                  type: Run
+                  name: Run Tests
+                  identifier: Run_Tests
+                  spec:
+                    connectorRef: <+input>
+                    image: node:20
+                    command: |-
+                      npm run ci:test
+    - stage:
+        name: Build and Push Hermes Docker
+        identifier: Build_and_Push_Hermes_Docker
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: <+input>
+              namespace: default
+          execution:
+            steps:
+              - step:
+                  type: BuildAndPushDockerRegistry
+                  name: Build Hermes Image
+                  identifier: Build_Hermes_Image
+                  spec:
+                    connectorRef: <+input>
+                    repo: omnirelay/hermes-agent
+                    tags:
+                      - latest
+                      - <+pipeline.sequenceId>
+                    dockerfile: agents/Dockerfile
+    - stage:
+        name: Deploy Supabase and Vercel
+        identifier: Deploy_Supabase_and_Vercel
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: <+input>
+              namespace: default
+          execution:
+            steps:
+              - step:
+                  type: Run
+                  name: Run Supabase Migrations
+                  identifier: Run_Supabase_Migrations
+                  spec:
+                    connectorRef: <+input>
+                    image: node:20
+                    command: |-
+                      npx supabase migration up
+                    envVariables:
+                      SUPABASE_ACCESS_TOKEN: <+secrets.getValue("supabase_token")>
+                      SUPABASE_DB_PASSWORD: <+secrets.getValue("supabase_db_password")>
+              - step:
+                  type: Run
+                  name: Deploy to Vercel
+                  identifier: Deploy_to_Vercel
+                  spec:
+                    connectorRef: <+input>
+                    image: node:20
+                    command: |-
+                      npm run ci:deploy
+                    envVariables:
+                      VERCEL_TOKEN: <+secrets.getValue("vercel_token")>

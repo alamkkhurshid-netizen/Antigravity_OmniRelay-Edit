@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  hermes:
+    image: nousresearch/hermes-agent:latest
+    container_name: omnirelay-hermes-agent
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount the Titan Syndicate Knowledge Base for RAG
+      - ../app/knowledge/titans:/app/data/knowledge
+      # Mount the configuration and custom skills
+      - ./hermes-config.json:/app/config.json
+      - ./skills:/app/skills
+    environment:
+      # Use Gemini as the default model via LiteLLM or direct integration
+      - DEFAULT_MODEL=gemini/gemini-1.5-flash
+      # Optional API Keys injected at runtime
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - HONCHO_API_KEY=${HONCHO_API_KEY}
+      # Required for Supabase connection from the Python skill
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    restart: always

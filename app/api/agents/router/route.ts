@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-// Initialize Gemini Flash for the fast Router model
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export async function POST(req: Request) {
   try {
@@ -22,36 +18,39 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { source, event_type, payload } = body;
 
-    // Fast Classification using Gemini 1.5 Flash (Mocked here for the architecture)
-    // const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    // const prompt = `Classify this incoming event: ${JSON.stringify(payload)}...`;
-    // const result = await model.generateContent(prompt);
-    
-    console.log(`[Router] Received ${event_type} from ${source}. Classifying with fast model...`);
+    console.log(`[Router] Received ${event_type} from ${source}. Forwarding to Hermes Agent...`);
 
-    // Let's assume the model decided this needs an Approval Loop
-    // and drafted a response.
-    const draftedAction = {
-      organization_id: orgId,
-      agent_role: source === 'whatsapp' ? 'concierge' : 'marketing',
-      context_source: event_type,
-      proposed_action: source === 'whatsapp' ? 'send_whatsapp_message' : 'launch_ad_campaign',
-      draft_payload: {
-        text: `Hello! I see you just placed an order. Here is your tracking number...`,
-        original_event: payload
-      },
-      status: 'pending_approval'
+    // Bridge to Hermes Agent Microservice
+    const hermesUrl = process.env.HERMES_AGENT_URL || "http://localhost:8000/api/v1/agent/invoke";
+    
+    // Pass the payload and the workspace context so Hermes knows who is asking
+    // and can save the draft to the correct organization using the save_draft skill.
+    const hermesPayload = {
+      user_id: user.id,
+      session_id: `${orgId}-${source}`, // For Honcho dialectic memory
+      message: `Event from ${source}: ${JSON.stringify(payload)}`,
+      context: {
+        workspace_id: orgId,
+        payload_type: event_type
+      }
     };
 
-    const { error } = await supabase
-      .from('ai_agent_drafts')
-      .insert(draftedAction);
-
-    if (error) throw error;
+    // We do not wait for the Hermes agent to finish synchronously if it's a long running task, 
+    // but for this architecture we trigger it and return immediately. The Hermes agent will 
+    // autonomously call the 'save_draft' python skill when it's done thinking.
+    fetch(hermesUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(hermesPayload)
+    }).catch(err => {
+      console.error("[Hermes Bridge Error]:", err);
+    });
 
     return NextResponse.json({ 
       success: true, 
-      message: "Task classified. Draft created for human approval." 
+      message: "Event forwarded to Hermes Agent. A draft will appear in the Action Centre shortly." 
     });
 
   } catch (error: any) {

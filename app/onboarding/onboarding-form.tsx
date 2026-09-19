@@ -85,6 +85,38 @@ export function OnboardingForm() {
     (category !== "Healthcare" || (primaryDoctorName.trim().length >= 2 && confirmHealthcare && confirmSingleProfile))
   );
 
+  async function startSandbox(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+
+    const supabase = createClient();
+    
+    // 1. Authenticate anonymously (Frictionless entry)
+    const { error: authError } = await supabase.auth.signInAnonymously();
+    if (authError) {
+      setError("Failed to initialize sandbox session.");
+      setBusy(false);
+      return;
+    }
+
+    // 2. Provision sandbox data
+    const res = await fetch("/api/sandbox/provision", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category })
+    });
+
+    if (!res.ok) {
+      setError("Failed to provision sandbox data.");
+      setBusy(false);
+      return;
+    }
+
+    // 3. Drop into Action Centre
+    window.location.assign("/app/action-centre");
+  }
+
   return (
     <form className="w-full rounded-3xl border border-[#d8e5e9] bg-white p-6 shadow-[0_20px_60px_rgba(7,38,58,.1)] sm:p-8" onSubmit={submit}>
       <div className="flex items-center justify-between">
@@ -275,22 +307,35 @@ export function OnboardingForm() {
       </div>
       )}
 
-      <button
-        className={`mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold text-white shadow-[0_12px_24px_rgba(8,127,163,.22)] transition-all ${
-          isFormReady && !busy
-            ? "bg-[#087fa3] hover:bg-[#066d8d] cursor-pointer"
-            : "bg-gray-400 cursor-not-allowed opacity-60"
-        }`}
-        disabled={!isFormReady || busy}
-      >
-        {busy ? (
-          "Provisioning Clinic Workspace…"
-        ) : (
-          <>
-            {category === "Healthcare" ? "Confirm & Enter Clinic CRM" : "Confirm & Enter Retail Platform"} <ArrowRight className="size-4" />
-          </>
-        )}
-      </button>
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <button
+          type="submit"
+          className={`inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold text-white shadow-[0_12px_24px_rgba(8,127,163,.22)] transition-all ${
+            isFormReady && !busy
+              ? "bg-[#087fa3] hover:bg-[#066d8d] cursor-pointer"
+              : "bg-gray-400 cursor-not-allowed opacity-60"
+          }`}
+          disabled={!isFormReady || busy}
+        >
+          {busy ? (
+            "Provisioning…"
+          ) : (
+            <>
+              {category === "Healthcare" ? "Confirm & Enter Clinic CRM" : "Confirm & Enter Retail Platform"} <ArrowRight className="size-4" />
+            </>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={startSandbox}
+          className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-[#1688a6] bg-white px-4 text-sm font-bold text-[#1688a6] transition-all hover:bg-[#f0f9fb] disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={busy}
+        >
+          <Sparkles className="size-4" />
+          Experience the Sandbox (Demo)
+        </button>
+      </div>
 
       {error && (
         <p className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-800 border border-rose-200" role="status">
