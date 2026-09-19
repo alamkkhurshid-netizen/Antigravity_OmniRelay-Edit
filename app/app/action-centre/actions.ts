@@ -114,6 +114,28 @@ export async function resolveAgentDraft(draftId: string, action: 'approve' | 're
       }
     }
 
+    if (draft.proposed_action === "pause_meta_campaign") {
+      const payload = draft.draft_payload;
+      const campaignId = payload?.campaign_id;
+      
+      if (campaignId) {
+        // Execute the MCP command equivalent directly on the database
+        const { error: updateError } = await supabase
+          .from("marketing_campaigns")
+          .update({ status: "paused" })
+          .eq("id", campaignId)
+          .eq("organization_id", draft.organization_id);
+          
+        if (updateError) {
+          await supabase
+            .from("ai_agent_drafts")
+            .update({ status: "pending_approval" })
+            .eq("id", draftId);
+          return { success: false, error: `Failed to execute MCP pause command: ${updateError.message}` };
+        }
+      }
+    }
+
     // For review_advice actions, approval simply records the decision (no external API needed)
   }
 

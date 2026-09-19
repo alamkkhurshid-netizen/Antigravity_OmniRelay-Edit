@@ -18,6 +18,9 @@ const categories = [
 ] as const;
 
 export function OnboardingForm() {
+  const [step, setStep] = useState(1);
+  const [tier, setTier] = useState<"standard" | "premium">("standard");
+
   const [category, setCategory] = useState("Healthcare");
   const [name, setName] = useState("");
   const [locations, setLocations] = useState("1");
@@ -41,24 +44,29 @@ export function OnboardingForm() {
     setCategory(catName);
   }
 
-  async function submit(e: FormEvent) {
+  function handleNext(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
     setError("");
 
     if (category === "Healthcare") {
       if (!confirmHealthcare || !confirmSingleProfile) {
         setError("Please confirm both required safeguards below to verify your clinic practice.");
-        setBusy(false);
         return;
       }
 
       if (primaryDoctorName.trim().length < 2) {
         setError("Enter the first doctor’s full name. Patients will see this name when they book.");
-        setBusy(false);
         return;
       }
     }
+
+    setStep(2);
+  }
+
+  async function finalizeOnboarding(selectedTier: "standard" | "premium") {
+    setTier(selectedTier);
+    setBusy(true);
+    setError("");
 
     const supabase = createClient();
     const locationCount = locations === "5+" ? 5 : Number(locations);
@@ -69,11 +77,13 @@ export function OnboardingForm() {
       p_timezone: "Asia/Kolkata",
       p_clinic_mode: category === "Healthcare" ? clinicMode : null,
       p_primary_provider_name: category === "Healthcare" ? primaryDoctorName.trim() : null,
+      p_subscription_tier: selectedTier,
     });
 
     if (insertError) {
       setError(insertError.message);
       setBusy(false);
+      setStep(1); // Go back if it fails
       return;
     }
 
@@ -91,8 +101,6 @@ export function OnboardingForm() {
     setError("");
 
     const supabase = createClient();
-    
-    // 1. Authenticate anonymously (Frictionless entry)
     const { error: authError } = await supabase.auth.signInAnonymously();
     if (authError) {
       setError("Failed to initialize sandbox session.");
@@ -100,7 +108,6 @@ export function OnboardingForm() {
       return;
     }
 
-    // 2. Provision sandbox data
     const res = await fetch("/api/sandbox/provision", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -113,12 +120,90 @@ export function OnboardingForm() {
       return;
     }
 
-    // 3. Drop into Action Centre
     window.location.assign("/app/action-centre");
   }
 
+  if (step === 2) {
+    return (
+      <div className="w-full rounded-3xl border border-[#d8e5e9] bg-white p-6 shadow-[0_20px_60px_rgba(7,38,58,.1)] sm:p-8">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-black tracking-[.18em] text-[#1688a6]">CHOOSE ENGINE</span>
+          <button onClick={() => setStep(1)} className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors">
+            ← BACK TO SETUP
+          </button>
+        </div>
+        
+        <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#173047]">
+          Select your automation tier
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-[#667985]">
+          How do you want to handle incoming messages and routing? You can upgrade later.
+        </p>
+
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          {/* Standard Tier */}
+          <button
+            type="button"
+            onClick={() => finalizeOnboarding("standard")}
+            disabled={busy}
+            className="flex flex-col text-left rounded-2xl border-2 border-[#e2e8f0] bg-white p-5 transition-all hover:border-[#94a3b8] hover:shadow-md disabled:opacity-50"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center justify-center size-8 rounded-full bg-slate-100 text-slate-600">
+                <CheckCircle2 className="size-5" />
+              </div>
+              <h3 className="font-bold text-[#1e293b] text-lg">Standard</h3>
+            </div>
+            <p className="text-sm text-slate-500 mb-4 h-10">Regular WhatsApp Flow and rule-based manual routing.</p>
+            <ul className="text-xs text-slate-600 space-y-2 mb-6 flex-1">
+              <li className="flex items-start gap-1.5"><CheckCircle2 className="size-4 text-emerald-500 shrink-0" /> Unified Action Centre</li>
+              <li className="flex items-start gap-1.5"><CheckCircle2 className="size-4 text-emerald-500 shrink-0" /> Standard Broadcasts</li>
+              <li className="flex items-start gap-1.5"><CheckCircle2 className="size-4 text-emerald-500 shrink-0" /> Manual Escalation</li>
+            </ul>
+            <div className="mt-auto pt-4 border-t border-slate-100 w-full font-bold text-center text-slate-700">
+              {busy && tier === "standard" ? "Provisioning..." : "Select Standard"}
+            </div>
+          </button>
+
+          {/* Premium Tier */}
+          <button
+            type="button"
+            onClick={() => finalizeOnboarding("premium")}
+            disabled={busy}
+            className="flex flex-col text-left rounded-2xl border-2 border-[#1688a6] bg-[#f0f9fb] p-5 transition-all hover:shadow-[0_8px_30px_rgba(22,136,166,.15)] relative disabled:opacity-50"
+          >
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#1688a6] to-[#0d5970] text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full shadow-sm">
+              Recommended
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center justify-center size-8 rounded-full bg-[#1688a6] text-white shadow-sm">
+                <Sparkles className="size-4" />
+              </div>
+              <h3 className="font-bold text-[#0d5970] text-lg">Premium AI</h3>
+            </div>
+            <p className="text-sm text-[#3b6678] mb-4 h-10">RAG AI Concierge & XYFlow Visual Builder.</p>
+            <ul className="text-xs text-[#2a4e5d] space-y-2 mb-6 flex-1">
+              <li className="flex items-start gap-1.5"><CheckCircle2 className="size-4 text-[#1688a6] shrink-0" /> Semantic RAG Bot</li>
+              <li className="flex items-start gap-1.5"><CheckCircle2 className="size-4 text-[#1688a6] shrink-0" /> Upload Custom Documents</li>
+              <li className="flex items-start gap-1.5"><CheckCircle2 className="size-4 text-[#1688a6] shrink-0" /> XYFlow Drag & Drop Builder</li>
+            </ul>
+            <div className="mt-auto pt-4 border-t border-[#c6e4ec] w-full font-bold text-center text-[#1688a6]">
+              {busy && tier === "premium" ? "Provisioning..." : "Select Premium"}
+            </div>
+          </button>
+        </div>
+
+        {error && (
+          <p className="mt-6 rounded-xl bg-rose-50 p-3 text-sm text-rose-800 border border-rose-200" role="status">
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <form className="w-full rounded-3xl border border-[#d8e5e9] bg-white p-6 shadow-[0_20px_60px_rgba(7,38,58,.1)] sm:p-8" onSubmit={submit}>
+    <form className="w-full rounded-3xl border border-[#d8e5e9] bg-white p-6 shadow-[0_20px_60px_rgba(7,38,58,.1)] sm:p-8" onSubmit={handleNext}>
       <div className="flex items-center justify-between">
         <span className="text-xs font-black tracking-[.18em] text-[#1688a6]">WORKSPACE FOUNDATION</span>
         {category === "Healthcare" && (
@@ -317,13 +402,7 @@ export function OnboardingForm() {
           }`}
           disabled={!isFormReady || busy}
         >
-          {busy ? (
-            "Provisioning…"
-          ) : (
-            <>
-              {category === "Healthcare" ? "Confirm & Enter Clinic CRM" : "Confirm & Enter Retail Platform"} <ArrowRight className="size-4" />
-            </>
-          )}
+          {category === "Healthcare" ? "Next: Choose Plan" : "Next: Choose Plan"} <ArrowRight className="size-4" />
         </button>
 
         <button
