@@ -1,7 +1,7 @@
 {
-  "name": "OmniRelay Clinic Operations",
+  "name": "OmniRelay — Connect. Automate. Grow.",
   "short_name": "OmniRelay",
-  "description": "Clinic operations, patient communications and serious-action review.",
+  "description": "Omnichannel conversations, automation and business operations for modern service businesses.",
   "start_url": "/app",
   "display": "standalone",
   "background_color": "#071426",

@@ -12,7 +12,7 @@ const categories = [
   ["Professional services", "Consulting, legal, finance", false],
   ["Real estate", "Brokers, builders, property teams", false],
   ["Automotive services", "Garages, dealers, service centres", false],
-  ["Retail & e-commerce", "Stores, D2C and online retail", false],
+  ["Retail & e-commerce", "Stores, D2C and online retail", true],
   ["Home services", "Repairs, cleaning, field services", false],
   ["Other", "Custom business model", false],
 ] as const;
@@ -34,7 +34,7 @@ export function OnboardingForm() {
 
   function handleCategoryClick(catName: string, isAvailable: boolean) {
     if (!isAvailable) {
-      setWaitlistNotice(`"${catName}" is currently in private waitlist. OmniRelay is actively provisioning exclusively for Clinic & Healthcare practices.`);
+      setWaitlistNotice(`"${catName}" is currently in private waitlist.`);
       return;
     }
     setWaitlistNotice("");
@@ -46,33 +46,29 @@ export function OnboardingForm() {
     setBusy(true);
     setError("");
 
-    if (category !== "Healthcare") {
-      setError("Only Clinic & Healthcare practices are supported by this CRM.");
-      setBusy(false);
-      return;
-    }
+    if (category === "Healthcare") {
+      if (!confirmHealthcare || !confirmSingleProfile) {
+        setError("Please confirm both required safeguards below to verify your clinic practice.");
+        setBusy(false);
+        return;
+      }
 
-    if (!confirmHealthcare || !confirmSingleProfile) {
-      setError("Please confirm both required safeguards below to verify your clinic practice.");
-      setBusy(false);
-      return;
-    }
-
-    if (primaryDoctorName.trim().length < 2) {
-      setError("Enter the first doctor’s full name. Patients will see this name when they book.");
-      setBusy(false);
-      return;
+      if (primaryDoctorName.trim().length < 2) {
+        setError("Enter the first doctor’s full name. Patients will see this name when they book.");
+        setBusy(false);
+        return;
+      }
     }
 
     const supabase = createClient();
     const locationCount = locations === "5+" ? 5 : Number(locations);
     const { error: insertError } = await supabase.rpc("complete_workspace_onboarding", {
       p_business_name: name.trim(),
-      p_business_category: "Healthcare",
+      p_business_category: category,
       p_location_count: locationCount,
       p_timezone: "Asia/Kolkata",
-      p_clinic_mode: clinicMode,
-      p_primary_provider_name: primaryDoctorName.trim(),
+      p_clinic_mode: category === "Healthcare" ? clinicMode : null,
+      p_primary_provider_name: category === "Healthcare" ? primaryDoctorName.trim() : null,
     });
 
     if (insertError) {
@@ -86,28 +82,37 @@ export function OnboardingForm() {
 
   const isFormReady = Boolean(
     name.trim().length >= 2 &&
-    primaryDoctorName.trim().length >= 2 &&
-    confirmHealthcare &&
-    confirmSingleProfile
+    (category !== "Healthcare" || (primaryDoctorName.trim().length >= 2 && confirmHealthcare && confirmSingleProfile))
   );
 
   return (
     <form className="w-full rounded-3xl border border-[#d8e5e9] bg-white p-6 shadow-[0_20px_60px_rgba(7,38,58,.1)] sm:p-8" onSubmit={submit}>
       <div className="flex items-center justify-between">
         <span className="text-xs font-black tracking-[.18em] text-[#1688a6]">WORKSPACE FOUNDATION</span>
+        {category === "Healthcare" && (
         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 border border-emerald-200">
           <Stethoscope className="size-3.5" /> CLINIC & HEALTHCARE ONLY
         </span>
+        )}
+        {category === "Retail & e-commerce" && (
+        <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 border border-indigo-200">
+          <Sparkles className="size-3.5" /> RETAIL MODULE UNLOCKED
+        </span>
+        )}
       </div>
       
-      <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#173047]">Register your clinic practice</h2>
+      <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#173047]">
+        {category === "Healthcare" ? "Register your clinic practice" : "Set up your retail business"}
+      </h2>
       <p className="mt-2 text-sm leading-6 text-[#667985]">
-        This CRM is purpose-built for medical clinics, doctor OPDs, and healthcare practices. Your account will be permanently configured for clinical operations.
+        {category === "Healthcare" 
+          ? "This CRM is purpose-built for medical clinics, doctor OPDs, and healthcare practices. Your account will be permanently configured for clinical operations."
+          : "Your account will be configured with retail-focused automation, inventory tracking, and meta commerce integrations."}
       </p>
 
       {/* Business Name */}
       <label className="mt-6 grid gap-2 text-sm font-bold text-[#294558]">
-        Clinic or hospital name <span className="sr-only">required</span>
+        {category === "Healthcare" ? "Clinic or hospital name" : "Store or business name"} <span className="sr-only">required</span>
         <span className="relative">
           <Building2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#6e98a9]" />
           <input
@@ -166,7 +171,7 @@ export function OnboardingForm() {
 
       {/* Chambers & Locations */}
       <label className="mt-6 grid gap-2 text-sm font-bold text-[#294558]">
-        Consultation chambers or locations
+        {category === "Healthcare" ? "Consultation chambers or locations" : "Retail stores or warehouses"}
         <span className="relative">
           <MapPin className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#6e98a9]" />
           <select
@@ -185,6 +190,7 @@ export function OnboardingForm() {
       </label>
 
       {/* Doctor Setup */}
+      {category === "Healthcare" && (
       <fieldset className="mt-6 grid gap-4 rounded-2xl border border-[#cce8e6] bg-[#f7fcfd] p-4">
         <legend className="px-1 text-sm font-bold text-[#294558] flex items-center gap-1.5">
           <Sparkles className="size-3.5 text-[#159ab6]" /> Doctor & OPD Setup
@@ -209,7 +215,7 @@ export function OnboardingForm() {
               value={primaryDoctorName}
               onChange={(e) => setPrimaryDoctorName(e.target.value)}
               placeholder="e.g. Dr. Khurshid Alam"
-              required
+              required={category === "Healthcare"}
             />
           </label>
         </div>
@@ -217,8 +223,21 @@ export function OnboardingForm() {
           This is the patient-facing medical booking identity. You can add additional doctors, visiting consultants, and OPD timings once inside.
         </p>
       </fieldset>
+      )}
+
+      {category === "Retail & e-commerce" && (
+      <fieldset className="mt-6 grid gap-4 rounded-2xl border border-[#e6e2f8] bg-[#fdfcff] p-4">
+        <legend className="px-1 text-sm font-bold text-[#3a2958] flex items-center gap-1.5">
+          <Sparkles className="size-3.5 text-[#5f44c4]" /> Retail & E-commerce Setup
+        </legend>
+        <p className="text-xs leading-5 text-[#58597d]">
+          This is the customer-facing business identity. You can configure your Meta Commerce Catalog and product tiers directly in the dashboard after completing onboarding.
+        </p>
+      </fieldset>
+      )}
 
       {/* MANDATORY DOUBLE-CONFIRMATION GATE */}
+      {category === "Healthcare" && (
       <div className="mt-6 rounded-2xl border-2 border-[#1688a6]/40 bg-[#f0f9fb] p-4 sm:p-5">
         <div className="flex items-center gap-2 text-xs font-black tracking-[.14em] text-[#1688a6]">
           <Lock className="size-4 text-[#1688a6]" />
@@ -254,6 +273,7 @@ export function OnboardingForm() {
           </label>
         </div>
       </div>
+      )}
 
       <button
         className={`mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold text-white shadow-[0_12px_24px_rgba(8,127,163,.22)] transition-all ${
@@ -267,7 +287,7 @@ export function OnboardingForm() {
           "Provisioning Clinic Workspace…"
         ) : (
           <>
-            Confirm & Enter Clinic CRM <ArrowRight className="size-4" />
+            {category === "Healthcare" ? "Confirm & Enter Clinic CRM" : "Confirm & Enter Retail Platform"} <ArrowRight className="size-4" />
           </>
         )}
       </button>

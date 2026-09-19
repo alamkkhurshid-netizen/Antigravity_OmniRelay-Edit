@@ -33,7 +33,8 @@ export default async function ActionCentrePage() {
     supabase.from("action_centre_assignments").select("item_kind,subject_id,assigned_to,status,updated_at").eq("organization_id",organization.id).neq("status","released"),
     supabase.from("production_readiness_checks").select("id,check_key,status,notes,updated_at").eq("organization_id", organization.id).eq("status", "blocked").order("updated_at", { ascending: false }).limit(20),
     supabase.from("clinic_pilot_controls").select("pilot_owner_name,rollback_owner_name,planned_start_date,health_status,health_note,reviewed_at").eq("organization_id", organization.id).maybeSingle(),
+    supabase.from("ai_agent_drafts").select("*").eq("organization_id", organization.id).eq("status", "pending_approval"),
   ]);
 
-  return <ActionCentreWorkspace careRuns={careRuns ?? []} appointmentRuns={appointmentRuns ?? []} tasks={tasks ?? []} deployments={deployments ?? []} bookingRequests={bookingRequests ?? []} waitlist={waitlist??[]} disruptions={disruptions??[]} emergencyRecipients={emergencyRecipients??[]} assignments={assignments??[]} readinessChecks={readinessChecks??[]} pilotControl={pilotControl} currentUserId={user?.id??""} canManageNotifications={canManageNotifications} nowIso={isoNow()} />;
+  return <ActionCentreWorkspace careRuns={careRuns ?? []} appointmentRuns={appointmentRuns ?? []} tasks={tasks ?? []} deployments={deployments ?? []} bookingRequests={bookingRequests ?? []} waitlist={waitlist??[]} disruptions={disruptions??[]} emergencyRecipients={emergencyRecipients??[]} assignments={assignments??[]} readinessChecks={readinessChecks??[]} pilotControl={pilotControl} aiDrafts={aiDrafts ?? []} currentUserId={user?.id??""} canManageNotifications={canManageNotifications} nowIso={isoNow()} />;
 }

@@ -1,22 +1,53 @@
 /*
- * OmniRelay PWA shell. No patient or workspace response is cached here.
- * A later consented Web Push delivery slice may post the same privacy-safe
- * serious-action payload that the signed-in dashboard already displays.
+ * OmniRelay PWA service worker.
+ * - Caches the offline fallback page on install.
+ * - Serves the offline page when the network is unavailable.
+ * - Handles Web Push notifications.
  */
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+const OFFLINE_CACHE = "omnirelay-offline-v1";
+const OFFLINE_URL = "/offline.html";
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(OFFLINE_CACHE).then((cache) => cache.add(OFFLINE_URL))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((names) =>
+      Promise.all(
+        names
+          .filter((name) => name !== OFFLINE_CACHE)
+          .map((name) => caches.delete(name))
+      )
+    ).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener("fetch", (event) => {
+  // Only handle navigation requests (page loads)
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        caches.match(OFFLINE_URL)
+      )
+    );
+  }
+});
 
 self.addEventListener("push", (event) => {
   let payload = {};
   try { payload = event.data ? event.data.json() : {}; } catch { payload = {}; }
   const title = typeof payload.title === "string" ? payload.title : "OmniRelay action required";
-  const body = typeof payload.body === "string" ? payload.body : "Review the clinic action in OmniRelay.";
-  const href = typeof payload.href === "string" && payload.href.startsWith("/") ? payload.href : "/app/action-centre";
+  const body = typeof payload.body === "string" ? payload.body : "Review the action in OmniRelay.";
+  const href = typeof payload.href === "string" && payload.href.startsWith("/") ? payload.href : "/app";
   event.waitUntil(self.registration.showNotification(title, {
     body,
     icon: "/omnirelay-app-icon.png",
     badge: "/omnirelay-app-icon.png",
-    tag: typeof payload.tag === "string" ? payload.tag : "omnirelay-serious-action",
+    tag: typeof payload.tag === "string" ? payload.tag : "omnirelay-action",
     renotify: true,
     data: { href },
   }));
@@ -24,7 +55,7 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const href = event.notification.data?.href || "/app/action-centre";
+  const href = event.notification.data?.href || "/app";
   event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
     const matching = clients.find((client) => "focus" in client);
     if (matching) return matching.focus().then(() => matching.navigate(href));

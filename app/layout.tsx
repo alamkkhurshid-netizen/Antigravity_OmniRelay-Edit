@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { PwaRegistry } from "../components/pwa-registry";
 import "./globals.css";
 import "./impact.css";
 import "./calendar.css";
@@ -113,6 +114,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         {children}
+        <PwaRegistry />
       </body>
     </html>
   );

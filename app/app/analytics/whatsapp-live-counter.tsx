@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@/lib/supabase/client";
 import { MessageSquare, Flame } from "lucide-react";
 
 type WhatsAppCounterProps = {
@@ -15,7 +15,7 @@ type WhatsAppCounterProps = {
 export function WhatsAppLiveCounter({ organizationId, initialCounts }: WhatsAppCounterProps) {
   const [messagesCount, setMessagesCount] = useState(initialCounts.messages);
   const [costPaise, setCostPaise] = useState(initialCounts.estimatedCostPaise);
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [justUpdated, setJustUpdated] = useState(false);
 
   useEffect(() => {

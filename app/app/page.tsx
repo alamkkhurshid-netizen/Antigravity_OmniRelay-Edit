@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowRight, CalendarDays, CheckCircle2, CircleAlert, MapPin, MessageCircleMore, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { StatCard } from "@/components/ui/stat-card";
@@ -47,6 +48,10 @@ export default async function DashboardPage() {
   const businessCategory =
     (organization.extra as { business_category?: string } | null)
       ?.business_category ?? "Service business";
+
+  if (businessCategory === "Retail & e-commerce") {
+    redirect("/app/retail");
+  }
   const profileReady = Boolean(profile?.primary_phone && profile?.email);
   const setupSteps = [
     ["Business profile", "Add a business phone and email so customers can reach you.", "/app/settings", profileReady],
