@@ -19,16 +19,17 @@ const Logo = () => (
   </Link>
 );
 
-const features = [
-  ["✦", "AI Conversations", "Turn every customer interaction into a fast, personal response—across every channel."],
-  ["⌁", "Workflow Automation", "Connect decisions to action with intelligent workflows that move work forward automatically."],
-  ["◎", "Unified Intelligence", "Bring your teams, data and systems into one clear operating view, ready for every next move."]
+const verticals = [
+  ["🏥", "Clinics & Healthcare", "Automate patient appointment scheduling, pre-consultation FAQs, and proactive visit reminders while protecting sensitive data with strict tenant isolation."],
+  ["🍽️", "Restaurants & Hospitality", "Manage table reservations, handle menu and dietary inquiries, and streamline guest communication without tying up front-of-house staff."],
+  ["🛍️", "Retail & E-commerce", "Instantly answer stock availability, product specifications, pricing questions, and order tracking straight through a native chat thread."]
 ];
 
-const flows = [
-  ["SUPPORT", "Resolve customer requests before they become tickets.", "OmniRelay understands intent, finds the right context and responds across every channel—then hands off with the full story."],
-  ["OPERATIONS", "Turn routine work into reliable, autonomous flows.", "Route approvals, update records and keep every team aligned without constant follow-up."],
-  ["GROWTH", "Know the next best action for every customer.", "Unify signals across your stack and help teams act on the moments that matter."]
+const deliverables = [
+  ["DOCUMENT RAG", "Instant Document-Trained RAG", "Upload your menus, service catalogs, price lists, or operating schedules. OmniRelay ingests them instantly, training an AI agent that answers customer questions with absolute factual precision."],
+  ["META SIGNUP", "Meta Embedded Signup", "Connect your official WhatsApp Business Account (WABA) in one click. Zero complex API routing, full compliance, and customer-owned billing."],
+  ["UNIFIED INBOX", "Unified Team Inbox & Handoff", "When a customer needs a human touch, the conversation flows seamlessly into a shared team inbox equipped with full context history and smart tagging."],
+  ["ASYNC ONBOARDING", "Asynchronous Onboarding", "Drag and drop your data files; our backend parses and vectorizes everything automatically. No engineering required."]
 ];
 
 export default function Home() {
@@ -193,30 +194,30 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid lg:grid-cols-[1fr_auto] gap-8 items-end mb-16">
             <div>
-              <span className="text-xs font-bold text-[#18bfc5] tracking-widest uppercase mb-4 block">The Platform</span>
+              <span className="text-xs font-bold text-[#18bfc5] tracking-widest uppercase mb-4 block">Core Verticals</span>
               <h2 className="text-4xl lg:text-5xl font-semibold tracking-tight text-slate-900 leading-tight">
-                Everything your business needs<br />to move as <span className="text-[#087fb9]">one.</span>
+                One Platform. Three Core Verticals.<br /><span className="text-[#087fb9]">Zero Friction.</span>
               </h2>
             </div>
             <p className="text-slate-500 max-w-md text-lg leading-relaxed">
-              OmniRelay replaces disconnected tools with a single intelligent layer—built to understand, coordinate and act across your entire business.
+              Customized intelligence tailored to how your industry operates.
             </p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-6">
-            {features.map((f, i) => (
-              <article key={f[1]} className="group p-8 rounded-2xl bg-white border border-slate-200 hover:border-[#087fb9]/30 hover:shadow-[0_8px_30px_rgba(8,127,185,0.06)] transition-all duration-300">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl mb-6 ${
-                  i === 0 ? "bg-[#087fb9]/10 text-[#087fb9]" : 
-                  i === 1 ? "bg-[#18bfc5]/10 text-[#18bfc5]" : 
-                  "bg-slate-900/5 text-slate-700"
+            {verticals.map((v, i) => (
+              <article key={v[1]} className="group p-8 rounded-2xl bg-white border border-slate-200 hover:border-[#087fb9]/30 hover:shadow-[0_8px_30px_rgba(8,127,185,0.06)] transition-all duration-300">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-6 ${
+                  i === 0 ? "bg-[#087fb9]/10" : 
+                  i === 1 ? "bg-[#18bfc5]/10" : 
+                  "bg-slate-900/5"
                 }`}>
-                  {f[0]}
+                  {v[0]}
                 </div>
-                <h3 className="text-xl font-semibold text-slate-900 mb-3">{f[1]}</h3>
-                <p className="text-slate-500 leading-relaxed mb-6 h-20">{f[2]}</p>
+                <h3 className="text-xl font-semibold text-slate-900 mb-3">{v[1]}</h3>
+                <p className="text-slate-500 leading-relaxed mb-6 min-h-[100px]">{v[2]}</p>
                 <a href="#solutions" className="inline-flex items-center text-sm font-semibold text-[#087fb9] group-hover:text-[#18bfc5] transition-colors">
-                  Explore capability <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
+                  See how it works <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
                 </a>
               </article>
             ))}
@@ -224,33 +225,33 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Solutions / Flow */}
+      {/* What We Deliver */}
       <section id="solutions" className="py-16 lg:py-24 bg-slate-50 border-y border-slate-100">
         <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-[0.9fr_1.1fr] gap-16 items-center">
           <div>
-            <span className="text-xs font-bold text-[#18bfc5] tracking-widest uppercase mb-4 block">Built around your business</span>
+            <span className="text-xs font-bold text-[#18bfc5] tracking-widest uppercase mb-4 block">What We Deliver</span>
             <h2 className="text-4xl lg:text-5xl font-semibold tracking-tight text-slate-900 leading-tight mb-10">
-              From signal to action,<br />
-              <span className="text-slate-400">without the friction.</span>
+              Everything your business needs,<br />
+              <span className="text-slate-400">unified in a single layer.</span>
             </h2>
             
             <div className="flex flex-wrap gap-2 mb-10">
-              {flows.map((f, i) => (
+              {deliverables.map((d, i) => (
                 <button 
-                  key={f[0]} 
+                  key={d[0]} 
                   onClick={() => setFlow(i)}
                   className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${flow === i ? "bg-slate-900 text-white shadow-md" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"}`}
                 >
-                  0{i + 1} {f[0]}
+                  0{i + 1} {d[0]}
                 </button>
               ))}
             </div>
             
             <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden">
               <div className="absolute top-0 left-0 w-1 h-full bg-[#087fb9]" />
-              <span className="text-xs font-bold text-[#087fb9] tracking-wider uppercase mb-2 block">{flows[flow][0]}</span>
-              <h3 className="text-xl font-semibold text-slate-900 mb-3">{flows[flow][1]}</h3>
-              <p className="text-slate-500 leading-relaxed">{flows[flow][2]}</p>
+              <span className="text-xs font-bold text-[#087fb9] tracking-wider uppercase mb-2 block">{deliverables[flow][0]}</span>
+              <h3 className="text-xl font-semibold text-slate-900 mb-3">{deliverables[flow][1]}</h3>
+              <p className="text-slate-500 leading-relaxed min-h-[80px]">{deliverables[flow][2]}</p>
             </div>
           </div>
           
@@ -259,7 +260,7 @@ export default function Home() {
               <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">✉</div>
               <div>
                 <span className="block text-sm font-semibold text-slate-900">New customer signal</span>
-                <span className="block text-xs text-slate-500">Intent identified</span>
+                <span className="block text-xs text-slate-500">Intent identified via WhatsApp</span>
               </div>
             </div>
             
@@ -269,8 +270,8 @@ export default function Home() {
             
             <div className="max-w-[320px] mx-auto p-6 rounded-2xl border border-slate-200 bg-slate-900 text-white shadow-xl flex flex-col items-center text-center">
               <Mark />
-              <span className="text-xs font-semibold text-slate-400 tracking-wider mt-4 mb-1">OmniRelay AI</span>
-              <span className="text-lg font-medium">Understands. Decides. Acts.</span>
+              <span className="text-xs font-semibold text-slate-400 tracking-wider mt-4 mb-1">OmniRelay Engine</span>
+              <span className="text-lg font-medium">Understands. Routes. Acts.</span>
             </div>
             
             <div className="flex justify-center py-6">
@@ -284,7 +285,7 @@ export default function Home() {
               </div>
               <div className="p-3 rounded-xl border border-slate-200 bg-white text-center shadow-sm">
                 <span className="block text-[#18bfc5] font-bold mb-1">↗</span>
-                <span className="text-xs font-semibold text-slate-700">Updated</span>
+                <span className="text-xs font-semibold text-slate-700">Handoff</span>
               </div>
               <div className="p-3 rounded-xl border border-slate-200 bg-white text-center shadow-sm">
                 <span className="block text-[#087fb9] font-bold mb-1">✦</span>
@@ -295,68 +296,98 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Results */}
+      {/* What Value We Add (Comparison) */}
       <section id="results" className="py-16 lg:py-24">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="rounded-3xl bg-slate-900 text-white p-8 lg:p-12 overflow-hidden relative flex flex-col md:flex-row items-center justify-between gap-10">
-            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-[#087fb9]/40 to-transparent blur-3xl rounded-full opacity-50 -translate-y-1/2 translate-x-1/4" />
-            
-            <div className="relative z-10 max-w-sm">
-              <span className="text-xs font-bold text-[#18bfc5] tracking-widest uppercase mb-3 block">The OmniRelay Effect</span>
-              <h2 className="text-3xl lg:text-4xl font-semibold tracking-tight leading-tight">
-                Less busywork.<br />
-                <span className="text-[#087fb9]">More momentum.</span>
-              </h2>
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <span className="text-xs font-bold text-[#18bfc5] tracking-widest uppercase mb-4 block">What Value We Add</span>
+            <h2 className="text-4xl lg:text-5xl font-semibold tracking-tight text-slate-900 leading-tight mb-6">
+              Absolute trust, multi-tenant security,<br />and immediate ROI.
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 mb-24">
+            <div className="p-8 lg:p-10 rounded-3xl bg-slate-50 border border-slate-200">
+              <span className="inline-block px-3 py-1 rounded-full bg-slate-200/50 text-slate-600 text-xs font-bold tracking-wider mb-6">LEGACY CHATBOTS</span>
+              <ul className="space-y-6">
+                <li className="flex gap-4">
+                  <span className="text-slate-400 mt-1">✕</span>
+                  <p className="text-slate-600">Rigid, hardcoded flows that break easily</p>
+                </li>
+                <li className="flex gap-4">
+                  <span className="text-slate-400 mt-1">✕</span>
+                  <p className="text-slate-600">Built for a single generic industry use case</p>
+                </li>
+                <li className="flex gap-4">
+                  <span className="text-slate-400 mt-1">✕</span>
+                  <p className="text-slate-600">Days of technical setup and manual webhook routing</p>
+                </li>
+                <li className="flex gap-4">
+                  <span className="text-slate-400 mt-1">✕</span>
+                  <p className="text-slate-600">Shady data sharing across mixed servers</p>
+                </li>
+              </ul>
             </div>
-            
-            <div className="relative z-10 flex-1 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-10 border-t md:border-t-0 md:border-l border-slate-700/50 pt-8 md:pt-0 md:pl-10">
-              <div>
-                <span className="block text-4xl lg:text-5xl font-semibold tracking-tight mb-2">98.5%</span>
-                <span className="text-slate-400 text-xs">Conversations resolved automatically</span>
-              </div>
-              <div>
-                <span className="block text-4xl lg:text-5xl font-semibold tracking-tight mb-2">64%</span>
-                <span className="text-slate-400 text-xs">Less repetitive work</span>
-              </div>
-              <div>
-                <span className="block text-4xl lg:text-5xl font-semibold tracking-tight mb-2">3.2×</span>
-                <span className="text-slate-400 text-xs">Faster signal to action</span>
-              </div>
+
+            <div className="p-8 lg:p-10 rounded-3xl bg-slate-900 text-white shadow-xl relative overflow-hidden border border-slate-800">
+              <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-bl from-[#087fb9]/30 to-transparent blur-3xl rounded-full opacity-50 -translate-y-1/2 translate-x-1/4" />
+              
+              <span className="relative z-10 inline-block px-3 py-1 rounded-full bg-[#087fb9]/20 text-[#18bfc5] text-xs font-bold tracking-wider mb-6 border border-[#087fb9]/30">OMNIRELAY ENGINE</span>
+              <ul className="space-y-6 relative z-10">
+                <li className="flex gap-4">
+                  <span className="text-[#18bfc5] mt-1 font-bold">✓</span>
+                  <p className="text-slate-300">Dynamic, RAG-grounded intelligence trained on your actual data</p>
+                </li>
+                <li className="flex gap-4">
+                  <span className="text-[#18bfc5] mt-1 font-bold">✓</span>
+                  <p className="text-slate-300">Modular system prompts and guardrails tuned specifically for clinics, restaurants, or retail</p>
+                </li>
+                <li className="flex gap-4">
+                  <span className="text-[#18bfc5] mt-1 font-bold">✓</span>
+                  <p className="text-slate-300">Live in minutes via secure, automated document ingestion</p>
+                </li>
+                <li className="flex gap-4">
+                  <span className="text-[#18bfc5] mt-1 font-bold">✓</span>
+                  <p className="text-slate-300">Strict, tenant-scoped Supabase vector isolation</p>
+                </li>
+              </ul>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Testimonial */}
-      <section className="py-16 lg:py-24 text-center px-6 max-w-4xl mx-auto">
-        <blockquote className="text-3xl lg:text-4xl font-semibold tracking-tight text-slate-900 leading-tight mb-8">
-          “OmniRelay didn't just automate our workflows. It gave every team the same operating rhythm.”
-        </blockquote>
-        <div className="flex flex-col items-center">
-          <span className="font-bold text-slate-900">Aarav Mehta</span>
-          <span className="text-sm text-slate-500">Chief Operating Officer, Nexora</span>
+      {/* Security Section */}
+      <section className="py-16 bg-slate-50 border-y border-slate-100">
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <div className="w-16 h-16 mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center justify-center mb-8">
+            <span className="text-2xl">🔒</span>
+          </div>
+          <h2 className="text-3xl font-semibold tracking-tight text-slate-900 mb-6">Enterprise-Grade Security & Privacy</h2>
+          <p className="text-lg text-slate-500 leading-relaxed">
+            Your business data belongs to you—and only you. OmniRelay enforces absolute tenant partitioning, zero-retention metadata logging, and complete alignment with data privacy standards. <strong>Your data never trains public models.</strong>
+          </p>
         </div>
       </section>
 
       {/* CTA */}
-      <section id="demo" className="pb-16 lg:pb-24 px-6">
-        <div className="max-w-7xl mx-auto rounded-3xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 p-8 lg:p-12 grid lg:grid-cols-[auto_1fr_auto] gap-10 items-center">
+      <section id="demo" className="py-16 lg:py-24 px-6">
+        <div className="max-w-7xl mx-auto rounded-3xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 p-8 lg:p-12 grid lg:grid-cols-[auto_1fr_auto] gap-10 items-center shadow-sm">
           <div className="hidden lg:block scale-125 transform">
             <Mark />
           </div>
           <div>
-            <span className="text-xs font-bold text-[#087fb9] tracking-widest uppercase mb-3 block">Ready to build momentum?</span>
+            <span className="text-xs font-bold text-[#087fb9] tracking-widest uppercase mb-3 block">Start automating today</span>
             <h2 className="text-3xl lg:text-4xl font-semibold tracking-tight text-slate-900 mb-3">
-              One intelligent system.<br />
-              <span className="text-slate-500">Limitless possibility.</span>
+              Ready to modernize your<br />
+              <span className="text-slate-500">customer operations?</span>
             </h2>
           </div>
-          <div className="flex flex-col sm:flex-row lg:flex-col gap-4 w-full lg:w-auto items-start">
+          <div className="flex flex-col gap-4 w-full lg:w-auto items-start">
             <a href="mailto:hello@omnirelay.ai" className="w-full inline-flex items-center justify-center px-8 h-12 rounded-xl bg-slate-900 text-white font-semibold hover:bg-slate-800 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5">
-              Book your demo
+              Get Started in 5 Minutes
             </a>
-            <p className="text-sm text-slate-500 max-w-[200px] text-center sm:text-left">
-              See how OmniRelay can unify your workflows.
+            <p className="text-sm text-slate-500 max-w-[250px] text-center lg:text-left">
+              Deploy your secure WhatsApp sales agent across your clinics, restaurants, or retail branches.
             </p>
           </div>
         </div>
