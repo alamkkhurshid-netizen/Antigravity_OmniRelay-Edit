@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BellRing, CheckCircle2, CircleAlert, ClipboardCheck, SendHorizontal, ShieldAlert, ArrowUpRight, Clock3, Inbox, LockKeyhole, UserRoundCheck } from "lucide-react";
-import Joyride, { Step } from "react-joyride";
+import { Joyride, Step } from "react-joyride";
 
 type CareRun = { id:string; status:string; scheduled_for:string; attempt_count:number; max_attempts:number; failure_reason:string|null; channel:string; patient:{full_name:string;phone:string|null;care_communications_consent:boolean}|null; reminder:{title:string;reminder_type:string;approval_mode:string}|null };
 type AppointmentRun = { id:string; event_type:string; status:string; scheduled_for:string; attempts:number; max_attempts:number; failure_reason:string|null; appointment:{customer_name:string;customer_phone:string|null;care_communications_consent:boolean}|null };
