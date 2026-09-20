@@ -45,3 +45,4 @@ next-env.d.ts
 *.backup.sha256
 
 .vercel
+.env*

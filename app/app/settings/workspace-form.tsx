@@ -313,7 +313,7 @@ export function WorkspaceForm({ organization, profile, locations: initialLocatio
               <label>Years of experience<input type="number" min="0" max="80" value={provider.experience_years??""} onChange={(e)=>setProvider({...provider,experience_years:e.target.value?Number(e.target.value):null})}/></label>
               <label>Doctor WhatsApp number<input type="tel" inputMode="tel" value={provider.contact_phone??""} onChange={(e)=>setProvider({...provider,contact_phone:e.target.value})} placeholder="+919831582626"/><small className="field-help">Used only after the provider’s queue-notification consent is recorded.</small></label>
               <label>Provider email<input type="email" value={provider.contact_email??""} onChange={(e)=>setProvider({...provider,contact_email:e.target.value})} placeholder="doctor@clinic.com"/></label>
-              <label className="wide">Languages<input value={provider.languages.join(", ")} onChange={(e)=>setProvider({...provider,languages:e.target.value.split(",").map((item)=>item.trim()).filter(Boolean)})} placeholder="English, Bengali, Hindi"/></label>
+              <label className="wide">Languages<input value={(provider.languages||[]).join(", ")} onChange={(e)=>setProvider({...provider,languages:e.target.value.split(",").map((item)=>item.trim()).filter(Boolean)})} placeholder="English, Bengali, Hindi"/></label>
               <label className="wide">Public biography<textarea value={provider.biography??""} onChange={(e)=>setProvider({...provider,biography:e.target.value})} placeholder="A short patient-friendly introduction."/></label>
             </div>
             <section className="public-brochure-control">

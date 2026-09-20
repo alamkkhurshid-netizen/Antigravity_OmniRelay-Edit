@@ -141,7 +141,12 @@ export async function resolveAgentDraft(draftId: string, action: 'approve' | 're
 
   // 3. If edited or rejected, bounce feedback back to Hermes Agent (Honcho Memory)
   if (action === "edit" || action === "reject") {
-    const hermesUrl = process.env.HERMES_AGENT_URL || "http://localhost:8000/api/v1/agent/invoke";
+    const hermesUrl = process.env.HERMES_AGENT_URL || (process.env.NODE_ENV === "production" ? null : "http://localhost:8000/api/v1/agent/invoke");
+    if (!hermesUrl) {
+      console.warn("HERMES_AGENT_URL is not configured. Skipping agent feedback loop.");
+      revalidatePath("/app/action-centre");
+      return { success: true };
+    }
     
     let aiMessage = `The user rejected your draft. Reason: "${feedback}". Please acknowledge and learn from this. Do NOT generate a new draft.`;
     if (action === "edit") {

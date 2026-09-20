@@ -131,8 +131,12 @@ async function triggerCreativeGeneration(records: any[], orgId: string, productU
   const scrapedIntelligence = trendReport?.report_payload || null;
 
   // Step 2: Generate hook scripts via Hermes Agent (or direct LLM call)
-  const hermesUrl = process.env.HERMES_AGENT_URL || "http://localhost:8000/api/v1/agent/invoke";
+  const hermesUrl = process.env.HERMES_AGENT_URL || (process.env.NODE_ENV === "production" ? null : "http://localhost:8000/api/v1/agent/invoke");
   
+  if (!hermesUrl) {
+    console.warn("HERMES_AGENT_URL is not configured. Falling back to simple default hooks.");
+  }
+
   for (const record of records) {
     try {
       let enrichedIntelligence = "High-performing viral hook structure.";
@@ -164,33 +168,37 @@ async function triggerCreativeGeneration(records: any[], orgId: string, productU
         enrichedIntelligence = mockAdLibraryHooks[record.angle] || enrichedIntelligence;
       }
 
-      // Ask the AI to generate a hook script for this specific angle, using Ad Library Intelligence
-      const scriptResponse = await fetch(hermesUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: "system",
-          session_id: `${orgId}-creative-${record.id}`,
-          message: `Generate a compelling 15-second video ad hook script for the "${record.angle}" angle. The product URL/Image is: ${productUrl}. 
-          
-          INTELLIGENCE ENRICHMENT (From ScrapeGraphAI SearchGraph):
-          Based on recent competitor data autonomously scraped from the web, the highest converting hook framework for this niche is: "${enrichedIntelligence}"
-          ${visualStyle}
-          ${engagementStrategy}
-          ${viralHashtags}
-          
-          Use this framework to generate the final script. Return ONLY the script text, no explanation.`,
-          context: {
-            workspace_id: orgId,
-            payload_type: "creative_script_generation"
-          }
-        })
-      });
-
       let hookScript = `[Script generation pending for ${record.angle} angle]`;
-      if (scriptResponse.ok) {
-        const result = await scriptResponse.json();
-        hookScript = result.response || result.message || hookScript;
+      if (hermesUrl) {
+        // Ask the AI to generate a hook script for this specific angle, using Ad Library Intelligence
+        const scriptResponse = await fetch(hermesUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: "system",
+            session_id: `${orgId}-creative-${record.id}`,
+            message: `Generate a compelling 15-second video ad hook script for the "${record.angle}" angle. The product URL/Image is: ${productUrl}. 
+            
+            INTELLIGENCE ENRICHMENT (From ScrapeGraphAI SearchGraph):
+            Based on recent competitor data autonomously scraped from the web, the highest converting hook framework for this niche is: "${enrichedIntelligence}"
+            ${visualStyle}
+            ${engagementStrategy}
+            ${viralHashtags}
+            
+            Use this framework to generate the final script. Return ONLY the script text, no explanation.`,
+            context: {
+              workspace_id: orgId,
+              payload_type: "creative_script_generation"
+            }
+          })
+        });
+
+        if (scriptResponse.ok) {
+          const result = await scriptResponse.json();
+          hookScript = result.response || result.message || hookScript;
+        }
+      } else {
+        hookScript = `Hook for ${record.angle}: ${enrichedIntelligence}`;
       }
 
       // Update the record with the generated script

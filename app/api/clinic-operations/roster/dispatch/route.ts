@@ -170,7 +170,7 @@ export async function POST(request: Request) {
   const rosterData = buildDailyRosterData({
     organizationName: organization.name || onboardingProfile?.business_name || "OmniRelay Clinic",
     date: requestedDate,
-    appointments: appointments || [],
+    appointments: (appointments as any) || [],
     resources: resources || [],
     locations: locations || [],
     queueEntries: queueEntries || [],

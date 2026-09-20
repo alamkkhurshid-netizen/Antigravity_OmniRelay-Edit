@@ -24,9 +24,13 @@ async function adminUpdate(providerMessageId:string,status:string,timestamp?:str
   if(status==="failed")patch.status="failed";
   else patch.status="sent";
   delete patch.status_provider;
-  await fetch(`${supabaseUrl}/rest/v1/reminder_events?provider_message_id=eq.${encodeURIComponent(providerMessageId)}`,{
-    method:"PATCH",headers:{"Content-Type":"application/json",apikey:secret,Authorization:`Bearer ${secret}`,Prefer:"return=minimal"},body:JSON.stringify(patch),
-  });
+  try {
+    await fetch(`${supabaseUrl}/rest/v1/reminder_events?provider_message_id=eq.${encodeURIComponent(providerMessageId)}`,{
+      method:"PATCH",headers:{"Content-Type":"application/json",apikey:secret,Authorization:`Bearer ${secret}`,Prefer:"return=minimal"},body:JSON.stringify(patch),
+    });
+  } catch (error) {
+    console.error("[Webhook] Failed to update delivery status in Supabase:", error);
+  }
 
   // Active Billing Deduction Check (Inactive by default)
   if (process.env.ENABLE_ACTIVE_BILLING === "true" && (status === "sent" || status === "delivered")) {
@@ -87,8 +91,12 @@ async function forwardInboundMessage(
   }
 
   // 2. Forward to Hermes Agent
-  const hermesUrl = process.env.HERMES_AGENT_URL || "http://localhost:8000/api/v1/agent/invoke";
-  
+  const hermesUrl = process.env.HERMES_AGENT_URL || (process.env.NODE_ENV === "production" ? null : "http://localhost:8000/api/v1/agent/invoke");
+  if (!hermesUrl) {
+    console.warn("[Webhook] HERMES_AGENT_URL is not configured. Skipping AI agent invocation.");
+    return;
+  }
+
   const hermesPayload = {
     user_id: `whatsapp_${waId}`,
     session_id: `${orgId}-whatsapp-${waId}`,

@@ -52,8 +52,16 @@ async function runScrapeGraphPipeline(recordId: string, orgId: string, searchQue
   const supabase = await createClient();
   
   // In production, this would call our Python microservice running ScrapeGraphAI
-  const hermesUrl = process.env.HERMES_AGENT_URL || "http://localhost:8000/api/v1/agent/invoke";
-  
+  const hermesUrl = process.env.HERMES_AGENT_URL || (process.env.NODE_ENV === "production" ? null : "http://localhost:8000/api/v1/agent/invoke");
+  if (!hermesUrl) {
+    console.warn("HERMES_AGENT_URL is not configured. Skipping agent invocation.");
+    await supabase.from("retail_trends_insights").update({ 
+      status: "failed", 
+      analysis_result: { error: "AI Backend not configured. Please add HERMES_AGENT_URL to Vercel." } 
+    }).eq("id", recordId);
+    return;
+  }
+
   try {
       // Send request to Python ScrapeGraphAI Agent (SearchGraph variant)
       const scrapeResponse = await fetch(hermesUrl, {
