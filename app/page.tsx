@@ -12,7 +12,7 @@ const Mark = () => (
 
 const Logo = () => (
   <Link href="/" className="flex items-center gap-3 group">
-    <div className="relative w-[140px] h-[40px] overflow-hidden">
+    <div className="relative w-[180px] h-[52px] overflow-hidden">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/new-logo.png" alt="OmniRelay" className="object-contain w-full h-full mix-blend-multiply" />
     </div>
