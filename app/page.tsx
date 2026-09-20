@@ -67,7 +67,7 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-24 pb-16 lg:pt-32 lg:pb-20 overflow-hidden">
+      <section className="relative pt-20 pb-12 lg:pt-28 lg:pb-16 overflow-hidden">
         {/* Subtle background glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-b from-[#087fb9]/10 to-transparent blur-3xl -z-10 pointer-events-none rounded-full opacity-50" />
         
@@ -179,10 +179,10 @@ export default function Home() {
       </section>
 
       {/* Cloud Logos */}
-      <section className="border-y border-slate-100 bg-slate-50 py-10">
+      <section className="border-y border-slate-100 bg-slate-50 py-6">
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <span className="text-xs font-semibold text-slate-400 tracking-widest uppercase mb-8 block">Trusted by forward-thinking teams</span>
-          <div className="flex flex-wrap justify-center gap-8 md:gap-16 items-center opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+          <span className="text-xs font-semibold text-slate-400 tracking-widest uppercase mb-6 block">Trusted by forward-thinking teams</span>
+          <div className="flex flex-wrap justify-center gap-6 md:gap-12 items-center opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
             {['ACME', 'NEXORA', 'Vertex', '◈ PULSAR', 'gridline'].map((logo, i) => (
               <span key={i} className="text-lg font-bold text-slate-700">{logo}</span>
             ))}
@@ -191,9 +191,9 @@ export default function Home() {
       </section>
 
       {/* Platform Section */}
-      <section id="platform" className="py-16 lg:py-24">
+      <section id="platform" className="py-12 lg:py-16">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid lg:grid-cols-[1fr_auto] gap-8 items-end mb-16">
+          <div className="grid lg:grid-cols-[1fr_auto] gap-8 items-end mb-10">
             <div>
               <span className="text-xs font-bold text-[#18bfc5] tracking-widest uppercase mb-4 block">Core Verticals</span>
               <h2 className="text-4xl lg:text-5xl font-semibold tracking-tight text-slate-900 leading-tight">
@@ -229,8 +229,8 @@ export default function Home() {
       </section>
 
       {/* What We Deliver */}
-      <section id="solutions" className="py-16 lg:py-24 bg-slate-50 border-y border-slate-100">
-        <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-[0.9fr_1.1fr] gap-16 items-center">
+      <section id="solutions" className="py-12 lg:py-16 bg-slate-50 border-y border-slate-100">
+        <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-[0.9fr_1.1fr] gap-12 items-center">
           <div>
             <span className="text-xs font-bold text-[#18bfc5] tracking-widest uppercase mb-4 block">What We Deliver</span>
             <h2 className="text-4xl lg:text-5xl font-semibold tracking-tight text-slate-900 leading-tight mb-10">
@@ -300,9 +300,9 @@ export default function Home() {
       </section>
 
       {/* Agentic Workflow (Minimal) */}
-      <section className="py-16 bg-white border-b border-slate-100">
+      <section className="py-12 bg-white border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <span className="text-xs font-bold text-[#087fb9] tracking-widest uppercase mb-3 block">Agentic Workflow</span>
             <h2 className="text-3xl font-semibold tracking-tight text-slate-900">From signal to resolution in seconds.</h2>
           </div>
@@ -332,16 +332,16 @@ export default function Home() {
       </section>
 
       {/* What Value We Add (Comparison) */}
-      <section id="results" className="py-16 lg:py-24">
+      <section id="results" className="py-12 lg:py-16">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center max-w-3xl mx-auto mb-16">
+          <div className="text-center max-w-3xl mx-auto mb-10">
             <span className="text-xs font-bold text-[#18bfc5] tracking-widest uppercase mb-4 block">What Value We Add</span>
             <h2 className="text-4xl lg:text-5xl font-semibold tracking-tight text-slate-900 leading-tight mb-6">
               Absolute trust, multi-tenant security,<br />and immediate ROI.
             </h2>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 mb-24">
+          <div className="grid md:grid-cols-2 gap-8 mb-12">
             <div className="p-8 lg:p-10 rounded-3xl bg-slate-50 border border-slate-200">
               <span className="inline-block px-3 py-1 rounded-full bg-slate-200/50 text-slate-600 text-xs font-bold tracking-wider mb-6">LEGACY CHATBOTS</span>
               <ul className="space-y-6">
@@ -392,9 +392,9 @@ export default function Home() {
       </section>
 
       {/* Security Section */}
-      <section className="py-16 bg-slate-50 border-y border-slate-100">
+      <section className="py-12 bg-slate-50 border-y border-slate-100">
         <div className="max-w-4xl mx-auto px-6 text-center">
-          <div className="w-16 h-16 mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center justify-center mb-8">
+          <div className="w-16 h-16 mx-auto bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center justify-center mb-6">
             <span className="text-2xl">🔒</span>
           </div>
           <h2 className="text-3xl font-semibold tracking-tight text-slate-900 mb-6">Enterprise-Grade Security & Privacy</h2>
@@ -405,8 +405,8 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section id="demo" className="py-16 lg:py-24 px-6">
-        <div className="max-w-7xl mx-auto rounded-3xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 p-8 lg:p-12 grid lg:grid-cols-[auto_1fr_auto] gap-10 items-center shadow-sm">
+      <section id="demo" className="py-12 lg:py-16 px-6">
+        <div className="max-w-7xl mx-auto rounded-3xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 p-6 lg:p-10 grid lg:grid-cols-[auto_1fr_auto] gap-10 items-center shadow-sm">
           <div className="hidden lg:block scale-125 transform">
             <Mark />
           </div>
@@ -429,8 +429,8 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white pt-16 pb-8 px-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+      <footer className="border-t border-slate-200 bg-white pt-12 pb-6 px-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
           <div className="flex flex-col gap-4">
             <Logo />
             <p className="text-sm text-slate-500 leading-relaxed max-w-[240px]">
