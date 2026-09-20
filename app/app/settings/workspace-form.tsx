@@ -30,7 +30,7 @@ const validWebsite=(value:string)=>!value.trim()||/^https?:\/\/[^\s]+\.[^\s]+$/i
 const validHttps=(value:string)=>!value.trim()||/^https:\/\/[^\s]+$/i.test(value.trim());
 const Required = () => <span className="required-mark" aria-label="required">*</span>;
 
-export function WorkspaceForm({ organization, profile, locations: initialLocations, services: initialServices, resources: initialResources, providerProfiles, assignments, assignmentServices, chamberRules, paymentGateway, departments:initialDepartments,providerDepartments }: {
+export function WorkspaceForm({ organization, profile, locations: initialLocations, services: initialServices, resources: initialResources, providerProfiles, assignments, assignmentServices, chamberRules, paymentGateway, departments:initialDepartments,providerDepartments, calendarConnections }: {
   organization: { id: string; name: string; extra: Record<string, unknown> | null };
   profile: Record<string, unknown> | null;
   locations: Location[];
