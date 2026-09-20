@@ -5,10 +5,10 @@ import { LoginForm } from "./login-form";
 export const metadata: Metadata = { title: "Sign in - OmniRelay" };
 
 const Logo = () => (
-  <Link href="/" className="flex items-center gap-3 group">
+  <Link href="/" className="flex items-center justify-center gap-3 mb-8 group">
     <div className="relative w-[140px] h-[40px] overflow-hidden">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/omnirelay-logo.jpeg" alt="OmniRelay" className="object-contain w-full h-full mix-blend-multiply" />
+      <img src="/new-logo.png" alt="OmniRelay" className="object-contain w-full h-full mix-blend-multiply" />
     </div>
   </Link>
 );
