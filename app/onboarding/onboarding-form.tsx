@@ -125,42 +125,45 @@ export function OnboardingForm() {
 
   if (step === 2) {
     return (
-      <div className="w-full rounded-3xl border border-[#d8e5e9] bg-white p-6 shadow-[0_20px_60px_rgba(7,38,58,.1)] sm:p-8">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-black tracking-[.18em] text-[#1688a6]">CHOOSE ENGINE</span>
-          <button onClick={() => setStep(1)} className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors">
+      <div className="w-full rounded-3xl border border-slate-200 bg-white p-6 shadow-xl sm:p-10 relative overflow-hidden">
+        {/* Subtle top accent */}
+        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[#087fb9] to-[#18bfc5]" />
+        
+        <div className="flex items-center justify-between mb-8">
+          <span className="text-[10px] font-bold tracking-widest text-[#087fb9] uppercase">CHOOSE ENGINE</span>
+          <button onClick={() => setStep(1)} className="text-xs font-bold text-slate-400 hover:text-slate-700 transition-colors">
             ← BACK TO SETUP
           </button>
         </div>
         
-        <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#173047]">
+        <h2 className="text-3xl font-semibold tracking-tight text-slate-900">
           Select your automation tier
         </h2>
-        <p className="mt-2 text-sm leading-6 text-[#667985]">
+        <p className="mt-2 text-sm leading-6 text-slate-500">
           How do you want to handle incoming messages and routing? You can upgrade later.
         </p>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <div className="mt-10 grid gap-6 sm:grid-cols-2">
           {/* Standard Tier */}
           <button
             type="button"
             onClick={() => finalizeOnboarding("standard")}
             disabled={busy}
-            className="flex flex-col text-left rounded-2xl border-2 border-[#e2e8f0] bg-white p-5 transition-all hover:border-[#94a3b8] hover:shadow-md disabled:opacity-50"
+            className="group flex flex-col text-left rounded-2xl border-2 border-slate-200 bg-white p-6 transition-all hover:border-slate-300 hover:shadow-md disabled:opacity-50"
           >
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex items-center justify-center size-8 rounded-full bg-slate-100 text-slate-600">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center justify-center size-10 rounded-xl bg-slate-100 text-slate-600 transition-colors group-hover:bg-slate-200 group-hover:text-slate-800">
                 <CheckCircle2 className="size-5" />
               </div>
-              <h3 className="font-bold text-[#1e293b] text-lg">Standard</h3>
+              <h3 className="font-semibold text-slate-900 text-xl">Standard</h3>
             </div>
-            <p className="text-sm text-slate-500 mb-4 h-10">Regular WhatsApp Flow and rule-based manual routing.</p>
-            <ul className="text-xs text-slate-600 space-y-2 mb-6 flex-1">
-              <li className="flex items-start gap-1.5"><CheckCircle2 className="size-4 text-emerald-500 shrink-0" /> Unified Action Centre</li>
-              <li className="flex items-start gap-1.5"><CheckCircle2 className="size-4 text-emerald-500 shrink-0" /> Standard Broadcasts</li>
-              <li className="flex items-start gap-1.5"><CheckCircle2 className="size-4 text-emerald-500 shrink-0" /> Manual Escalation</li>
+            <p className="text-sm text-slate-500 mb-6 h-10 leading-relaxed">Regular WhatsApp Flow and rule-based manual routing.</p>
+            <ul className="text-xs text-slate-600 space-y-3 mb-8 flex-1">
+              <li className="flex items-start gap-2"><CheckCircle2 className="size-4 text-slate-400 shrink-0 group-hover:text-emerald-500 transition-colors" /> Unified Action Centre</li>
+              <li className="flex items-start gap-2"><CheckCircle2 className="size-4 text-slate-400 shrink-0 group-hover:text-emerald-500 transition-colors" /> Standard Broadcasts</li>
+              <li className="flex items-start gap-2"><CheckCircle2 className="size-4 text-slate-400 shrink-0 group-hover:text-emerald-500 transition-colors" /> Manual Escalation</li>
             </ul>
-            <div className="mt-auto pt-4 border-t border-slate-100 w-full font-bold text-center text-slate-700">
+            <div className="mt-auto pt-4 border-t border-slate-100 w-full font-semibold text-center text-slate-500 group-hover:text-slate-800 transition-colors">
               {busy && tier === "standard" ? "Provisioning..." : "Select Standard"}
             </div>
           </button>
@@ -170,31 +173,31 @@ export function OnboardingForm() {
             type="button"
             onClick={() => finalizeOnboarding("premium")}
             disabled={busy}
-            className="flex flex-col text-left rounded-2xl border-2 border-[#1688a6] bg-[#f0f9fb] p-5 transition-all hover:shadow-[0_8px_30px_rgba(22,136,166,.15)] relative disabled:opacity-50"
+            className="group flex flex-col text-left rounded-2xl border-2 border-[#18bfc5]/30 bg-gradient-to-b from-[#18bfc5]/5 to-white p-6 transition-all hover:border-[#18bfc5] hover:shadow-[0_8px_30px_rgba(24,191,197,.15)] relative disabled:opacity-50"
           >
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#1688a6] to-[#0d5970] text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full shadow-sm">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#087fb9] to-[#18bfc5] text-white text-[10px] font-bold tracking-widest uppercase px-4 py-1 rounded-full shadow-sm">
               Recommended
             </div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex items-center justify-center size-8 rounded-full bg-[#1688a6] text-white shadow-sm">
-                <Sparkles className="size-4" />
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center justify-center size-10 rounded-xl bg-gradient-to-br from-[#087fb9] to-[#18bfc5] text-white shadow-md">
+                <Sparkles className="size-5" />
               </div>
-              <h3 className="font-bold text-[#0d5970] text-lg">Premium AI</h3>
+              <h3 className="font-semibold text-slate-900 text-xl group-hover:text-[#087fb9] transition-colors">Premium AI</h3>
             </div>
-            <p className="text-sm text-[#3b6678] mb-4 h-10">RAG AI Concierge & XYFlow Visual Builder.</p>
-            <ul className="text-xs text-[#2a4e5d] space-y-2 mb-6 flex-1">
-              <li className="flex items-start gap-1.5"><CheckCircle2 className="size-4 text-[#1688a6] shrink-0" /> Semantic RAG Bot</li>
-              <li className="flex items-start gap-1.5"><CheckCircle2 className="size-4 text-[#1688a6] shrink-0" /> Upload Custom Documents</li>
-              <li className="flex items-start gap-1.5"><CheckCircle2 className="size-4 text-[#1688a6] shrink-0" /> XYFlow Drag & Drop Builder</li>
+            <p className="text-sm text-slate-600 mb-6 h-10 leading-relaxed">RAG AI Concierge & XYFlow Visual Builder.</p>
+            <ul className="text-xs text-slate-700 space-y-3 mb-8 flex-1">
+              <li className="flex items-start gap-2"><CheckCircle2 className="size-4 text-[#18bfc5] shrink-0" /> Semantic RAG Bot</li>
+              <li className="flex items-start gap-2"><CheckCircle2 className="size-4 text-[#18bfc5] shrink-0" /> Upload Custom Documents</li>
+              <li className="flex items-start gap-2"><CheckCircle2 className="size-4 text-[#18bfc5] shrink-0" /> XYFlow Drag & Drop Builder</li>
             </ul>
-            <div className="mt-auto pt-4 border-t border-[#c6e4ec] w-full font-bold text-center text-[#1688a6]">
+            <div className="mt-auto pt-4 border-t border-[#18bfc5]/20 w-full font-semibold text-center text-[#087fb9]">
               {busy && tier === "premium" ? "Provisioning..." : "Select Premium"}
             </div>
           </button>
         </div>
 
         {error && (
-          <p className="mt-6 rounded-xl bg-rose-50 p-3 text-sm text-rose-800 border border-rose-200" role="status">
+          <p className="mt-8 rounded-xl bg-red-50 p-4 text-sm font-medium text-red-800 border border-red-100" role="status">
             {error}
           </p>
         )}
@@ -203,37 +206,40 @@ export function OnboardingForm() {
   }
 
   return (
-    <form className="w-full rounded-3xl border border-[#d8e5e9] bg-white p-6 shadow-[0_20px_60px_rgba(7,38,58,.1)] sm:p-8" onSubmit={handleNext}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-black tracking-[.18em] text-[#1688a6]">WORKSPACE FOUNDATION</span>
+    <form className="w-full rounded-3xl border border-slate-200 bg-white p-6 shadow-xl sm:p-10 relative overflow-hidden" onSubmit={handleNext}>
+      {/* Subtle top accent */}
+      <div className="absolute top-0 inset-x-0 h-1 bg-[#18bfc5]" />
+      
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <span className="text-[10px] font-bold tracking-widest text-[#087fb9] uppercase">WORKSPACE FOUNDATION</span>
         {category === "Healthcare" && (
-        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 border border-emerald-200">
+        <span className="inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-bold tracking-wider text-emerald-700 border border-emerald-200 shadow-sm">
           <Stethoscope className="size-3.5" /> CLINIC & HEALTHCARE ONLY
         </span>
         )}
         {category === "Retail & e-commerce" && (
-        <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 border border-indigo-200">
+        <span className="inline-flex items-center justify-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1.5 text-[10px] font-bold tracking-wider text-indigo-700 border border-indigo-200 shadow-sm">
           <Sparkles className="size-3.5" /> RETAIL MODULE UNLOCKED
         </span>
         )}
       </div>
       
-      <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#173047]">
+      <h2 className="text-3xl font-semibold tracking-tight text-slate-900">
         {category === "Healthcare" ? "Register your clinic practice" : "Set up your retail business"}
       </h2>
-      <p className="mt-2 text-sm leading-6 text-[#667985]">
+      <p className="mt-3 text-sm leading-relaxed text-slate-500">
         {category === "Healthcare" 
           ? "This CRM is purpose-built for medical clinics, doctor OPDs, and healthcare practices. Your account will be permanently configured for clinical operations."
           : "Your account will be configured with retail-focused automation, inventory tracking, and meta commerce integrations."}
       </p>
 
       {/* Business Name */}
-      <label className="mt-6 grid gap-2 text-sm font-bold text-[#294558]">
-        {category === "Healthcare" ? "Clinic or hospital name" : "Store or business name"} <span className="sr-only">required</span>
-        <span className="relative">
-          <Building2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#6e98a9]" />
+      <label className="mt-8 grid gap-2 text-sm font-semibold text-slate-700">
+        {category === "Healthcare" ? "Clinic or hospital name" : "Store or business name"}
+        <span className="relative mt-1">
+          <Building2 className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
           <input
-            className="min-h-12 w-full rounded-xl border border-[#cadce3] bg-white py-3 pl-10 pr-3 text-sm outline-none ring-[#1d9cc0] focus:ring-2"
+            className="min-h-[52px] w-full rounded-xl border border-slate-200 bg-white py-3 pl-12 pr-4 text-sm outline-none transition-all focus:border-[#18bfc5] focus:ring-4 focus:ring-[#18bfc5]/10 text-slate-900 placeholder:text-slate-400"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Dr. Sen Polyclinic & Diagnostics"
@@ -243,56 +249,56 @@ export function OnboardingForm() {
       </label>
 
       {/* Business Category Selection with Healthcare Lock */}
-      <fieldset className="mt-6">
-        <div className="flex items-center justify-between">
-          <legend className="text-sm font-bold text-[#294558]">Operating vertical</legend>
-          <span className="text-xs font-semibold text-sky-700">Healthcare Active</span>
+      <fieldset className="mt-8">
+        <div className="flex items-center justify-between mb-3">
+          <legend className="text-sm font-semibold text-slate-700">Operating vertical</legend>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-[#087fb9]">Active Module</span>
         </div>
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {categories.map(([catName, desc, isAvailable]) => (
             <button
               type="button"
-              className={`rounded-xl border p-3 text-left transition-colors relative ${
+              className={`group rounded-xl border p-4 text-left transition-all relative overflow-hidden ${
                 category === catName
-                  ? "border-[#159ab6] bg-[#eefbfd] shadow-[inset_3px_0_#1ab8a4] ring-1 ring-[#159ab6]"
-                  : "border-[#d9e5e8] bg-white opacity-60 hover:opacity-80 hover:border-[#9acedd]"
+                  ? "border-[#18bfc5] bg-[#18bfc5]/5 shadow-[inset_4px_0_0_0_#18bfc5]"
+                  : "border-slate-200 bg-white hover:border-[#18bfc5]/50 hover:bg-slate-50"
               }`}
               onClick={() => handleCategoryClick(catName, isAvailable)}
               key={catName}
             >
-              <div className="flex items-center justify-between">
-                <b className="block text-sm text-[#26455b]">{catName}</b>
+              <div className="flex items-center justify-between mb-1">
+                <b className={`block text-sm font-semibold transition-colors ${category === catName ? "text-[#087fb9]" : "text-slate-700 group-hover:text-slate-900"}`}>{catName}</b>
                 {!isAvailable && (
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded shadow-sm">
                     Waitlist
                   </span>
                 )}
                 {isAvailable && (
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                    Active CRM
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded shadow-sm">
+                    Active
                   </span>
                 )}
               </div>
-              <span className="mt-1 block text-xs leading-4 text-[#70818a]">{desc}</span>
+              <span className={`block text-xs leading-relaxed transition-colors ${category === catName ? "text-[#087fb9]/80" : "text-slate-500"}`}>{desc}</span>
             </button>
           ))}
         </div>
       </fieldset>
 
       {waitlistNotice && (
-        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 flex items-start gap-2">
-          <ShieldAlert className="size-4 shrink-0 mt-0.5 text-amber-600" />
-          <span>{waitlistNotice}</span>
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 flex items-start gap-3 shadow-sm">
+          <ShieldAlert className="size-5 shrink-0 text-amber-600" />
+          <span className="leading-relaxed font-medium">{waitlistNotice}</span>
         </div>
       )}
 
       {/* Chambers & Locations */}
-      <label className="mt-6 grid gap-2 text-sm font-bold text-[#294558]">
+      <label className="mt-8 grid gap-2 text-sm font-semibold text-slate-700">
         {category === "Healthcare" ? "Consultation chambers or locations" : "Retail stores or warehouses"}
-        <span className="relative">
-          <MapPin className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#6e98a9]" />
+        <span className="relative mt-1">
+          <MapPin className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
           <select
-            className="min-h-12 w-full appearance-none rounded-xl border border-[#cadce3] bg-white py-3 pl-10 pr-3 text-sm outline-none ring-[#1d9cc0] focus:ring-2"
+            className="min-h-[52px] w-full appearance-none rounded-xl border border-slate-200 bg-white py-3 pl-12 pr-4 text-sm outline-none transition-all focus:border-[#18bfc5] focus:ring-4 focus:ring-[#18bfc5]/10 text-slate-900"
             value={locations}
             onChange={(e) => setLocations(e.target.value)}
             required
@@ -303,20 +309,24 @@ export function OnboardingForm() {
               </option>
             ))}
           </select>
+          {/* Custom dropdown arrow */}
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+          </div>
         </span>
       </label>
 
       {/* Doctor Setup */}
       {category === "Healthcare" && (
-      <fieldset className="mt-6 grid gap-4 rounded-2xl border border-[#cce8e6] bg-[#f7fcfd] p-4">
-        <legend className="px-1 text-sm font-bold text-[#294558] flex items-center gap-1.5">
-          <Sparkles className="size-3.5 text-[#159ab6]" /> Doctor & OPD Setup
+      <fieldset className="mt-8 grid gap-5 rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+        <legend className="px-2 text-sm font-bold tracking-wider text-[#087fb9] uppercase flex items-center gap-2 -ml-2">
+          <Sparkles className="size-4 text-[#18bfc5]" /> Doctor & OPD Setup
         </legend>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <label className="grid gap-2 text-sm font-bold text-[#294558]">
+        <div className="grid gap-5 sm:grid-cols-2 mt-2">
+          <label className="grid gap-2 text-sm font-semibold text-slate-700">
             Clinic operating model
             <select
-              className="min-h-12 rounded-xl border border-[#cadce3] bg-white px-3 text-sm outline-none ring-[#1d9cc0] focus:ring-2"
+              className="min-h-[48px] rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition-all focus:border-[#18bfc5] focus:ring-4 focus:ring-[#18bfc5]/10 text-slate-900"
               value={clinicMode}
               onChange={(e) => setClinicMode(e.target.value)}
             >
@@ -325,10 +335,10 @@ export function OnboardingForm() {
               <option value="diagnostic_centre">Diagnostic centre</option>
             </select>
           </label>
-          <label className="grid gap-2 text-sm font-bold text-[#294558]">
+          <label className="grid gap-2 text-sm font-semibold text-slate-700">
             {clinicMode === "multi_doctor_clinic" ? "Lead physician / First doctor" : "Doctor’s full name"}
             <input
-              className="min-h-12 rounded-xl border border-[#cadce3] bg-white px-3 text-sm outline-none ring-[#1d9cc0] focus:ring-2"
+              className="min-h-[48px] rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition-all focus:border-[#18bfc5] focus:ring-4 focus:ring-[#18bfc5]/10 text-slate-900 placeholder:text-slate-400"
               value={primaryDoctorName}
               onChange={(e) => setPrimaryDoctorName(e.target.value)}
               placeholder="e.g. Dr. Khurshid Alam"
@@ -336,18 +346,18 @@ export function OnboardingForm() {
             />
           </label>
         </div>
-        <p className="text-xs leading-5 text-[#58717d]">
+        <p className="text-xs leading-relaxed text-slate-500 border-t border-slate-200 pt-4 mt-2">
           This is the patient-facing medical booking identity. You can add additional doctors, visiting consultants, and OPD timings once inside.
         </p>
       </fieldset>
       )}
 
       {category === "Retail & e-commerce" && (
-      <fieldset className="mt-6 grid gap-4 rounded-2xl border border-[#e6e2f8] bg-[#fdfcff] p-4">
-        <legend className="px-1 text-sm font-bold text-[#3a2958] flex items-center gap-1.5">
-          <Sparkles className="size-3.5 text-[#5f44c4]" /> Retail & E-commerce Setup
+      <fieldset className="mt-8 grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+        <legend className="px-2 text-sm font-bold tracking-wider text-[#087fb9] uppercase flex items-center gap-2 -ml-2">
+          <Sparkles className="size-4 text-[#18bfc5]" /> Retail & E-commerce Setup
         </legend>
-        <p className="text-xs leading-5 text-[#58597d]">
+        <p className="text-xs leading-relaxed text-slate-500 mt-2">
           This is the customer-facing business identity. You can configure your Meta Commerce Catalog and product tiers directly in the dashboard after completing onboarding.
         </p>
       </fieldset>
@@ -355,36 +365,42 @@ export function OnboardingForm() {
 
       {/* MANDATORY DOUBLE-CONFIRMATION GATE */}
       {category === "Healthcare" && (
-      <div className="mt-6 rounded-2xl border-2 border-[#1688a6]/40 bg-[#f0f9fb] p-4 sm:p-5">
-        <div className="flex items-center gap-2 text-xs font-black tracking-[.14em] text-[#1688a6]">
-          <Lock className="size-4 text-[#1688a6]" />
+      <div className="mt-8 rounded-2xl border border-[#18bfc5]/30 bg-[#18bfc5]/5 p-6 shadow-sm">
+        <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest text-[#087fb9] uppercase">
+          <Lock className="size-4 text-[#18bfc5]" />
           <span>DOUBLE-CONFIRMATION & PERMANENT PROFILE LOCK</span>
         </div>
-        <p className="mt-2 text-xs text-[#406170] leading-relaxed">
+        <p className="mt-3 text-xs text-slate-600 leading-relaxed font-medium">
           To maintain medical record integrity and regulatory compliance, every account on this platform is strictly bound to a single clinical organization.
         </p>
 
-        <div className="mt-4 space-y-3">
-          <label className="flex items-start gap-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              className="mt-1 size-4 rounded border-gray-300 text-[#159ab6] focus:ring-[#159ab6]"
-              checked={confirmHealthcare}
-              onChange={(e) => setConfirmHealthcare(e.target.checked)}
-            />
-            <span className="text-xs font-semibold text-[#1f3a4b] leading-5">
+        <div className="mt-5 space-y-4">
+          <label className="flex items-start gap-4 cursor-pointer select-none group">
+            <div className="relative flex items-center justify-center mt-0.5">
+              <input
+                type="checkbox"
+                className="peer size-5 cursor-pointer appearance-none rounded border-2 border-slate-300 bg-white transition-all checked:border-[#18bfc5] checked:bg-[#18bfc5]"
+                checked={confirmHealthcare}
+                onChange={(e) => setConfirmHealthcare(e.target.checked)}
+              />
+              <CheckCircle2 className="pointer-events-none absolute size-3.5 text-white opacity-0 transition-opacity peer-checked:opacity-100" strokeWidth={4} />
+            </div>
+            <span className="text-sm font-medium text-slate-700 leading-relaxed group-hover:text-slate-900 transition-colors">
               I confirm this workspace is exclusively for a licensed clinic, hospital, doctor practice, or diagnostic centre.
             </span>
           </label>
 
-          <label className="flex items-start gap-3 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              className="mt-1 size-4 rounded border-gray-300 text-[#159ab6] focus:ring-[#159ab6]"
-              checked={confirmSingleProfile}
-              onChange={(e) => setConfirmSingleProfile(e.target.checked)}
-            />
-            <span className="text-xs font-semibold text-[#1f3a4b] leading-5">
+          <label className="flex items-start gap-4 cursor-pointer select-none group">
+            <div className="relative flex items-center justify-center mt-0.5">
+              <input
+                type="checkbox"
+                className="peer size-5 cursor-pointer appearance-none rounded border-2 border-slate-300 bg-white transition-all checked:border-[#18bfc5] checked:bg-[#18bfc5]"
+                checked={confirmSingleProfile}
+                onChange={(e) => setConfirmSingleProfile(e.target.checked)}
+              />
+              <CheckCircle2 className="pointer-events-none absolute size-3.5 text-white opacity-0 transition-opacity peer-checked:opacity-100" strokeWidth={4} />
+            </div>
+            <span className="text-sm font-medium text-slate-700 leading-relaxed group-hover:text-slate-900 transition-colors">
               I understand that my login email is permanently locked to this single clinic profile and cannot create or switch to other business profiles.
             </span>
           </label>
@@ -392,13 +408,13 @@ export function OnboardingForm() {
       </div>
       )}
 
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+      <div className="mt-10 flex flex-col gap-4 sm:flex-row border-t border-slate-100 pt-8">
         <button
           type="submit"
-          className={`inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold text-white shadow-[0_12px_24px_rgba(8,127,163,.22)] transition-all ${
+          className={`inline-flex min-h-[52px] flex-1 items-center justify-center gap-3 rounded-xl px-6 text-sm font-semibold text-white transition-all shadow-[0_4px_14px_rgba(8,127,185,0.2)] ${
             isFormReady && !busy
-              ? "bg-[#087fa3] hover:bg-[#066d8d] cursor-pointer"
-              : "bg-gray-400 cursor-not-allowed opacity-60"
+              ? "bg-gradient-to-r from-[#087fb9] to-[#18bfc5] hover:opacity-90 hover:shadow-[0_6px_20px_rgba(8,127,185,0.3)] hover:-translate-y-0.5 cursor-pointer"
+              : "bg-slate-300 cursor-not-allowed opacity-70 shadow-none"
           }`}
           disabled={!isFormReady || busy}
         >
@@ -408,16 +424,16 @@ export function OnboardingForm() {
         <button
           type="button"
           onClick={startSandbox}
-          className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl border-2 border-[#1688a6] bg-white px-4 text-sm font-bold text-[#1688a6] transition-all hover:bg-[#f0f9fb] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-[52px] flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 text-sm font-semibold text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-300 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
           disabled={busy}
         >
-          <Sparkles className="size-4" />
+          <Sparkles className="size-4 text-[#18bfc5]" />
           Experience the Sandbox (Demo)
         </button>
       </div>
 
       {error && (
-        <p className="mt-4 rounded-xl bg-rose-50 p-3 text-sm text-rose-800 border border-rose-200" role="status">
+        <p className="mt-6 rounded-xl bg-red-50 p-4 text-sm font-medium text-red-800 border border-red-100" role="status">
           {error}
         </p>
       )}

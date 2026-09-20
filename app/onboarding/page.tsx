@@ -22,22 +22,56 @@ export default async function OnboardingPage() {
     redirect("/app");
   }
 
-  return <main className="min-h-screen bg-[radial-gradient(circle_at_85%_5%,#dff8fa,transparent_28%),#f5f7fb] text-[#173047]">
-    <header className="mx-auto flex min-h-20 w-full max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-10">
-      <Brand className="h-11 w-44" />
-      <span className="rounded-full border border-[#d4e4e7] bg-white px-3 py-2 text-xs font-black tracking-[.12em] text-[#26728b]">SETUP · 1 OF 4</span>
-    </header>
-    <section className="mx-auto grid w-full max-w-7xl gap-8 px-5 pb-10 pt-3 sm:px-8 lg:grid-cols-[.85fr_1.15fr] lg:items-center lg:px-10">
-      <div className="max-w-xl py-5 lg:py-12">
-        <span className="inline-flex items-center gap-2 text-xs font-black tracking-[.16em] text-[#1688a6]"><Sparkles className="size-4" /> YOUR WORKSPACE</span>
-        <h1 className="mt-4 text-4xl font-semibold tracking-tight text-[#173047] sm:text-5xl">Start with the business you run today.</h1>
-        <p className="mt-5 max-w-lg text-base leading-7 text-[#637783]">A few details let OmniRelay create the right workspace foundation. You can refine services, schedules, team access and workflows later.</p>
-        <ul className="mt-8 grid gap-3">
-          <li className="flex gap-3 rounded-2xl border border-[#dbe8e8] bg-white/75 p-4"><CheckCircle2 className="mt-0.5 size-5 shrink-0 text-[#169e8b]" /><span><b className="block text-sm">Nothing is activated automatically</b><small className="mt-1 block text-sm leading-5 text-[#6e8089]">Booking, reminders and WhatsApp stay under your control.</small></span></li>
-          <li className="flex gap-3 rounded-2xl border border-[#dbe8e8] bg-white/75 p-4"><ShieldCheck className="mt-0.5 size-5 shrink-0 text-[#1688a6]" /><span><b className="block text-sm">Safe to start small</b><small className="mt-1 block text-sm leading-5 text-[#6e8089]">Set up one location first, then add the rest when ready.</small></span></li>
-        </ul>
-      </div>
-      <OnboardingForm />
-    </section>
-  </main>;
+  return (
+    <main className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-[#087fb9]/20 selection:text-[#087fb9]">
+      {/* Background decoration */}
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-[#18bfc5]/10 to-transparent blur-3xl -z-10 rounded-full opacity-60" />
+      
+      <header className="mx-auto flex min-h-20 w-full max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-10 border-b border-slate-200/60">
+        <Brand className="h-11 w-44" />
+        <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-bold tracking-widest text-[#087fb9] shadow-sm">
+          SETUP · 1 OF 4
+        </span>
+      </header>
+      
+      <section className="mx-auto grid w-full max-w-7xl gap-12 px-5 pb-16 pt-10 sm:px-8 lg:grid-cols-[.9fr_1.1fr] lg:items-start lg:px-10">
+        <div className="max-w-xl py-5 lg:py-12">
+          <span className="inline-flex items-center gap-2 text-xs font-bold tracking-widest text-[#18bfc5] uppercase">
+            <Sparkles className="size-4" /> Your Workspace
+          </span>
+          <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl leading-[1.1]">
+            Start with the business you run today.
+          </h1>
+          <p className="mt-6 max-w-lg text-lg leading-relaxed text-slate-500">
+            A few details let OmniRelay create the right workspace foundation. You can refine services, schedules, team access and workflows later.
+          </p>
+          
+          <ul className="mt-10 grid gap-4">
+            <li className="flex gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-[#18bfc5]/30 transition-all">
+              <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-500" />
+              <span>
+                <b className="block text-sm font-semibold text-slate-900">Nothing is activated automatically</b>
+                <span className="mt-1.5 block text-xs leading-relaxed text-slate-500">
+                  Booking, reminders and WhatsApp stay under your control.
+                </span>
+              </span>
+            </li>
+            <li className="flex gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-[#087fb9]/30 transition-all">
+              <ShieldCheck className="mt-0.5 size-5 shrink-0 text-[#087fb9]" />
+              <span>
+                <b className="block text-sm font-semibold text-slate-900">Safe to start small</b>
+                <span className="mt-1.5 block text-xs leading-relaxed text-slate-500">
+                  Set up one location first, then add the rest when ready.
+                </span>
+              </span>
+            </li>
+          </ul>
+        </div>
+        
+        <div className="lg:mt-4">
+          <OnboardingForm />
+        </div>
+      </section>
+    </main>
+  );
 }
