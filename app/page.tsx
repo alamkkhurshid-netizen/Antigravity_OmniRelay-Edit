@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { Activity, Utensils, ShoppingBag, BrainCircuit, Search, Zap, UserCheck } from "lucide-react";
 
 const Mark = () => (
   <div className="relative inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-[#087fb9]/10 to-[#18bfc5]/10 border border-[#087fb9]/20 shadow-sm">
@@ -20,9 +21,9 @@ const Logo = () => (
 );
 
 const verticals = [
-  ["🏥", "Clinics & Healthcare", "Automate patient appointment scheduling, pre-consultation FAQs, and proactive visit reminders while protecting sensitive data with strict tenant isolation."],
-  ["🍽️", "Restaurants & Hospitality", "Manage table reservations, handle menu and dietary inquiries, and streamline guest communication without tying up front-of-house staff."],
-  ["🛍️", "Retail & E-commerce", "Instantly answer stock availability, product specifications, pricing questions, and order tracking straight through a native chat thread."]
+  { icon: Activity, title: "Clinics & Healthcare", desc: "Automate patient appointment scheduling, pre-consultation FAQs, and proactive visit reminders while protecting sensitive data with strict tenant isolation." },
+  { icon: Utensils, title: "Restaurants & Hospitality", desc: "Manage table reservations, handle menu and dietary inquiries, and streamline guest communication without tying up front-of-house staff." },
+  { icon: ShoppingBag, title: "Retail & E-commerce", desc: "Instantly answer stock availability, product specifications, pricing questions, and order tracking straight through a native chat thread." }
 ];
 
 const deliverables = [
@@ -205,22 +206,24 @@ export default function Home() {
           </div>
           
           <div className="grid md:grid-cols-3 gap-6">
-            {verticals.map((v, i) => (
-              <article key={v[1]} className="group p-8 rounded-2xl bg-white border border-slate-200 hover:border-[#087fb9]/30 hover:shadow-[0_8px_30px_rgba(8,127,185,0.06)] transition-all duration-300">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-6 ${
-                  i === 0 ? "bg-[#087fb9]/10" : 
-                  i === 1 ? "bg-[#18bfc5]/10" : 
-                  "bg-slate-900/5"
+            {verticals.map((v, i) => {
+              const Icon = v.icon;
+              return (
+              <article key={v.title} className="group p-8 rounded-2xl bg-white border border-slate-200 hover:border-[#087fb9]/30 hover:shadow-[0_8px_30px_rgba(8,127,185,0.06)] transition-all duration-300">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 ${
+                  i === 0 ? "bg-[#087fb9]/10 text-[#087fb9]" : 
+                  i === 1 ? "bg-[#18bfc5]/10 text-[#18bfc5]" : 
+                  "bg-slate-900/5 text-slate-700"
                 }`}>
-                  {v[0]}
+                  <Icon className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-semibold text-slate-900 mb-3">{v[1]}</h3>
-                <p className="text-slate-500 leading-relaxed mb-6 min-h-[100px]">{v[2]}</p>
+                <h3 className="text-xl font-semibold text-slate-900 mb-3">{v.title}</h3>
+                <p className="text-slate-500 leading-relaxed mb-6 min-h-[100px]">{v.desc}</p>
                 <a href="#solutions" className="inline-flex items-center text-sm font-semibold text-[#087fb9] group-hover:text-[#18bfc5] transition-colors">
                   See how it works <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
                 </a>
               </article>
-            ))}
+            )})}
           </div>
         </div>
       </section>
@@ -292,6 +295,38 @@ export default function Home() {
                 <span className="text-xs font-semibold text-slate-700">Learned</span>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Agentic Workflow (Minimal) */}
+      <section className="py-16 bg-white border-b border-slate-100">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <span className="text-xs font-bold text-[#087fb9] tracking-widest uppercase mb-3 block">Agentic Workflow</span>
+            <h2 className="text-3xl font-semibold tracking-tight text-slate-900">From signal to resolution in seconds.</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
+            <div className="hidden md:block absolute top-6 left-[10%] right-[10%] h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+            
+            {[
+              { icon: BrainCircuit, title: "1. Ingest", desc: "Classifies intent, tone, and urgency instantly." },
+              { icon: Search, title: "2. Retrieve", desc: "Queries your documents for factual context." },
+              { icon: Zap, title: "3. Act", desc: "Executes APIs to book, check, or confirm." },
+              { icon: UserCheck, title: "4. Handoff", desc: "Routes complex needs to your human team." }
+            ].map((step, i) => {
+              const StepIcon = step.icon;
+              return (
+                <div key={step.title} className="relative z-10 flex flex-col items-center text-center p-4">
+                  <div className="w-12 h-12 bg-white border border-slate-200 text-[#087fb9] rounded-xl flex items-center justify-center mb-5 shadow-sm shadow-[#087fb9]/5">
+                    <StepIcon className="w-5 h-5" />
+                  </div>
+                  <h4 className="font-semibold text-slate-900 mb-2">{step.title}</h4>
+                  <p className="text-sm text-slate-500 leading-relaxed">{step.desc}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
