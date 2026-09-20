@@ -43,3 +43,5 @@ next-env.d.ts
 /backups/
 *.backup.age
 *.backup.sha256
+
+.vercel
