@@ -50,16 +50,12 @@ CREATE POLICY "Users can access documents in their organization"
     ON public.tenant_documents
     FOR ALL
     USING (
-        organization_id IN (
-            SELECT organization_id FROM public.organization_members WHERE user_id = auth.uid()
-        )
+        private.is_organization_member(organization_id, 'member')
     );
 
 CREATE POLICY "Users can access document chunks in their organization"
     ON public.document_chunks
     FOR ALL
     USING (
-        organization_id IN (
-            SELECT organization_id FROM public.organization_members WHERE user_id = auth.uid()
-        )
+        private.is_organization_member(organization_id, 'member')
     );
