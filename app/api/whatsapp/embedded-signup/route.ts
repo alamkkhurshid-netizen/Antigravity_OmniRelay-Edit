@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "This connection session expired. Please try again." }, { status: 400 });
   }
 
-  const response = await fetch(`${supabaseUrl}/functions/v1/whatsapp-management/onboard`, {
+  const response = await fetch(`${supabaseUrl}/functions/v1/whatsapp-management/whatsapp-management/onboard`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

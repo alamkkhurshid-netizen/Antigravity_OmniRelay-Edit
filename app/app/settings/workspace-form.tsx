@@ -360,11 +360,11 @@ export function WorkspaceForm({ organization, profile, locations: initialLocatio
       <ChamberScheduleEditor organizationId={organization.id} resources={resources} locations={locations} services={services} assignments={assignments} assignmentServices={assignmentServices} chamberRules={chamberRules} paymentGateway={paymentGateway} calendarConnections={calendarConnections}/>
 
       <section className="foundation-section">
-        <header><div><span className="app-eyebrow">INTEGRATIONS</span><h2>Clinic-wide Connections</h2></div></header>
+        <header><div><span className="app-eyebrow">INTEGRATIONS</span><h2>{category === "Healthcare" ? "Clinic-wide Connections" : "Workspace Integrations"}</h2></div></header>
         <div className="integration-grid">
           <article>
             <i>📅</i>
-            <b>Google Calendar (Shared Clinic)<small>Sync all clinic appointments to a central calendar.</small></b>
+            <b>{category === "Healthcare" ? "Google Calendar (Shared Clinic)" : "Google Calendar (Team Calendar)"}<small>{category === "Healthcare" ? "Sync all clinic appointments to a central calendar." : "Sync appointments to a central calendar."}</small></b>
             {calendarConnections?.some(c => c.resource_id === null) ? (
               <span className="connected">Connected</span>
             ) : (
@@ -374,6 +374,7 @@ export function WorkspaceForm({ organization, profile, locations: initialLocatio
         </div>
       </section>
 
+      {category === "Healthcare" && (
       <section className="foundation-section" id="roster-dispatch-settings">
         <header>
           <div>
@@ -447,6 +448,7 @@ export function WorkspaceForm({ organization, profile, locations: initialLocatio
           {dispatchNotice && <p className="form-message" style={{marginTop:"12px"}} role="status">{dispatchNotice}</p>}
         </div>
       </section>
+      )}
 
       <div className="save-bar"><div><b>Workspace foundation</b><span>Used by appointments, AI agents and automations</span></div><button className="primary-button" disabled={busy}>{busy ? "Saving…" : "Save business setup"}</button></div>
       {message && <p className="form-message" role="status">{message}</p>}
