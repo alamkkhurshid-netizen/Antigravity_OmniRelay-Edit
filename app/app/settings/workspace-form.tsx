@@ -289,9 +289,9 @@ export function WorkspaceForm({ organization, profile, locations: initialLocatio
       </section>}
 
       <section className="foundation-section">
-        <header><div><span className="app-eyebrow">DOCTOR & STAFF PROFILE</span><h2>Build the public provider identity</h2></div><span className="section-status">Patient-facing</span></header>
+        <header><div><span className="app-eyebrow">{category === "Healthcare" ? "DOCTOR & STAFF PROFILE" : "STAFF & PROVIDER PROFILE"}</span><h2>Build the public provider identity</h2></div><span className="section-status">Patient-facing</span></header>
         {resources.length ? <div className="provider-editor">
-          <div className="provider-toolbar"><label className="provider-picker">{category==="Healthcare"?"Doctor":"Provider"}<select value={providerId} onChange={(e)=>chooseProvider(e.target.value)}>{resources.map((item)=><option value={item.id} key={item.id}>{item.name.trim()||"New doctor"}</option>)}</select></label>{category==="Healthcare"&&<button type="button" className="secondary-button" onClick={addDoctor}>+ Add doctor</button>}</div>
+          <div className="provider-toolbar"><label className="provider-picker">{category==="Healthcare"?"Doctor":"Provider"}<select value={providerId} onChange={(e)=>chooseProvider(e.target.value)}>{resources.map((item)=><option value={item.id} key={item.id}>{item.name.trim()||(category==="Healthcare"?"New doctor":"New provider")}</option>)}</select></label>{category==="Healthcare"&&<button type="button" className="secondary-button" onClick={addDoctor}>+ Add doctor</button>}</div>
           <div className="provider-main">
           <div className="provider-photo-editor">
             <div className="provider-photo-preview">{photoPreview?
@@ -303,7 +303,7 @@ export function WorkspaceForm({ organization, profile, locations: initialLocatio
             <small>JPG, PNG or WebP · maximum 5 MB</small>
           </div>
           <div className="provider-details">
-            <div className="provider-contact-note"><b>Provider-specific settings</b><span>Each doctor or diagnostic professional keeps an independent registration, WhatsApp number and notification consent.</span></div>
+            <div className="provider-contact-note"><b>Provider-specific settings</b><span>{category === "Healthcare" ? "Each doctor or diagnostic professional keeps an independent registration, WhatsApp number and notification consent." : "Each provider or staff member keeps an independent registration, WhatsApp number and notification consent."}</span></div>
             <div className="form-grid provider-fields">
               <label className="wide">{category==="Healthcare"?"Doctor’s full name":"Provider name"}<Required /><input value={resources.find((item)=>item.id===providerId)?.name??""} onChange={(e)=>renameProvider(e.target.value)} placeholder={category==="Healthcare"?"Dr Khurshid Alam":"Full name"} required/><small className="field-help">This patient-facing name appears in booking, reminders and emergency notices.</small></label>
               <label>Specialisation<input value={provider.specialization??""} onChange={(e)=>setProvider({...provider,specialization:e.target.value})} placeholder="Cardiologist"/></label>
@@ -311,13 +311,13 @@ export function WorkspaceForm({ organization, profile, locations: initialLocatio
               <label>Qualifications<input value={provider.qualifications??""} onChange={(e)=>setProvider({...provider,qualifications:e.target.value})} placeholder="MBBS, MD"/></label>
               <label>Medical registration number<input value={provider.registration_number??""} onChange={(e)=>setProvider({...provider,registration_number:e.target.value})} placeholder="Medical council registration"/><small className="field-help">Do not enter a phone number here.</small></label>
               <label>Years of experience<input type="number" min="0" max="80" value={provider.experience_years??""} onChange={(e)=>setProvider({...provider,experience_years:e.target.value?Number(e.target.value):null})}/></label>
-              <label>Doctor WhatsApp number<input type="tel" inputMode="tel" value={provider.contact_phone??""} onChange={(e)=>setProvider({...provider,contact_phone:e.target.value})} placeholder="+919831582626"/><small className="field-help">Used only after the provider’s queue-notification consent is recorded.</small></label>
+              <label>{category==="Healthcare"?"Doctor WhatsApp number":"Provider WhatsApp number"}<input type="tel" inputMode="tel" value={provider.contact_phone??""} onChange={(e)=>setProvider({...provider,contact_phone:e.target.value})} placeholder="+919831582626"/><small className="field-help">Used only after the provider’s queue-notification consent is recorded.</small></label>
               <label>Provider email<input type="email" value={provider.contact_email??""} onChange={(e)=>setProvider({...provider,contact_email:e.target.value})} placeholder="doctor@clinic.com"/></label>
               <label className="wide">Languages<input value={(provider.languages||[]).join(", ")} onChange={(e)=>setProvider({...provider,languages:e.target.value.split(",").map((item)=>item.trim()).filter(Boolean)})} placeholder="English, Bengali, Hindi"/></label>
               <label className="wide">Public biography<textarea value={provider.biography??""} onChange={(e)=>setProvider({...provider,biography:e.target.value})} placeholder="A short patient-friendly introduction."/></label>
             </div>
             <section className="public-brochure-control">
-              <div><b>Doctor directory & brochure</b><span>Patients receive this custom brochure when set. Otherwise OmniRelay creates a current directory PDF from the doctors and locations below.</span></div>
+              <div><b>{category==="Healthcare"?"Doctor directory & brochure":"Provider directory & brochure"}</b><span>Patients receive this custom brochure when set. Otherwise OmniRelay creates a current directory PDF from the {category==="Healthcare"?"doctors":"providers"} and locations below.</span></div>
               <div className="form-grid">
                 <label className="wide">Custom brochure link (optional)<input type="url" value={customBrochureUrl} onChange={(e)=>setCustomBrochureUrl(e.target.value)} placeholder="https://your-clinic.com/doctor-directory.pdf" aria-invalid={brochureUrlError}/><small className="field-help">Use a public HTTPS PDF link. It replaces the generated brochure until removed.</small></label>
                 <label className="secondary-button brochure-upload">Upload PDF brochure<input type="file" accept="application/pdf" onChange={(e)=>{const file=e.target.files?.[0];if(file)void uploadClinicBrochure(file)}}/></label>
@@ -330,7 +330,7 @@ export function WorkspaceForm({ organization, profile, locations: initialLocatio
       </section>
 
       <section className="foundation-section">
-        <header><div><span className="app-eyebrow">LOCATIONS</span><h2>Chambers, branches and service points</h2></div><button type="button" className="secondary-button" onClick={() => setLocations([...locations, { name: `Location ${locations.length + 1}`, location_type: category === "Healthcare" ? "chamber" : "branch", phone: "", timezone: "Asia/Kolkata", address: {} }])}>+ Add location</button></header><p className="required-note"><Required /> Required for each location that accepts bookings.</p>
+        <header><div><span className="app-eyebrow">LOCATIONS</span><h2>{category==="Healthcare"?"Chambers, branches and service points":"Branches and service points"}</h2></div><button type="button" className="secondary-button" onClick={() => setLocations([...locations, { name: `Location ${locations.length + 1}`, location_type: category === "Healthcare" ? "chamber" : "branch", phone: "", timezone: "Asia/Kolkata", address: {} }])}>+ Add location</button></header><p className="required-note"><Required /> Required for each location that accepts bookings.</p>
         <div className="editor-stack">{locations.map((location, index) => <article className="editor-card" key={location.id ?? index}>
           <div className="form-grid">
             <label>Location name<Required /><input value={location.name} onChange={(e) => changeLocation(index, { name: e.target.value })} required minLength={2} aria-invalid={!location.name.trim()} /></label>
@@ -357,7 +357,7 @@ export function WorkspaceForm({ organization, profile, locations: initialLocatio
           </div>
         </article>)}</div>
       </section>
-      <ChamberScheduleEditor organizationId={organization.id} resources={resources} locations={locations} services={services} assignments={assignments} assignmentServices={assignmentServices} chamberRules={chamberRules} paymentGateway={paymentGateway} calendarConnections={calendarConnections}/>
+      <ChamberScheduleEditor organizationId={organization.id} category={category} resources={resources} locations={locations} services={services} assignments={assignments} assignmentServices={assignmentServices} chamberRules={chamberRules} paymentGateway={paymentGateway} calendarConnections={calendarConnections}/>
 
       <section className="foundation-section">
         <header><div><span className="app-eyebrow">INTEGRATIONS</span><h2>{category === "Healthcare" ? "Clinic-wide Connections" : "Workspace Integrations"}</h2></div></header>
