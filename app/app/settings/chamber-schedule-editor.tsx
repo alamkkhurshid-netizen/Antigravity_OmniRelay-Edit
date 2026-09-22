@@ -14,7 +14,7 @@ type Session={id?:string;resource_id:string;location_id:string|null;weekday:numb
 const days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const today=new Date().toISOString().slice(0,10);
 
-export function ChamberScheduleEditor({organizationId,resources,locations,services,assignments,assignmentServices,chamberRules,paymentGateway}:{
+export function ChamberScheduleEditor({organizationId,resources,locations,services,assignments,assignmentServices,chamberRules,paymentGateway,calendarConnections,category}:{
   organizationId:string;resources:Resource[];locations:Location[];services:Service[];
   assignments:Assignment[];assignmentServices:AssignmentService[];chamberRules:Session[];
   paymentGateway:{provider:string;status:string;account_label:string|null;last_verified_at:string|null}|null;
