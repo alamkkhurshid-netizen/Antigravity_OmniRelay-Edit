@@ -111,12 +111,12 @@ export default async function DashboardPage() {
       {/* 2. STAT CARDS */}
       <section className="xl:col-span-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          ["Appointments", "0", "Connect WhatsApp to begin", CalendarDays, "text-slate-900", "bg-blue-50 text-blue-600"],
-          ["Doctors", String(doctorCount ?? 0), "Ready for appointment booking", UsersRound, "text-slate-900", "bg-teal-50 text-teal-600"],
-          ["Needs staff attention", "0", "No unresolved action", CircleAlert, "text-rose-600", "bg-rose-50 text-rose-600"],
-          ["WhatsApp delivery", "—", "Connect a channel to monitor delivery", ShieldCheck, "text-slate-900", "bg-indigo-50 text-indigo-600"],
-        ].map(([label, value, detail, Icon, valueClass, iconBg]) => (
-          <div key={label as string} className="group relative overflow-hidden rounded-2xl bg-white p-5 shadow-[0_4px_20px_#05234206] border border-slate-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50 hover:border-slate-300 cursor-default">
+          ["Appointments", "0", "Connect WhatsApp to begin", CalendarDays, "text-slate-900", "bg-blue-50 text-blue-600", "/app/appointments"],
+          ["Doctors", String(doctorCount ?? 0), "Ready for appointment booking", UsersRound, "text-slate-900", "bg-teal-50 text-teal-600", "/app/team"],
+          ["Needs staff attention", "0", "No unresolved action", CircleAlert, "text-rose-600", "bg-rose-50 text-rose-600", "/app/action-centre"],
+          ["WhatsApp delivery", "—", "Connect a channel to monitor delivery", ShieldCheck, "text-slate-900", "bg-indigo-50 text-indigo-600", "/app/integrations"],
+        ].map(([label, value, detail, Icon, valueClass, iconBg, href]) => (
+          <Link href={href as string} key={label as string} className="group relative overflow-hidden rounded-2xl bg-white p-5 shadow-[0_4px_20px_#05234206] border border-slate-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50 hover:border-slate-300 block">
             <div className="absolute right-0 top-0 h-32 w-32 -translate-y-16 translate-x-16 rounded-full bg-slate-50 opacity-50 transition-transform duration-700 ease-out group-hover:scale-150" />
             <div className="relative flex items-center justify-between">
               <h3 className="text-[11px] font-bold text-slate-500 tracking-widest uppercase">{label}</h3>
@@ -129,7 +129,7 @@ export default async function DashboardPage() {
               <span className={`text-2xl font-extrabold tracking-tight ${valueClass}`}>{value}</span>
             </div>
             <p className="relative mt-2 text-[13px] text-slate-400 font-medium">{detail}</p>
-          </div>
+          </Link>
         ))}
       </section>
 
