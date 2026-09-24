@@ -15,13 +15,13 @@ export default async function RetailDashboard() {
 
   return (
     <div className="grid gap-6 pb-12">
-      <header className="flex flex-col gap-4 rounded-[1.4rem] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900 via-slate-900 to-black px-8 py-10 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-4 rounded-[1.4rem] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900 via-slate-900 to-black px-6 py-10 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-4">
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/20 px-3 py-1 text-xs font-black tracking-widest text-indigo-300 ring-1 ring-indigo-400/30">
               <Sparkles className="size-3.5" /> RETAIL AUTOMATION
             </span>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+            <h1 className="mt-4 text-2xl font-semibold tracking-tight sm:text-2xl">
               Welcome to {businessName}
             </h1>
             <p className="mt-2 max-w-xl text-indigo-200">
@@ -87,7 +87,7 @@ export default async function RetailDashboard() {
 
       <div className="mt-4 grid gap-6 md:grid-cols-3">
         {/* SMALL TIER */}
-        <article className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10">
+        <article className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10">
           <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-indigo-50 opacity-50 transition-transform group-hover:scale-150"></div>
           <div className="relative">
             <span className="flex size-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
@@ -114,7 +114,7 @@ export default async function RetailDashboard() {
         </article>
 
         {/* MEDIUM TIER */}
-        <article className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10">
+        <article className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-sky-500/10">
           <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-sky-50 opacity-50 transition-transform group-hover:scale-150"></div>
           <div className="relative">
             <span className="flex size-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600">
@@ -141,7 +141,7 @@ export default async function RetailDashboard() {
         </article>
 
         {/* LARGE TIER */}
-        <article className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-fuchsia-500/10">
+        <article className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-fuchsia-500/10">
           <div className="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-fuchsia-50 opacity-50 transition-transform group-hover:scale-150"></div>
           <div className="relative">
             <span className="flex size-12 items-center justify-center rounded-2xl bg-fuchsia-100 text-fuchsia-600">

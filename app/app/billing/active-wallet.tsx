@@ -72,7 +72,7 @@ export function ActiveWallet({ wallet, tier, organizationId }: ActiveWalletProps
           </div>
           
           <div className="mt-4 flex items-baseline gap-1">
-            <b className={`text-4xl font-extrabold tracking-tight ${isLow ? 'text-amber-700 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>
+            <b className={`text-2xl font-extrabold tracking-tight ${isLow ? 'text-amber-700 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>
               ₹{balance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
             </b>
           </div>

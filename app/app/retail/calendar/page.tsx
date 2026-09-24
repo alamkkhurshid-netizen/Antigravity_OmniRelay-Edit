@@ -56,7 +56,7 @@ export default function CalendarPage() {
         </div>
       </header>
 
-      <section className="mb-8 rounded-3xl border border-indigo-100 bg-indigo-50/50 p-6">
+      <section className="mb-8 rounded-2xl border border-indigo-100 bg-indigo-50/50 p-6">
         <div className="flex items-start gap-4">
           <div className="grid size-10 shrink-0 place-items-center rounded-full bg-indigo-600 text-white">
             <Sparkles size={20} />
@@ -72,7 +72,7 @@ export default function CalendarPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {weekStrategy.map((item) => (
-          <article key={item.day} className="flex flex-col overflow-hidden rounded-3xl border border-border bg-white shadow-sm transition-shadow hover:shadow-md">
+          <article key={item.day} className="flex flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition-shadow hover:shadow-md">
             <header className="border-b border-border bg-slate-50 p-4">
               <div className="flex items-center justify-between">
                 <b className="text-sm uppercase tracking-wider text-slate-500">{item.day}</b>

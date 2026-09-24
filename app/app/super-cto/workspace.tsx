@@ -55,7 +55,7 @@ export function CtoWorkspace() {
     <main className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto p-6">
       <header className="mb-6">
         <span className="text-xs font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-3 py-1 rounded-full">Meta-Agent Layer</span>
-        <h1 className="text-3xl font-black tracking-tight text-slate-900 mt-3">Super CTO Architecture Bot</h1>
+        <h1 className="text-2xl font-black tracking-tight text-slate-900 mt-3">Super CTO Architecture Bot</h1>
         <p className="text-slate-600 mt-2">Ask detailed questions about OmniRelay&apos;s architecture, AI pipelines, and business logic.</p>
       </header>
 

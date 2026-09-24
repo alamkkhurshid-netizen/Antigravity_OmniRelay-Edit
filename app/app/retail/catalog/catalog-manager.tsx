@@ -213,7 +213,7 @@ export function CatalogManager({ initialProducts, organizationId }: { initialPro
         <button 
           onClick={handleSave}
           disabled={saving}
-          className="flex min-h-12 items-center gap-2 rounded-xl bg-indigo-600 px-8 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 disabled:opacity-70"
+          className="flex min-h-12 items-center gap-2 rounded-xl bg-indigo-600 px-6 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 disabled:opacity-70"
         >
           {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
           {saving ? "Saving Catalog..." : "Save Catalog to WhatsApp"}

@@ -47,7 +47,7 @@ export default async function AnalyticsPage() {
             <h3 className="font-semibold text-slate-600">Gross Revenue</h3>
           </div>
           <div>
-            <div className="text-3xl font-black text-slate-900">₹{totalRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-black text-slate-900">₹{totalRevenue.toLocaleString()}</div>
             <p className="mt-1 text-sm font-medium text-emerald-600 flex items-center gap-1">
               <Activity className="size-3" /> Live
             </p>
@@ -63,7 +63,7 @@ export default async function AnalyticsPage() {
             <h3 className="font-semibold text-slate-600">Total Orders</h3>
           </div>
           <div>
-            <div className="text-3xl font-black text-slate-900">{totalOrdersCount}</div>
+            <div className="text-2xl font-black text-slate-900">{totalOrdersCount}</div>
             <p className="mt-1 text-sm font-medium text-slate-500">
               {completedOrders} completed
             </p>
@@ -79,7 +79,7 @@ export default async function AnalyticsPage() {
             <h3 className="font-semibold text-slate-600">Avg. Order Value</h3>
           </div>
           <div>
-            <div className="text-3xl font-black text-slate-900">₹{aovLocaleString(averageOrderValue)}</div>
+            <div className="text-2xl font-black text-slate-900">₹{aovLocaleString(averageOrderValue)}</div>
             <p className="mt-1 text-sm font-medium text-slate-500">
               Per customer transaction
             </p>

@@ -139,7 +139,7 @@ export function AnalyticsWorkspace({
             </span>
             <span className="text-xs text-slate-300">Stage 14A-14E Architecture</span>
           </div>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-2xl">
             {clinicName} Operations & Value Analytics
           </h1>
           <p className="mt-1 text-sm text-slate-300">
@@ -307,7 +307,7 @@ export function AnalyticsWorkspace({
             <UserCheck className="size-4 text-[#148261]" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <b className="text-3xl font-extrabold tracking-tight text-slate-900">
+            <b className="text-2xl font-extrabold tracking-tight text-slate-900">
               {funnel.completionRate}%
             </b>
             <span className="text-xs font-medium text-slate-500">
@@ -326,7 +326,7 @@ export function AnalyticsWorkspace({
             <AlertTriangle className="size-4 text-[#d97706]" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <b className={`text-3xl font-extrabold tracking-tight ${funnel.noShowRate > 15 ? "text-[#b45309]" : "text-slate-900"}`}>
+            <b className={`text-2xl font-extrabold tracking-tight ${funnel.noShowRate > 15 ? "text-[#b45309]" : "text-slate-900"}`}>
               {funnel.noShowRate}%
             </b>
             <span className="text-xs font-medium text-slate-500">
@@ -345,7 +345,7 @@ export function AnalyticsWorkspace({
             <Clock className="size-4 text-[#0284c7]" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <b className="text-3xl font-extrabold tracking-tight text-slate-900">
+            <b className="text-2xl font-extrabold tracking-tight text-slate-900">
               {queue.avgWaitTimeMinutes}m
             </b>
             <span className="text-xs font-medium text-slate-500">
@@ -364,7 +364,7 @@ export function AnalyticsWorkspace({
             <TrendingUp className="size-4 text-[#148261]" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <b className="text-3xl font-extrabold tracking-tight text-[#148261]">
+            <b className="text-2xl font-extrabold tracking-tight text-[#148261]">
               {automation.staffHoursSaved}h
             </b>
             <span className="text-xs font-medium text-slate-500">saved</span>
@@ -556,7 +556,7 @@ export function AnalyticsWorkspace({
         </header>
 
         {analytics.doctorSummaries.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500">
+          <div className="p-6 text-center text-sm text-slate-500">
             No doctor appointments recorded for this timeframe.
           </div>
         ) : (

@@ -375,7 +375,7 @@ export function ClinicOperationsWorkspace({ today }: { today: string }) {
 
   return (
     <div className="mx-auto grid max-w-7xl gap-5 pb-12">
-      <section className="grid gap-5 overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_82%_12%,rgba(51,198,221,.42),transparent_26%),linear-gradient(115deg,#06182e,#0b4263)] px-6 py-7 text-white shadow-[0_18px_48px_rgba(7,19,38,.14)] sm:px-8 xl:grid-cols-[1fr_auto] xl:items-end">
+      <section className="grid gap-5 overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_82%_12%,rgba(51,198,221,.42),transparent_26%),linear-gradient(115deg,#06182e,#0b4263)] px-6 py-7 text-white shadow-[0_18px_48px_rgba(7,19,38,.14)] sm:px-6 xl:grid-cols-[1fr_auto] xl:items-end">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-black tracking-[.18em] text-teal-300">
@@ -385,7 +385,7 @@ export function ClinicOperationsWorkspace({ today }: { today: string }) {
               {dayInfo.weekdayName}, {dayInfo.formatted} {dayInfo.isToday && "· Today"}
             </span>
           </div>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-2xl">
             {dayInfo.isToday ? "Today’s" : `${dayInfo.weekdayName}’s`} roster and live bookings
           </h1>
           <p className="mt-3 max-w-2xl text-base leading-7 text-slate-200">

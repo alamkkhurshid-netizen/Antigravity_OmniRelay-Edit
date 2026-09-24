@@ -62,7 +62,7 @@ export default async function OperationsPage() {
   ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 
   return <main className="flex flex-col gap-6">
-    <section className={`p-8 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] border ${healthy ? "bg-gradient-to-br from-[#f0fcff] to-white border-[#cce8f0]" : "bg-gradient-to-br from-red-50 to-white border-red-100"}`}>
+    <section className={`p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] border ${healthy ? "bg-gradient-to-br from-[#f0fcff] to-white border-[#cce8f0]" : "bg-gradient-to-br from-red-50 to-white border-red-100"}`}>
       <div><span className="or-type-label text-[#1688d5] block mb-3">LIVE OPERATIONS</span><h2 className="or-type-page mb-3 text-slate-900">{healthy ? "Your delivery system is healthy." : "A delivery issue needs attention."}</h2><p className="text-slate-600 text-[15px] leading-relaxed max-w-2xl">One place to monitor WhatsApp, appointment reminders and patient-care automations.</p></div>
       <aside className={`flex flex-col items-center justify-center p-5 rounded-xl border bg-white/60 backdrop-blur-sm min-w-[160px] ${healthy ? "border-teal-100 text-teal-800" : "border-red-100 text-red-800"}`}><i className={`not-italic text-2xl mb-1 ${healthy ? "text-teal-500" : "text-red-500"}`}>{healthy ? "✓" : "!"}</i><b className="font-bold text-[15px]">{healthy ? "Operational" : `${incidents.length} incidents`}</b><span className="text-xs font-medium opacity-70 mt-1 uppercase tracking-wider">Last 24 hours</span></aside>
     </section>

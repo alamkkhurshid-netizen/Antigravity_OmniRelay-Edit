@@ -409,14 +409,14 @@ export function PatientDirectory({patients,appointments,encounters,prescriptions
 
   return <main className="mx-auto grid max-w-[1400px] gap-5 pb-16 pt-5">
     {/* 1. Hero Section - Refined Glassmorphism */}
-    <section className="relative overflow-hidden rounded-2xl bg-[#021021] px-6 py-8 text-white shadow-xl sm:px-8 xl:grid xl:grid-cols-[1fr_minmax(280px,.4fr)] xl:items-end xl:gap-8">
+    <section className="relative overflow-hidden rounded-2xl bg-[#021021] px-6 py-6 text-white shadow-xl sm:px-6 xl:grid xl:grid-cols-[1fr_minmax(280px,.4fr)] xl:items-end xl:gap-6">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(38,187,222,0.25),transparent_40%),radial-gradient(circle_at_0%_100%,rgba(51,198,221,0.15),transparent_40%)]" />
       <div className="absolute -left-12 -top-12 h-64 w-64 rounded-full bg-teal-500/20 blur-3xl" />
       <div className="absolute -bottom-12 -right-12 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl" />
       
       <div className="relative z-10">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-400/30 bg-teal-400/10 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-teal-300 backdrop-blur-sm uppercase">PATIENT CRM</span>
-        <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl text-transparent bg-clip-text bg-gradient-to-r from-white via-teal-50 to-teal-100">Every patient, every visit, <br className="hidden sm:block"/>one trusted timeline.</h1>
+        <h1 className="mt-4 text-2xl font-bold tracking-tight sm:text-2xl lg:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-white via-teal-50 to-teal-100">Every patient, every visit, <br className="hidden sm:block"/>one trusted timeline.</h1>
         <p className="mt-3 max-w-2xl text-base font-medium leading-relaxed text-slate-300">Search contact details, review booking history and understand consent before any future communication.</p>
       </div>
       <div className="relative z-10 mt-6 xl:mt-0">

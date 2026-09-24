@@ -25,7 +25,7 @@ export default async function TrendRadarPage() {
     .order("created_at", { ascending: false });
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
+    <div className="min-h-screen bg-slate-50 p-6">
       <div className="mx-auto max-w-6xl">
         <header className="mb-8">
           <div className="flex items-center gap-4 mb-2">
@@ -33,13 +33,13 @@ export default async function TrendRadarPage() {
               <Radar className="size-6" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Trend Radar</h1>
+              <h1 className="text-2xl font-bold text-slate-900">Trend Radar</h1>
               <p className="text-slate-500">ScrapeGraphAI Competitor & Trend Intelligence</p>
             </div>
           </div>
         </header>
 
-        <div className="grid gap-8 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-3">
           
           {/* Target Input Section */}
           <div className="lg:col-span-1">
@@ -111,7 +111,7 @@ export default async function TrendRadarPage() {
                     
                     <div className="p-6">
                       {report.status === 'scraping' && (
-                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <div className="flex flex-col items-center justify-center py-6 text-center">
                           <Radar className="size-10 text-indigo-300 animate-spin-slow mb-4" />
                           <h3 className="font-semibold text-slate-900">Scraping the web...</h3>
                           <p className="text-sm text-slate-500 max-w-sm mt-2">
