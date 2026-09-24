@@ -2,17 +2,18 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getWorkspace } from "@/lib/workspace";
 
 export async function scheduleContent(date: string, format: string, goal: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  const { data: profile } = await supabase.from('user_profiles').select('active_organization_id').eq('id', user.id).single();
-  if (!profile?.active_organization_id) throw new Error("No organization");
+  const { organization } = await getWorkspace();
+  if (!organization) throw new Error("No organization");
 
   const { error } = await supabase.from('retail_content_calendar').insert({
-    organization_id: profile.active_organization_id,
+    organization_id: organization.id,
     post_date: date,
     content_format: format,
     strategic_goal: goal,

@@ -5,6 +5,10 @@ import { BookingConciergeWorkspace } from "./workspace";
 export default async function BookingConciergePage() {
   const { supabase, organization } = await getWorkspace();
   if (!organization) redirect("/onboarding");
+  const businessCategory = (organization.extra as Record<string, unknown>)?.business_category;
+  if (businessCategory === "Retail & e-commerce") {
+    redirect("/app/retail");
+  }
   const [{ data: settings }, { data: requests }, { data: sessions }, { data: waitlist }, { count: locations }, { count: services }] = await Promise.all([
     supabase.from("whatsapp_booking_settings").select("*").eq("organization_id", organization.id).maybeSingle(),
     supabase.from("whatsapp_booking_requests").select("id,patient_name,patient_phone,starts_at,status,decision_note,created_at,service:organization_services(name),location:business_locations(name),resource:booking_resources(name)").eq("organization_id", organization.id).order("created_at", { ascending: false }).limit(20),

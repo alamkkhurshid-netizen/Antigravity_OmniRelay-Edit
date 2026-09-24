@@ -5,7 +5,12 @@ import { CarePlanOperations } from "./care-plan-operations";
 export default async function CarePlansPage() {
   const { supabase, organization } = await getWorkspace();
   if (!organization) redirect("/onboarding");
+  const businessCategory = (organization.extra as Record<string, unknown>)?.business_category;
+  if (businessCategory === "Retail & e-commerce") {
+    redirect("/app/retail");
+  }
   const { data: { user } } = await supabase.auth.getUser();
+
   if (!user) redirect("/login");
 
   const [{ data: plans }, { data: patients }, { data: reminders }, { data: tasks }, { data: staff }, { data: actor }] = await Promise.all([

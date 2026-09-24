@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { DoctorRosterImportModal } from "@/components/doctor-roster-import-modal";
 
 type Resource={id:string;name:string};
 type Location={id?:string;name:string};
@@ -95,7 +96,17 @@ export function ChamberScheduleEditor({organizationId,resources,locations,servic
   const doctorCalendar = calendarConnections?.find(c => c.resource_id === resourceId);
 
   return <section className="foundation-section chamber-schedule" id="chamber-schedules">
-    <header><div><span className="app-eyebrow">{category==="Healthcare"?"DOCTOR–CHAMBER SCHEDULING":"PROVIDER SCHEDULING"}</span><h2>Set where and when each provider works</h2><p>Each {category==="Healthcare"?"chamber":"location"} can have its own services, fees, dates and multiple daily sessions.</p></div><span className="section-status">Live booking rules</span></header>
+    <header>
+      <div>
+        <span className="app-eyebrow">{category==="Healthcare"?"DOCTOR–CHAMBER SCHEDULING":"PROVIDER SCHEDULING"}</span>
+        <h2>Set where and when each provider works</h2>
+        <p>Each {category==="Healthcare"?"chamber":"location"} can have its own services, fees, dates and multiple daily sessions.</p>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {category === "Healthcare" && <DoctorRosterImportModal triggerLabel="Bulk Import CSV" />}
+        <span className="section-status">Live booking rules</span>
+      </div>
+    </header>
     {!resources.length||!savedLocations.length?<p className="provider-note">Save a provider and at least one {category==="Healthcare"?"chamber":"location"} before configuring schedules.</p>:<>
       <div className="schedule-context">
         <label>Provider<select value={resourceId} onChange={(e)=>load(e.target.value,locationId)}>{resources.map((item)=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>

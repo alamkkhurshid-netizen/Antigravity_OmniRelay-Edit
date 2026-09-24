@@ -13,7 +13,12 @@ type Gate = { title: string; ready: boolean; detail: string; href: string };
 export default async function ReadinessPage() {
   const { supabase, organization } = await getWorkspace();
   if (!organization) redirect("/onboarding");
+  const businessCategory = (organization.extra as Record<string, unknown>)?.business_category;
+  if (businessCategory === "Retail & e-commerce") {
+    redirect("/app/retail");
+  }
   const since = isoBeforeNow(24 * 60 * 60 * 1000);
+
   const [{ data: connection }, { count: locations }, { count: services }, { count: resources }, { count: bookingPages }, { data: templates }, { count: failedMessages }, { count: failedReminders }, { data: manualChecks }, { data: readinessAudit }, { data: pilotControl }, { data: bookingAcceptance }, { data: channelTests }, { data: multiDoctorAcceptance }, { data: commandObservations }, { data: completedAppointments }, { data: encounters }, { data: carePlans }, { data: careTasks }, { data: reminderRuns }] = await Promise.all([
     supabase.from("channel_connections").select("status,display_address,last_verified_at").eq("organization_id", organization.id).eq("channel", "whatsapp").maybeSingle(),
     supabase.from("business_locations").select("id", { count: "exact", head: true }).eq("organization_id", organization.id).eq("active", true),

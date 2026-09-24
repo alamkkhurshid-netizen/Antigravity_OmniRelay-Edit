@@ -25,5 +25,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
     supabase.from("whatsapp_rate_cards").select("message_category,base_rate_paise,platform_fee_paise,source_version,verification_status").eq("channel","whatsapp").eq("country_code","IN").in("verification_status",["draft","verified"]),
   ]);
 
-  return <AppShell email={user.email ?? "member"} isOperator={isOperator === true} unreadNotifications={unreadNotifications ?? 0} criticalNotifications={criticalNotifications ?? []} recentNotifications={recentNotifications ?? []} whatsappRates={whatsappRates ?? []}>{children}</AppShell>;
+  const orgId = workspace?.organization_id;
+  let businessCategory = "Healthcare";
+  if (orgId) {
+    const [{ data: org }, { data: profile }] = await Promise.all([
+      supabase.from("organizations").select("extra").eq("id", orgId).maybeSingle(),
+      supabase.from("onboarding_profiles").select("business_category").eq("organization_id", orgId).maybeSingle()
+    ]);
+    businessCategory =
+      (profile?.business_category as string) ||
+      (org?.extra as { business_category?: string } | null)?.business_category ||
+      "Healthcare";
+  }
+
+
+  return <AppShell email={user.email ?? "member"} isOperator={isOperator === true} businessCategory={businessCategory} unreadNotifications={unreadNotifications ?? 0} criticalNotifications={criticalNotifications ?? []} recentNotifications={recentNotifications ?? []} whatsappRates={whatsappRates ?? []}>{children}</AppShell>;
 }
+

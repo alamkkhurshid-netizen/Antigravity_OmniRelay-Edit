@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Bell, BellRing, BookOpenCheck, Bot, Building2, CalendarClock, CalendarDays, ChevronDown, ChevronRight, CircleAlert, ClipboardList, ContactRound, CreditCard, HeartPulse, House, LineChart, Megaphone, Menu, MessagesSquare, PlugZap, Search, Settings2, ShieldCheck, UsersRound, X } from "lucide-react";
+import { Bell, BellRing, BookOpenCheck, Bot, Building2, CalendarClock, CalendarDays, ChevronDown, ChevronRight, CircleAlert, ClipboardList, ContactRound, CreditCard, HeartPulse, House, LineChart, Megaphone, Menu, MessagesSquare, Package, PlugZap, Radar, Search, Settings2, ShieldCheck, ShoppingBag, Sparkles, Store, Target, TrendingUp, Users, UsersRound, Workflow, X } from "lucide-react";
 import { Brand } from "./brand";
 import { createClient } from "@/lib/supabase/client";
 import { PwaRegistration } from "./pwa-registration";
@@ -12,11 +12,57 @@ import { ProductTour } from "./product-tour";
 import { WhatsAppCostCalculator } from "./whatsapp-cost-calculator";
 
 type NavItem = readonly [label: string, href: string, icon: React.ComponentType<{ size?: number; strokeWidth?: number }>];
+
 const navGroups: ReadonlyArray<{ label: string; items: readonly NavItem[] }> = [
   { label: "Workspace", items: [["Overview", "/app", House], ["Analytics & Insights", "/app/analytics", LineChart], ["Action centre", "/app/action-centre", CircleAlert]] },
   { label: "Patient care", items: [["Conversations", "/app/conversations", MessagesSquare], ["Contacts", "/app/contacts", ContactRound], ["Care plans", "/app/care-plans", HeartPulse], ["Appointments", "/app/appointments", CalendarDays], ["Clinic operations", "/app/clinic-operations", Building2], ["Booking concierge", "/app/booking-concierge", CalendarClock]] },
   { label: "Automation & engagement", items: [["Care reminders", "/app/automations", BellRing], ["Campaigns", "/app/campaigns", Megaphone], ["Integrations", "/app/integrations", PlugZap], ["AI agents", "/app/agents", Bot]] },
   { label: "Administration", items: [["Team operations", "/app/team", UsersRound], ["Operations", "/app/operations", ShieldCheck], ["Go-live readiness", "/app/readiness", BookOpenCheck], ["Activity logs", "/app/activity", ClipboardList], ["Business setup", "/app/settings", Settings2], ["Plans & billing", "/app/billing", CreditCard]] },
+];
+
+const retailNavGroups: ReadonlyArray<{ label: string; items: readonly NavItem[] }> = [
+  { 
+    label: "Store Operations", 
+    items: [
+      ["Store Hub", "/app/retail", Store],
+      ["Order Pipeline", "/app/retail/orders", Package],
+      ["Digital Catalog", "/app/retail/catalog", ShoppingBag],
+      ["Revenue Analytics", "/app/retail/analytics", TrendingUp],
+    ] 
+  },
+  { 
+    label: "Customers & Chat", 
+    items: [
+      ["Customer CRM", "/app/retail/customers", Users],
+      ["Live Conversations", "/app/conversations", MessagesSquare],
+    ] 
+  },
+  { 
+    label: "WhatsApp Automation", 
+    items: [
+      ["Flow Builder", "/app/retail/flows", Workflow],
+      ["Broadcast Campaigns", "/app/retail/broadcasts", Megaphone],
+      ["Commerce AI Agents", "/app/agents", Bot],
+    ] 
+  },
+  { 
+    label: "Marketing & Growth", 
+    items: [
+      ["Meta Ads Autopilot", "/app/retail/marketing", Target],
+      ["Creative Engine", "/app/retail/creative", Sparkles],
+      ["Content Calendar", "/app/retail/calendar", CalendarDays],
+      ["Trend Radar", "/app/retail/trends", Radar],
+    ] 
+  },
+  { 
+    label: "Store Settings", 
+    items: [
+      ["Business Setup", "/app/settings", Settings2],
+      ["Integrations", "/app/integrations", PlugZap],
+      ["Plans & Billing", "/app/billing", CreditCard],
+      ["Team Operations", "/app/team", UsersRound],
+    ] 
+  },
 ];
 
 const titles: Record<string, string> = {
@@ -39,6 +85,17 @@ const titles: Record<string, string> = {
   "/app/activity": "Activity logs",
   "/app/settings": "Business setup",
   "/app/billing": "Plans & billing",
+  "/app/retail": "Store Hub",
+  "/app/retail/orders": "Order Pipeline",
+  "/app/retail/catalog": "Digital Catalog",
+  "/app/retail/analytics": "Revenue Analytics",
+  "/app/retail/customers": "Customer CRM",
+  "/app/retail/flows": "Flow Builder",
+  "/app/retail/broadcasts": "Broadcast Campaigns",
+  "/app/retail/marketing": "Meta Ads Autopilot",
+  "/app/retail/creative": "Creative Velocity Engine",
+  "/app/retail/calendar": "Content Calendar",
+  "/app/retail/trends": "Trend Radar",
 };
 
 function urlBase64ToBytes(value: string) {
@@ -55,6 +112,7 @@ export function AppShell({
   children,
   email,
   isOperator,
+  businessCategory,
   unreadNotifications,
   criticalNotifications,
   recentNotifications,
@@ -63,6 +121,7 @@ export function AppShell({
   children: React.ReactNode;
   email: string;
   isOperator: boolean;
+  businessCategory?: string;
   unreadNotifications: number;
   criticalNotifications: NotificationItem[];
   recentNotifications: NotificationItem[];
@@ -73,6 +132,7 @@ export function AppShell({
   const [accountOpen, setAccountOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+
   const [unread, setUnread] = useState(unreadNotifications);
   const [critical, setCritical] = useState(criticalNotifications);
   const [notifications, setNotifications] = useState(recentNotifications);
@@ -196,11 +256,11 @@ export function AppShell({
         <div className="flex items-center justify-center rounded-2xl border border-[#deddd6] bg-white/70 p-2.5 shadow-[0_7px_18px_rgba(35,46,52,.05)] group-hover:justify-start group-focus-within:justify-start max-lg:justify-start">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-xl bg-[linear-gradient(135deg,#d9f5ee,#bfe3fa)]"><img className="size-full object-contain p-1" src="/omnirelay-mark.png" alt="" /></span>
-          <b className="hidden min-w-0 flex-1 flex-col pl-2 text-sm text-[#213548] group-hover:flex group-focus-within:flex max-lg:flex">OmniRelay Workspace<small className="mt-0.5 text-xs font-medium text-[#77848b]">Trial workspace</small></b>
+          <b className="hidden min-w-0 flex-1 flex-col pl-2 text-sm text-[#213548] group-hover:flex group-focus-within:flex max-lg:flex">OmniRelay Workspace<small className="mt-0.5 text-xs font-medium text-[#77848b]">{(businessCategory === "Retail & e-commerce" || pathname.startsWith("/app/retail")) ? "Retail store" : "Trial workspace"}</small></b>
           <ChevronDown className="hidden size-4 text-[#77848b] group-hover:block group-focus-within:block max-lg:block" aria-hidden="true" />
         </div>
         <nav className="mt-5 flex flex-col gap-2" aria-label="Workspace navigation">
-          {navGroups.map((group) => {
+          {((businessCategory === "Retail & e-commerce" || pathname.startsWith("/app/retail")) ? retailNavGroups : navGroups).map((group) => {
             const containsCurrent = group.items.some(([, href]) => href === pathname);
             const open = containsCurrent || !collapsedGroups[group.label];
             return <section className="flex flex-col gap-1" key={group.label}>

@@ -7,6 +7,10 @@ import { FollowUpDesk } from "./follow-up-desk";
 export default async function AutomationsPage() {
   const { supabase, organization } = await getWorkspace();
   if (!organization) redirect("/onboarding");
+  const businessCategory = (organization.extra as Record<string, unknown>)?.business_category;
+  if (businessCategory === "Retail & e-commerce") {
+    redirect("/app/retail");
+  }
 
   const [{ data: patients }, { data: prescriptions }, { data: reminders }, { data: runs }, { data: templates }, { data: channels }, { data: adherence }, { data: workflows }, { data: automationRuns }, { data: rolloutReadiness }, { data: appointments }, { data: resources }, { data: locations }] =
     await Promise.all([

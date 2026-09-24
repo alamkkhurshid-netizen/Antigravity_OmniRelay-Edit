@@ -6,6 +6,10 @@ import { ReceptionBoard } from "./reception-board";
 export default async function AppointmentsPage() {
   const { supabase, organization } = await getWorkspace();
   if (!organization) redirect("/onboarding");
+  const businessCategory = (organization.extra as Record<string, unknown>)?.business_category;
+  if (businessCategory === "Retail & e-commerce") {
+    redirect("/app/retail");
+  }
   const [{ data: locations }, { data: services }, { data: resources }, { data: appointments }, { data: availability }, { data: bookingPage }, { count: reminderCount }, { data: exceptions }, { data: reminders }, { data: whatsappConnection }, {data:queueEntries}, {data:providerDepartments}] = await Promise.all([
     supabase.from("business_locations").select("id,name,location_type,address,phone").eq("organization_id", organization.id),
     supabase.from("organization_services").select("id,name,duration_minutes,buffer_minutes,price_paise,booking_enabled").eq("organization_id", organization.id),

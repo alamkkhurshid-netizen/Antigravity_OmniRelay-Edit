@@ -1,6 +1,8 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { DoctorRosterImportModal } from "@/components/doctor-roster-import-modal";
+
 
 type RosterRow = {
   id: string;
@@ -301,6 +303,7 @@ export function ClinicOperationsWorkspace({ today }: { today: string }) {
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
+          <DoctorRosterImportModal triggerClassName="inline-flex min-h-10 items-center gap-2 rounded-xl bg-teal-500 hover:bg-teal-400 px-3.5 text-sm font-bold text-slate-900 transition-colors shadow-sm" triggerLabel="Upload Doctor Roster (CSV)" onSuccess={() => loadRoster()} />
           <button type="button" className="inline-flex min-h-10 items-center rounded-xl bg-white px-3 text-sm font-bold text-primary hover:bg-slate-100" onClick={runPreDispatchCheck}>Run pre-dispatch check</button>
           <label>
             Department
