@@ -2,6 +2,28 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { DoctorRosterImportModal } from "@/components/doctor-roster-import-modal";
+import { Calendar, Users, ChevronLeft, ChevronRight, Search, Clock, MapPin, Phone, Mail, CheckCircle2, UserCheck, Stethoscope } from "lucide-react";
+
+type RegisteredConsultant = {
+  id: string;
+  name: string;
+  specialization: string;
+  phone: string;
+  email: string;
+  queueEnabled: boolean;
+  active: boolean;
+  chambers: string[];
+  shifts: Array<{
+    id: string;
+    weekday: number;
+    dayLabel: string;
+    startTime: string;
+    endTime: string;
+    slotMinutes: number;
+    chamber: string;
+  }>;
+  scheduleSummary: string;
+};
 
 
 type RosterRow = {
@@ -140,6 +162,9 @@ function parseCsv(text: string): ImportRow[] {
 export function ClinicOperationsWorkspace({ today }: { today: string }) {
   const [date, setDate] = useState(today),
     [roster, setRoster] = useState<RosterRow[]>([]),
+    [consultants, setConsultants] = useState<RegisteredConsultant[]>([]),
+    [activeTab, setActiveTab] = useState<"roster" | "consultants">("roster"),
+    [searchQuery, setSearchQuery] = useState(""),
     [updated, setUpdated] = useState(""),
     [loading, setLoading] = useState(true);
   const [departments, setDepartments] = useState<string[]>([]),
@@ -154,6 +179,27 @@ export function ClinicOperationsWorkspace({ today }: { today: string }) {
     [preflightMessage, setPreflightMessage] = useState(""),
     [consentRow, setConsentRow] = useState<RosterRow | null>(null),
     [consentChecked, setConsentChecked] = useState(false);
+
+  function changeDay(deltaDays: number) {
+    const [y, m, d] = date.split("-").map(Number);
+    const current = new Date(y, m - 1, d);
+    current.setDate(current.getDate() + deltaDays);
+    const nextY = current.getFullYear();
+    const nextM = String(current.getMonth() + 1).padStart(2, "0");
+    const nextD = String(current.getDate()).padStart(2, "0");
+    setDate(`${nextY}-${nextM}-${nextD}`);
+  }
+
+  function getDayInfo(dateString: string) {
+    const [y, m, d] = dateString.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    const weekdayName = new Intl.DateTimeFormat("en-IN", { weekday: "long" }).format(dt);
+    const formatted = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" }).format(dt);
+    return { weekdayName, formatted, isToday: dateString === today };
+  }
+
+  const dayInfo = useMemo(() => getDayInfo(date), [date, today]);
+
   const loadRoster = useCallback(
     async (selected = date) => {
       setLoading(true);
@@ -167,6 +213,9 @@ export function ClinicOperationsWorkspace({ today }: { today: string }) {
         setDepartments(data.departments ?? []);
         setAlerts(data.alerts ?? []);
         setUpdated(data.updatedAt);
+        if (data.consultants) {
+          setConsultants(data.consultants);
+        }
       }
       setLoading(false);
     },
@@ -291,25 +340,121 @@ export function ClinicOperationsWorkspace({ today }: { today: string }) {
         : `Pre-dispatch check passed for ${visibleRoster.length} scheduled session${visibleRoster.length === 1 ? "" : "s"}. Queue messages remain subject to their normal one-hour timing.`,
     );
   }
+
+  const filteredConsultants = useMemo(() => {
+    if (!searchQuery.trim()) return consultants;
+    const q = searchQuery.toLowerCase().trim();
+    return consultants.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.specialization.toLowerCase().includes(q) ||
+        c.phone.toLowerCase().includes(q) ||
+        c.chambers.some((ch) => ch.toLowerCase().includes(q)) ||
+        c.shifts.some((s) => s.dayLabel.toLowerCase().includes(q)),
+    );
+  }, [consultants, searchQuery]);
+
+  function jumpToShiftDay(targetWeekday: number) {
+    const [y, m, d] = date.split("-").map(Number);
+    const current = new Date(y, m - 1, d);
+    const currentDay = current.getDay();
+    let diff = targetWeekday - currentDay;
+    if (diff <= 0) diff += 7;
+    current.setDate(current.getDate() + diff);
+    const nextY = current.getFullYear();
+    const nextM = String(current.getMonth() + 1).padStart(2, "0");
+    const nextD = String(current.getDate()).padStart(2, "0");
+    setDate(`${nextY}-${nextM}-${nextD}`);
+    setActiveTab("roster");
+  }
+
+  function jumpToDate(targetDate: string) {
+    setDate(targetDate);
+    setActiveTab("roster");
+  }
+
   return (
     <div className="mx-auto grid max-w-7xl gap-5 pb-12">
       <section className="grid gap-5 overflow-hidden rounded-3xl bg-[radial-gradient(circle_at_82%_12%,rgba(51,198,221,.42),transparent_26%),linear-gradient(115deg,#06182e,#0b4263)] px-6 py-7 text-white shadow-[0_18px_48px_rgba(7,19,38,.14)] sm:px-8 xl:grid-cols-[1fr_auto] xl:items-end">
         <div>
-          <span className="text-xs font-black tracking-[.18em] text-teal-300">MULTI-DOCTOR OPERATIONS</span>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Today’s roster and live bookings</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-black tracking-[.18em] text-teal-300">
+              MULTI-DOCTOR OPERATIONS
+            </span>
+            <span className="rounded-md bg-teal-500/20 border border-teal-300/30 px-2 py-0.5 text-[11px] font-bold text-teal-200">
+              {dayInfo.weekdayName}, {dayInfo.formatted} {dayInfo.isToday && "· Today"}
+            </span>
+          </div>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+            {dayInfo.isToday ? "Today’s" : `${dayInfo.weekdayName}’s`} roster and live bookings
+          </h1>
           <p className="mt-3 max-w-2xl text-base leading-7 text-slate-200">
             One operational view across departments, visiting doctors, chambers,
             shifts and patient flow.
           </p>
+
+          {/* Quick Date Stepper Navigation */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 rounded-xl bg-white/10 p-1 backdrop-blur-md border border-white/10">
+              <button
+                type="button"
+                onClick={() => changeDay(-1)}
+                className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-100 hover:bg-white/20 transition-colors"
+                title="Previous Day"
+              >
+                ◀ Prev Day
+              </button>
+              <button
+                type="button"
+                onClick={() => setDate(today)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                  date === today
+                    ? "bg-teal-400 text-slate-950 shadow-sm"
+                    : "text-white hover:bg-white/20"
+                }`}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={() => changeDay(1)}
+                className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-100 hover:bg-white/20 transition-colors"
+                title="Next Day"
+              >
+                Next Day ▶
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-teal-200 font-semibold bg-white/5 rounded-xl px-3 py-2 border border-white/10">
+              <span>Date:</span>
+              <input
+                type="date"
+                value={date}
+                onChange={(event) => setDate(event.target.value)}
+                className="rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-slate-900 shadow-sm"
+              />
+            </div>
+          </div>
         </div>
+
         <div className="flex flex-wrap items-end gap-2">
-          <DoctorRosterImportModal triggerClassName="inline-flex min-h-10 items-center gap-2 rounded-xl bg-teal-500 hover:bg-teal-400 px-3.5 text-sm font-bold text-slate-900 transition-colors shadow-sm" triggerLabel="Upload Doctor Roster (CSV)" onSuccess={() => loadRoster()} />
-          <button type="button" className="inline-flex min-h-10 items-center rounded-xl bg-white px-3 text-sm font-bold text-primary hover:bg-slate-100" onClick={runPreDispatchCheck}>Run pre-dispatch check</button>
-          <label>
+          <DoctorRosterImportModal
+            triggerClassName="inline-flex min-h-10 items-center gap-2 rounded-xl bg-teal-500 hover:bg-teal-400 px-3.5 text-sm font-bold text-slate-900 transition-colors shadow-sm"
+            triggerLabel="Upload Doctor Roster (CSV)"
+            onSuccess={() => loadRoster()}
+          />
+          <button
+            type="button"
+            className="inline-flex min-h-10 items-center rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 px-3 text-xs font-bold text-white transition-colors"
+            onClick={runPreDispatchCheck}
+          >
+            Pre-dispatch check
+          </button>
+          <label className="text-xs font-bold text-slate-200">
             Department
             <select
               value={departmentFilter}
               onChange={(event) => setDepartmentFilter(event.target.value)}
+              className="mt-1 block min-h-10 rounded-xl bg-white px-3 text-xs font-bold text-slate-900 shadow-sm"
             >
               <option value="">All departments</option>
               {departments.map((item) => (
@@ -317,68 +462,128 @@ export function ClinicOperationsWorkspace({ today }: { today: string }) {
               ))}
             </select>
           </label>
-          <label>
-            Roster date
-            <input
-              type="date"
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-            />
-          </label>
         </div>
       </section>
-      {preflightMessage && <p className="form-message" role="status">{preflightMessage}</p>}
-      <section className="roster-metrics">
-        <article>
-          <span>Doctors visiting</span>
-          <b>{new Set(visibleRoster.map((row) => row.doctor)).size}</b>
-          <small>
-            {visibleRoster.length} scheduled session
-            {visibleRoster.length === 1 ? "" : "s"}
-          </small>
-        </article>
-        <article>
-          <span>Booked</span>
-          <b>
-            {totals.booked}/{totals.capacity}
-          </b>
-          <small>Appointments / capacity</small>
-        </article>
-        <article>
-          <span>Empty slots</span>
-          <b>{totals.empty}</b>
-          <small>Available capacity</small>
-        </article>
-        <article>
-          <span>Patient flow</span>
-          <b>{totals.arrived + totals.completed}</b>
-          <small>
-            {totals.arrived} arrived · {totals.completed} completed
-          </small>
-        </article>
-      </section>
-      {alerts.length > 0 && (
-        <section className="clinic-ops-alerts">
-          <header>
-            <div>
-              <span className="app-eyebrow">ACTION REQUIRED</span>
-              <h3>Roster and queue exceptions</h3>
-            </div>
-            <b>{alerts.length}</b>
-          </header>
-          <div>
-            {alerts.map((alert) => (
-              <article className={alert.severity} key={alert.key}>
-                <i>!</i>
-                <div>
-                  <b>{alert.title}</b>
-                  <span>{alert.detail}</span>
-                </div>
-              </article>
-            ))}
+
+      {/* View Switcher Tabs */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab("roster")}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
+              activeTab === "roster"
+                ? "bg-slate-900 text-white shadow-sm"
+                : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
+            }`}
+          >
+            <span>📅 Visiting Roster for {dayInfo.weekdayName}</span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${
+                activeTab === "roster"
+                  ? "bg-teal-400 text-slate-950"
+                  : "bg-slate-100 text-slate-700"
+              }`}
+            >
+              {new Set(visibleRoster.map((r) => r.doctor)).size} Doctors ({visibleRoster.length} Shifts)
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("consultants")}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all ${
+              activeTab === "consultants"
+                ? "bg-slate-900 text-white shadow-sm"
+                : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
+            }`}
+          >
+            <span>👥 All Registered Visiting Consultants</span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-extrabold ${
+                activeTab === "consultants"
+                  ? "bg-teal-400 text-slate-950"
+                  : "bg-slate-100 text-slate-700"
+              }`}
+            >
+              {consultants.length} Doctors Registered
+            </span>
+          </button>
+        </div>
+
+        {activeTab === "roster" ? (
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+            <span>Roster Date:</span>
+            <span className="rounded-lg bg-teal-50 border border-teal-200 px-2.5 py-1 text-teal-800 font-bold">
+              {dayInfo.weekdayName}, {dayInfo.formatted} {dayInfo.isToday ? "(Today)" : ""}
+            </span>
           </div>
-        </section>
+        ) : (
+          <div className="text-xs font-semibold text-slate-500">
+            Showing all <b>{consultants.length}</b> visiting consultants associated with this clinic
+          </div>
+        )}
+      </div>
+
+      {preflightMessage && activeTab === "roster" && (
+        <p className="form-message" role="status">
+          {preflightMessage}
+        </p>
       )}
+
+      {activeTab === "roster" && (
+        <>
+          <section className="roster-metrics">
+            <article>
+              <span>Doctors visiting ({dayInfo.weekdayName.slice(0, 3)})</span>
+              <b>{new Set(visibleRoster.map((row) => row.doctor)).size}</b>
+              <small>
+                {visibleRoster.length} scheduled session
+                {visibleRoster.length === 1 ? "" : "s"}
+              </small>
+            </article>
+            <article>
+              <span>Booked</span>
+              <b>
+                {totals.booked}/{totals.capacity}
+              </b>
+              <small>Appointments / capacity</small>
+            </article>
+            <article>
+              <span>Empty slots</span>
+              <b>{totals.empty}</b>
+              <small>Available capacity</small>
+            </article>
+            <article>
+              <span>Patient flow</span>
+              <b>{totals.arrived + totals.completed}</b>
+              <small>
+                {totals.arrived} arrived · {totals.completed} completed
+              </small>
+            </article>
+          </section>
+          {alerts.length > 0 && (
+            <section className="clinic-ops-alerts">
+              <header>
+                <div>
+                  <span className="app-eyebrow">ACTION REQUIRED</span>
+                  <h3>Roster and queue exceptions</h3>
+                </div>
+                <b>{alerts.length}</b>
+              </header>
+              <div>
+                {alerts.map((alert) => (
+                  <article className={alert.severity} key={alert.key}>
+                    <i>!</i>
+                    <div>
+                      <b>{alert.title}</b>
+                      <span>{alert.detail}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
       <section className="live-roster">
         <header>
           <div>
@@ -574,6 +779,159 @@ export function ClinicOperationsWorkspace({ today }: { today: string }) {
           </span>
         </aside>
       </section>
+        </>
+      )}
+
+      {activeTab === "consultants" && (
+        <section className="grid gap-5">
+          {/* Search and Summary bar */}
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-1 items-center gap-3 min-w-[280px]">
+              <span className="text-lg">🔍</span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by doctor name, specialty, chamber, weekday (e.g. Mon, Thu), or phone..."
+                className="w-full text-sm font-medium text-slate-900 placeholder:text-slate-400 bg-transparent border-0 focus:outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500 hover:bg-slate-200"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-3 text-xs font-semibold text-slate-500">
+              <span className="rounded-lg bg-slate-100 px-3 py-1.5 text-slate-700 font-bold">
+                {filteredConsultants.length} Doctor{filteredConsultants.length === 1 ? "" : "s"} shown
+              </span>
+              <span className="hidden sm:inline">· Click any recurring shift badge to jump directly to that day’s live roster</span>
+            </div>
+          </div>
+
+          {filteredConsultants.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-slate-500">
+              <p className="text-base font-bold text-slate-700">No visiting consultants match &ldquo;{searchQuery}&rdquo;</p>
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="mt-3 text-xs font-bold text-teal-600 hover:underline"
+              >
+                Clear search filter
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filteredConsultants.map((doc) => {
+                const isVisitingOnSelectedDate = visibleRoster.some(
+                  (r) => r.doctor.toLowerCase() === doc.name.toLowerCase()
+                );
+                return (
+                  <article
+                    key={doc.id}
+                    className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden"
+                  >
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-400 to-blue-500" />
+                    <div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="text-base font-bold text-slate-900">
+                            {doc.name}
+                          </h3>
+                          <span className="inline-block mt-1 rounded-md bg-teal-50 px-2.5 py-0.5 text-xs font-bold text-teal-700 border border-teal-200">
+                            {doc.specialization}
+                          </span>
+                        </div>
+                        {isVisitingOnSelectedDate ? (
+                          <span className="rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 text-[11px] font-extrabold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Visiting {dayInfo.weekdayName.slice(0, 3)}
+                          </span>
+                        ) : (
+                          <span className="rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600">
+                            {doc.chambers[0] || "Chamber"}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-4 space-y-1.5 text-xs text-slate-600">
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-400">📞 Phone:</span>
+                          <span className="font-semibold text-slate-800">
+                            {doc.phone || <em className="text-slate-400">Not recorded</em>}
+                          </span>
+                          {doc.queueEnabled && (
+                            <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded font-bold">
+                              WhatsApp Active
+                            </span>
+                          )}
+                        </div>
+                        {doc.email && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-400">✉️ Email:</span>
+                            <span className="font-medium text-slate-700 truncate">{doc.email}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-400">🏥 Chamber(s):</span>
+                          <span className="font-medium text-slate-800">
+                            {doc.chambers.join(", ")}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-slate-100">
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                          Weekly Recurring Shifts ({doc.shifts.length})
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {doc.shifts.length === 0 ? (
+                            <span className="text-xs text-slate-400 italic">No recurring shift days configured</span>
+                          ) : (
+                            doc.shifts.map((shift) => (
+                              <button
+                                key={shift.id}
+                                type="button"
+                                onClick={() => jumpToShiftDay(shift.weekday)}
+                                className="group flex items-center gap-1.5 rounded-lg bg-slate-50 hover:bg-teal-50 hover:border-teal-300 border border-slate-200 px-2.5 py-1.5 text-xs transition-colors text-left"
+                                title={`Jump to next ${shift.dayLabel} roster`}
+                              >
+                                <b className="text-slate-900 group-hover:text-teal-800">{shift.dayLabel}</b>
+                                <span className="text-slate-600">{shift.startTime}–{shift.endTime}</span>
+                                <span className="text-[10px] text-teal-700 font-semibold">({shift.chamber})</span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-[11px] text-slate-400 font-medium">
+                        {doc.shifts.length} weekly recurring session{doc.shifts.length === 1 ? "" : "s"}
+                      </span>
+                      {doc.shifts.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => jumpToShiftDay(doc.shifts[0].weekday)}
+                          className="text-xs font-bold text-teal-600 hover:text-teal-700 hover:underline"
+                        >
+                          View {doc.shifts[0].dayLabel} Roster ➔
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
       <section className="doctor-import">
         <header>
           <div>

@@ -75,6 +75,7 @@ export async function GET(request: Request) {
     { data: dispatches },
     { data: departmentLinks },
     { data: exceptions },
+    { data: allResources },
   ] = await Promise.all([
     supabase
       .from("availability_rules")
@@ -115,6 +116,14 @@ export async function GET(request: Request) {
       .eq("status", "active")
       .lt("starts_at", dayEnd)
       .gt("ends_at", dayStart),
+    supabase
+      .from("booking_resources")
+      .select(
+        "id,name,active,location:business_locations(id,name),provider_profiles(specialization,contact_phone,contact_email,queue_notifications_enabled),availability_rules(id,location_id,weekday,start_time,end_time,slot_interval_minutes,location:business_locations(id,name))",
+      )
+      .eq("organization_id", organization.id)
+      .eq("resource_type", "doctor")
+      .order("name"),
   ]);
   const typedRules = (rules ?? []) as unknown as AvailabilityRecord[];
   const typedDispatches = (dispatches ?? []) as unknown as DispatchRecord[];
@@ -233,11 +242,47 @@ export async function GET(request: Request) {
         ]
       : []),
   ]);
+
+  const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const consultants = ((allResources ?? []) as any[]).map((res) => {
+    const profile = Array.isArray(res.provider_profiles) ? res.provider_profiles[0] : res.provider_profiles;
+    const rulesList = (res.availability_rules ?? []) as any[];
+    const sortedRules = [...rulesList].sort(
+      (a, b) => a.weekday - b.weekday || String(a.start_time).localeCompare(String(b.start_time)),
+    );
+
+    const shifts = sortedRules.map((r: any) => ({
+      id: r.id,
+      weekday: r.weekday,
+      dayLabel: DAY_LABELS[r.weekday] ?? `Day ${r.weekday}`,
+      startTime: String(r.start_time).slice(0, 5),
+      endTime: String(r.end_time).slice(0, 5),
+      slotMinutes: r.slot_interval_minutes,
+      chamber: r.location?.name ?? res.location?.name ?? "Chamber",
+    }));
+
+    const chambers = [...new Set(shifts.map((s) => s.chamber))];
+
+    return {
+      id: res.id,
+      name: res.name,
+      specialization: profile?.specialization ?? "General",
+      phone: profile?.contact_phone ?? "",
+      email: profile?.contact_email ?? "",
+      queueEnabled: Boolean(profile?.queue_notifications_enabled),
+      active: res.active,
+      chambers: chambers.length > 0 ? chambers : [res.location?.name ?? "Main Clinic"],
+      shifts,
+      scheduleSummary: shifts.map((s) => `${s.dayLabel} (${s.startTime}–${s.endTime}) · ${s.chamber}`).join(" | ") || "No weekly recurring shifts configured",
+    };
+  });
+
   return NextResponse.json({
     date: requested,
     updatedAt: new Date().toISOString(),
     rows,
     departments,
     alerts,
+    consultants,
   });
 }
