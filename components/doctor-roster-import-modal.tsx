@@ -270,7 +270,7 @@ export function DoctorRosterImportModal({
           rows: rows.map((r) => ({
             doctor_name: r.doctor_name,
             specialization: r.specialization,
-            department: r.department || r.specialization,
+            department: null,
             contact_phone: r.contact_phone,
             contact_email: r.contact_email,
             chamber: r.chamber,
