@@ -103,27 +103,29 @@ export default async function DashboardPage() {
       </section>
 
       {/* 2. STAT CARDS */}
-      {[
-        ["Appointments", "0", "Connect WhatsApp to begin", CalendarDays, "text-slate-900", "bg-blue-50 text-blue-600"],
-        ["Locations", String(locationCount ?? 0), "Ready for availability rules", MapPin, "text-slate-900", "bg-teal-50 text-teal-600"],
-        ["Needs staff attention", "0", "No unresolved action", CircleAlert, "text-rose-600", "bg-rose-50 text-rose-600"],
-        ["WhatsApp delivery", "—", "Connect a channel to monitor delivery", ShieldCheck, "text-slate-900", "bg-indigo-50 text-indigo-600"],
-      ].map(([label, value, detail, Icon, valueClass, iconBg]) => (
-        <div key={label as string} className="group relative overflow-hidden rounded-[1.5rem] bg-white p-7 shadow-sm ring-1 ring-slate-200 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50 hover:ring-slate-300 cursor-default">
-          <div className="absolute right-0 top-0 h-40 w-40 -translate-y-20 translate-x-20 rounded-full bg-slate-50 opacity-50 transition-transform duration-700 ease-out group-hover:scale-150" />
-          <div className="relative flex items-center justify-between">
-            <h3 className="text-xs font-bold text-slate-500 tracking-widest uppercase">{label}</h3>
-            <div className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-300 ${iconBg}`}>
-              {/* @ts-ignore */}
-              <Icon className="size-5" />
+      <section className="xl:col-span-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          ["Appointments", "0", "Connect WhatsApp to begin", CalendarDays, "text-slate-900", "bg-blue-50 text-blue-600"],
+          ["Locations", String(locationCount ?? 0), "Ready for availability rules", MapPin, "text-slate-900", "bg-teal-50 text-teal-600"],
+          ["Needs staff attention", "0", "No unresolved action", CircleAlert, "text-rose-600", "bg-rose-50 text-rose-600"],
+          ["WhatsApp delivery", "—", "Connect a channel to monitor delivery", ShieldCheck, "text-slate-900", "bg-indigo-50 text-indigo-600"],
+        ].map(([label, value, detail, Icon, valueClass, iconBg]) => (
+          <div key={label as string} className="group relative overflow-hidden rounded-[1.5rem] bg-white p-7 shadow-sm ring-1 ring-slate-200 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50 hover:ring-slate-300 cursor-default">
+            <div className="absolute right-0 top-0 h-40 w-40 -translate-y-20 translate-x-20 rounded-full bg-slate-50 opacity-50 transition-transform duration-700 ease-out group-hover:scale-150" />
+            <div className="relative flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-500 tracking-widest uppercase">{label}</h3>
+              <div className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors duration-300 ${iconBg}`}>
+                {/* @ts-ignore */}
+                <Icon className="size-5" />
+              </div>
             </div>
+            <div className="relative mt-5">
+              <span className={`text-4xl font-extrabold tracking-tight ${valueClass}`}>{value}</span>
+            </div>
+            <p className="relative mt-3 text-sm text-slate-400 font-medium">{detail}</p>
           </div>
-          <div className="relative mt-5">
-            <span className={`text-4xl font-extrabold tracking-tight ${valueClass}`}>{value}</span>
-          </div>
-          <p className="relative mt-3 text-sm text-slate-400 font-medium">{detail}</p>
-        </div>
-      ))}
+        ))}
+      </section>
 
       {/* 3. OPERATIONS CALENDAR */}
       <section className="xl:col-span-3 overflow-hidden rounded-[1.5rem] bg-white shadow-sm ring-1 ring-slate-200">
