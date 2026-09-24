@@ -407,109 +407,109 @@ export function PatientDirectory({patients,appointments,encounters,prescriptions
     setRecording(mode==="record");setEditing(mode==="edit");setPrescribing(mode==="prescribe");setUploading(mode==="upload");setCreatingTask(mode==="task");setCreatingCarePlan(mode==="care_plan");if(mode==="care_plan")setCarePlanTemplate("custom");setManagingFamily(mode==="family");setError("");setNotice("");setIssuedPrescriptionId(null);
   }
 
-  return <main className="mx-auto grid max-w-[1400px] gap-6 pb-20 pt-6">
+  return <main className="mx-auto grid max-w-[1400px] gap-5 pb-16 pt-5">
     {/* 1. Hero Section - Refined Glassmorphism */}
-    <section className="relative overflow-hidden rounded-[28px] bg-[#021021] px-8 py-10 text-white shadow-2xl sm:px-12 xl:grid xl:grid-cols-[1fr_minmax(320px,.45fr)] xl:items-end xl:gap-10">
+    <section className="relative overflow-hidden rounded-2xl bg-[#021021] px-6 py-8 text-white shadow-xl sm:px-8 xl:grid xl:grid-cols-[1fr_minmax(280px,.4fr)] xl:items-end xl:gap-8">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(38,187,222,0.25),transparent_40%),radial-gradient(circle_at_0%_100%,rgba(51,198,221,0.15),transparent_40%)]" />
       <div className="absolute -left-12 -top-12 h-64 w-64 rounded-full bg-teal-500/20 blur-3xl" />
       <div className="absolute -bottom-12 -right-12 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl" />
       
       <div className="relative z-10">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-400/30 bg-teal-400/10 px-3 py-1 text-xs font-semibold tracking-wide text-teal-300 backdrop-blur-sm">PATIENT CRM</span>
-        <h1 className="mt-5 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl text-transparent bg-clip-text bg-gradient-to-r from-white via-teal-50 to-teal-100">Every patient, every visit, <br className="hidden sm:block"/>one trusted timeline.</h1>
-        <p className="mt-4 max-w-2xl text-lg font-medium leading-relaxed text-slate-300">Search contact details, review booking history and understand consent before any future communication.</p>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-400/30 bg-teal-400/10 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-teal-300 backdrop-blur-sm uppercase">PATIENT CRM</span>
+        <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl text-transparent bg-clip-text bg-gradient-to-r from-white via-teal-50 to-teal-100">Every patient, every visit, <br className="hidden sm:block"/>one trusted timeline.</h1>
+        <p className="mt-3 max-w-2xl text-base font-medium leading-relaxed text-slate-300">Search contact details, review booking history and understand consent before any future communication.</p>
       </div>
-      <div className="relative z-10 mt-8 xl:mt-0">
-        <label className="flex h-14 items-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-5 text-white shadow-inner backdrop-blur-md transition-all focus-within:border-teal-400/50 focus-within:bg-white/15">
-          <svg className="size-5 text-teal-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-          <input className="w-full bg-transparent text-base font-medium outline-none placeholder:text-slate-300/80" value={query} onChange={(event)=>setQuery(event.target.value)} placeholder="Search patient, phone, concern or PIN"/>
+      <div className="relative z-10 mt-6 xl:mt-0">
+        <label className="flex h-12 items-center gap-2.5 rounded-xl border border-white/20 bg-white/10 px-4 text-white shadow-inner backdrop-blur-md transition-all focus-within:border-teal-400/50 focus-within:bg-white/15">
+          <svg className="size-4 text-teal-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <input className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-slate-300/80" value={query} onChange={(event)=>setQuery(event.target.value)} placeholder="Search patient, phone, concern or PIN"/>
         </label>
       </div>
     </section>
 
     {/* 2. Premium Grid Metrics */}
-    <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      <article className="group relative overflow-hidden rounded-[24px] bg-white p-6 shadow-[0_4px_20px_#05234208] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_#0523420d] border border-slate-100">
+    <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <article className="group relative overflow-hidden rounded-2xl bg-white p-5 shadow-[0_4px_20px_#05234206] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_24px_#0523420a] border border-slate-100">
         <div className="flex items-center justify-between">
-          <div className="flex flex-col"><p className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Patient profiles</p><p className="mt-2 text-3xl font-extrabold text-slate-900">{patientRows.length}</p></div>
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-[18px] bg-blue-50 text-blue-600 transition-transform duration-300 group-hover:scale-110 group-hover:bg-blue-100"><Users className="size-7"/></div>
+          <div className="flex flex-col"><p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Patient profiles</p><p className="mt-1.5 text-2xl font-bold text-slate-900">{patientRows.length}</p></div>
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-transform duration-300 group-hover:scale-110 group-hover:bg-blue-100"><Users className="size-6"/></div>
         </div>
-        <div className="mt-5 border-t border-slate-50 pt-4"><p className="text-xs font-medium text-slate-500">Created from real appointments</p></div>
+        <div className="mt-4 border-t border-slate-50 pt-3"><p className="text-[11px] font-medium text-slate-500">Created from real appointments</p></div>
       </article>
 
-      <article className="group relative overflow-hidden rounded-[24px] bg-white p-6 shadow-[0_4px_20px_#05234208] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_#0523420d] border border-slate-100">
+      <article className="group relative overflow-hidden rounded-2xl bg-white p-5 shadow-[0_4px_20px_#05234206] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_24px_#0523420a] border border-slate-100">
         <div className="flex items-center justify-between">
-          <div className="flex flex-col"><p className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Visited patients</p><p className="mt-2 text-3xl font-extrabold text-slate-900">{visitedCount}</p></div>
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-[18px] bg-indigo-50 text-indigo-600 transition-transform duration-300 group-hover:scale-110 group-hover:bg-indigo-100"><Activity className="size-7"/></div>
+          <div className="flex flex-col"><p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Visited patients</p><p className="mt-1.5 text-2xl font-bold text-slate-900">{visitedCount}</p></div>
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 transition-transform duration-300 group-hover:scale-110 group-hover:bg-indigo-100"><Activity className="size-6"/></div>
         </div>
-        <div className="mt-5 border-t border-slate-50 pt-4"><p className="text-xs font-medium text-slate-500">With past booking history</p></div>
+        <div className="mt-4 border-t border-slate-50 pt-3"><p className="text-[11px] font-medium text-slate-500">With past booking history</p></div>
       </article>
 
-      <article className="group relative overflow-hidden rounded-[24px] bg-white p-6 shadow-[0_4px_20px_#05234208] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_#0523420d] border border-slate-100">
+      <article className="group relative overflow-hidden rounded-2xl bg-white p-5 shadow-[0_4px_20px_#05234206] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_24px_#0523420a] border border-slate-100">
         <div className="flex items-center justify-between">
-          <div className="flex flex-col"><p className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Upcoming visits</p><p className="mt-2 text-3xl font-extrabold text-slate-900">{followUps}</p></div>
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-[18px] bg-teal-50 text-teal-600 transition-transform duration-300 group-hover:scale-110 group-hover:bg-teal-100"><CalendarDays className="size-7"/></div>
+          <div className="flex flex-col"><p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Upcoming visits</p><p className="mt-1.5 text-2xl font-bold text-slate-900">{followUps}</p></div>
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 transition-transform duration-300 group-hover:scale-110 group-hover:bg-teal-100"><CalendarDays className="size-6"/></div>
         </div>
-        <div className="mt-5 border-t border-slate-50 pt-4"><p className="text-xs font-medium text-slate-500">Confirmed or awaiting action</p></div>
+        <div className="mt-4 border-t border-slate-50 pt-3"><p className="text-[11px] font-medium text-slate-500">Confirmed or awaiting action</p></div>
       </article>
 
-      <article className="group relative overflow-hidden rounded-[24px] bg-white p-6 shadow-[0_4px_20px_#05234208] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_#0523420d] border border-slate-100">
+      <article className="group relative overflow-hidden rounded-2xl bg-white p-5 shadow-[0_4px_20px_#05234206] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_24px_#0523420a] border border-slate-100">
         <div className="flex items-center justify-between">
-          <div className="flex flex-col"><p className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Follow-up queue</p><p className="mt-2 text-3xl font-extrabold text-slate-900">{followUpPatients}</p></div>
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-[18px] bg-amber-50 text-amber-600 transition-transform duration-300 group-hover:scale-110 group-hover:bg-amber-100"><ClockAlert className="size-7"/></div>
+          <div className="flex flex-col"><p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Follow-up queue</p><p className="mt-1.5 text-2xl font-bold text-slate-900">{followUpPatients}</p></div>
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 transition-transform duration-300 group-hover:scale-110 group-hover:bg-amber-100"><ClockAlert className="size-6"/></div>
         </div>
-        <div className="mt-5 border-t border-slate-50 pt-4"><p className={`text-xs font-medium ${overduePatients?'text-amber-600':'text-slate-500'}`}>{overduePatients?`${overduePatients} overdue and need action`:"No overdue follow-ups"}</p></div>
+        <div className="mt-4 border-t border-slate-50 pt-3"><p className={`text-[11px] font-medium ${overduePatients?'text-amber-600':'text-slate-500'}`}>{overduePatients?`${overduePatients} overdue and need action`:"No overdue follow-ups"}</p></div>
       </article>
 
-      <article className="group relative overflow-hidden rounded-[24px] bg-white p-6 shadow-[0_4px_20px_#05234208] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_#0523420d] border border-slate-100">
+      <article className="group relative overflow-hidden rounded-2xl bg-white p-5 shadow-[0_4px_20px_#05234206] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_24px_#0523420a] border border-slate-100">
         <div className="flex items-center justify-between">
-          <div className="flex flex-col"><p className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Staff care tasks</p><p className="mt-2 text-3xl font-extrabold text-slate-900">{openTaskCount}</p></div>
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-[18px] bg-rose-50 text-rose-600 transition-transform duration-300 group-hover:scale-110 group-hover:bg-rose-100"><ClipboardCheck className="size-7"/></div>
+          <div className="flex flex-col"><p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Staff care tasks</p><p className="mt-1.5 text-2xl font-bold text-slate-900">{openTaskCount}</p></div>
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 transition-transform duration-300 group-hover:scale-110 group-hover:bg-rose-100"><ClipboardCheck className="size-6"/></div>
         </div>
-        <div className="mt-5 border-t border-slate-50 pt-4"><p className={`text-xs font-medium ${overdueTaskCount?'text-rose-600':'text-slate-500'}`}>{overdueTaskCount?`${overdueTaskCount} overdue task${overdueTaskCount===1?"":"s"}`:"Clinic queue is on track"}</p></div>
+        <div className="mt-4 border-t border-slate-50 pt-3"><p className={`text-[11px] font-medium ${overdueTaskCount?'text-rose-600':'text-slate-500'}`}>{overdueTaskCount?`${overdueTaskCount} overdue task${overdueTaskCount===1?"":"s"}`:"Clinic queue is on track"}</p></div>
       </article>
 
-      <article className="group relative overflow-hidden rounded-[24px] bg-white p-6 shadow-[0_4px_20px_#05234208] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_#0523420d] border border-slate-100">
+      <article className="group relative overflow-hidden rounded-2xl bg-white p-5 shadow-[0_4px_20px_#05234206] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_24px_#0523420a] border border-slate-100">
         <div className="flex items-center justify-between">
-          <div className="flex flex-col"><p className="text-sm font-semibold tracking-wide text-slate-500 uppercase">Updates consent</p><p className="mt-2 text-3xl font-extrabold text-slate-900">{consented}</p></div>
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-[18px] bg-emerald-50 text-emerald-600 transition-transform duration-300 group-hover:scale-110 group-hover:bg-emerald-100"><ShieldCheck className="size-7"/></div>
+          <div className="flex flex-col"><p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Updates consent</p><p className="mt-1.5 text-2xl font-bold text-slate-900">{consented}</p></div>
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-transform duration-300 group-hover:scale-110 group-hover:bg-emerald-100"><ShieldCheck className="size-6"/></div>
         </div>
-        <div className="mt-5 border-t border-slate-50 pt-4"><p className="text-xs font-medium text-slate-500">Eligible for future broadcasts</p></div>
+        <div className="mt-4 border-t border-slate-50 pt-3"><p className="text-[11px] font-medium text-slate-500">Eligible for future broadcasts</p></div>
       </article>
     </section>
 
     {/* 3. Pilot Readiness Container */}
-    <section className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-teal-50 to-emerald-50 p-6 sm:p-8 shadow-sm border border-teal-100">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+    <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 p-5 sm:p-6 shadow-sm border border-teal-100">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="max-w-xl">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-100/80 px-2.5 py-1 text-[11px] font-bold tracking-widest text-teal-800 uppercase">Clinic Pilot Readiness</span>
-          <h3 className="mt-4 text-2xl font-extrabold text-teal-950 sm:text-3xl">{readyPatients} of {patientRows.length} patient journeys ready</h3>
-          <p className="mt-2.5 text-sm font-medium leading-relaxed text-teal-800/80">Checks profile data, the clinical visit, a prescription or document, the next care action and communication consent.</p>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-100/80 px-2 py-0.5 text-[10px] font-bold tracking-widest text-teal-800 uppercase">Clinic Pilot Readiness</span>
+          <h3 className="mt-3 text-xl font-bold text-teal-950 sm:text-2xl">{readyPatients} of {patientRows.length} patient journeys ready</h3>
+          <p className="mt-2 text-sm font-medium leading-relaxed text-teal-800/80">Checks profile data, the clinical visit, a prescription or document, the next care action and communication consent.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-          <div className="flex min-w-[120px] flex-col items-center justify-center rounded-[20px] bg-white/70 px-4 py-5 text-center shadow-sm backdrop-blur-md">
-            <span className="text-3xl font-black text-teal-900">{documentedVisits}</span><span className="mt-1 text-[11px] font-bold uppercase tracking-wider text-teal-700">Visits docs</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex min-w-[100px] flex-col items-center justify-center rounded-xl bg-white/70 px-3 py-4 text-center shadow-sm backdrop-blur-md">
+            <span className="text-2xl font-bold text-teal-900">{documentedVisits}</span><span className="mt-1 text-[10px] font-bold uppercase tracking-wider text-teal-700">Visits docs</span>
           </div>
-          <div className="flex min-w-[120px] flex-col items-center justify-center rounded-[20px] bg-white/70 px-4 py-5 text-center shadow-sm backdrop-blur-md">
-            <span className="text-3xl font-black text-teal-900">{activatedCarePlans}</span><span className="mt-1 text-[11px] font-bold uppercase tracking-wider text-teal-700">Care plans</span>
+          <div className="flex min-w-[100px] flex-col items-center justify-center rounded-xl bg-white/70 px-3 py-4 text-center shadow-sm backdrop-blur-md">
+            <span className="text-2xl font-bold text-teal-900">{activatedCarePlans}</span><span className="mt-1 text-[10px] font-bold uppercase tracking-wider text-teal-700">Care plans</span>
           </div>
-          <div className={`flex min-w-[120px] flex-col items-center justify-center rounded-[20px] px-4 py-5 text-center shadow-sm backdrop-blur-md transition-colors ${patientRows.length-readyPatients ? 'bg-orange-100/90 shadow-orange-100/50 border border-orange-200/50' : 'bg-white/70'}`}>
-            <span className={`text-3xl font-black ${patientRows.length-readyPatients ? 'text-orange-700' : 'text-teal-900'}`}>{patientRows.length-readyPatients}</span><span className={`mt-1 text-[11px] font-bold uppercase tracking-wider ${patientRows.length-readyPatients ? 'text-orange-700' : 'text-teal-700'}`}>Needs action</span>
+          <div className={`flex min-w-[100px] flex-col items-center justify-center rounded-xl px-3 py-4 text-center shadow-sm backdrop-blur-md transition-colors ${patientRows.length-readyPatients ? 'bg-orange-100/90 shadow-orange-100/50 border border-orange-200/50' : 'bg-white/70'}`}>
+            <span className={`text-2xl font-bold ${patientRows.length-readyPatients ? 'text-orange-700' : 'text-teal-900'}`}>{patientRows.length-readyPatients}</span><span className={`mt-1 text-[10px] font-bold uppercase tracking-wider ${patientRows.length-readyPatients ? 'text-orange-700' : 'text-teal-700'}`}>Needs action</span>
           </div>
         </div>
       </div>
     </section>
 
     {/* 4. Contact Table */}
-    <section className="flex flex-col rounded-[24px] bg-white shadow-[0_4px_24px_#05234208] border border-slate-100/80 overflow-hidden">
-      <header className="flex flex-col items-start justify-between gap-4 border-b border-slate-100 bg-slate-50/50 p-6 sm:flex-row sm:items-center">
+    <section className="flex flex-col rounded-2xl bg-white shadow-[0_4px_20px_#05234206] border border-slate-100/80 overflow-hidden">
+      <header className="flex flex-col items-start justify-between gap-4 border-b border-slate-100 bg-slate-50/50 p-5 sm:flex-row sm:items-center">
         <div>
-          <span className="text-[11px] font-bold tracking-widest text-slate-400 uppercase">Directory</span>
-          <h3 className="mt-1 text-2xl font-bold text-slate-900">{query||filter!=="all"?`${rows.length} matching patients`:`${rows.length} patients`}</h3>
+          <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">Directory</span>
+          <h3 className="mt-1 text-xl font-bold text-slate-900">{query||filter!=="all"?`${rows.length} matching patients`:`${rows.length} patients`}</h3>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/80 rounded-2xl">
+        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/80 rounded-[14px]">
           {['all', 'needs_action', 'follow_up', 'tasks', 'overdue', 'upcoming'].map((f) => (
-            <button key={f} onClick={() => setFilter(f as any)} className={`rounded-xl px-4 py-2 text-[13px] font-semibold transition-all duration-200 ${filter === f ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-900/5' : 'text-slate-500 hover:bg-slate-200/50 hover:text-slate-700'}`}>
+            <button key={f} onClick={() => setFilter(f as any)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${filter === f ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-900/5' : 'text-slate-500 hover:bg-slate-200/50 hover:text-slate-700'}`}>
                {f === 'needs_action' ? `Needs action ${patientRows.length-readyPatients||""}` :
                 f === 'follow_up' ? 'Follow-up' :
                 f === 'tasks' ? `Tasks ${openTaskCount||""}` :
@@ -521,35 +521,35 @@ export function PatientDirectory({patients,appointments,encounters,prescriptions
       </header>
       
       {rows.length===0?
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-slate-50 text-slate-400"><Users className="size-8"/></div>
-          <b className="mt-4 text-base text-slate-700">No patient profiles yet</b>
-          <span className="mt-1.5 max-w-sm text-sm text-slate-500">A profile is created automatically after the first public or manual appointment.</span>
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="flex size-14 items-center justify-center rounded-xl bg-slate-50 text-slate-400"><Users className="size-6"/></div>
+          <b className="mt-3 text-sm text-slate-700">No patient profiles yet</b>
+          <span className="mt-1.5 max-w-sm text-xs text-slate-500">A profile is created automatically after the first public or manual appointment.</span>
         </div>
       :
       <div className="overflow-x-auto">
-        <div className="grid min-w-[900px] grid-cols-[1.5fr_1fr_1.2fr_80px_140px] items-center gap-4 bg-slate-50/50 px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+        <div className="grid min-w-[850px] grid-cols-[1.5fr_1fr_1.2fr_70px_130px] items-center gap-4 bg-slate-50/50 px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
           <span>Patient</span><span>Contact</span><span>Latest concern</span><span>Visits</span><span>Journey status</span>
         </div>
         <div className="flex flex-col divide-y divide-slate-100">
           {rows.map((patient)=>{
             const visits=patientAppointments.get(patient.id)??[];
             const journey=patientJourneys.get(patient.id)!;
-            return <button onClick={()=>setActiveId(patient.id)} key={patient.id} className="grid min-w-[900px] grid-cols-[1.5fr_1fr_1.2fr_80px_140px] items-center gap-4 px-6 py-4 text-left transition-colors duration-200 hover:bg-slate-50/80">
-              <span className="flex items-center gap-4">
-                <i className="flex size-11 shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-[#0bc4e5] to-[#514eff] font-bold text-white shadow-sm overflow-hidden">
+            return <button onClick={()=>setActiveId(patient.id)} key={patient.id} className="grid min-w-[850px] grid-cols-[1.5fr_1fr_1.2fr_70px_130px] items-center gap-4 px-5 py-3 text-left transition-colors duration-200 hover:bg-slate-50/80">
+              <span className="flex items-center gap-3">
+                <i className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-[#0bc4e5] to-[#514eff] font-bold text-white shadow-sm overflow-hidden">
                   {patient.avatar_url?<img src={patient.avatar_url} alt="" className="size-full object-cover"/>:patient.full_name.slice(0,1).toUpperCase()}
                 </i>
-                <div className="flex flex-col"><b className="text-[14px] font-bold text-slate-900">{patient.full_name}</b><small className="mt-1 text-[13px] font-medium text-slate-500">{patient.age!=null?`${patient.age} yrs`:"Age N/A"}{patient.locality?` · ${patient.locality}`:""}</small></div>
+                <div className="flex flex-col"><b className="text-[13px] font-bold text-slate-900">{patient.full_name}</b><small className="mt-0.5 text-xs font-medium text-slate-500">{patient.age!=null?`${patient.age} yrs`:"Age N/A"}{patient.locality?` · ${patient.locality}`:""}</small></div>
               </span>
-              <span className="flex flex-col"><b className="text-[14px] font-bold text-slate-700">{patient.phone||"No phone"}</b><small className="mt-1 text-[13px] font-medium text-slate-500 truncate pr-2">{patient.email||"No email"}</small></span>
-              <span className="text-[14px] font-medium text-slate-600 line-clamp-2">{patient.health_concern||"Not specified"}</span>
-              <strong className="text-[15px] font-extrabold text-[#0785c1]">{visits.length}</strong>
-              <span className="flex flex-col items-start gap-1.5">
-                <b className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest ${journey.ready?"bg-[#e9faf2] text-[#087a54]":"bg-slate-100 text-slate-600"}`}>
+              <span className="flex flex-col"><b className="text-[13px] font-bold text-slate-700">{patient.phone||"No phone"}</b><small className="mt-0.5 text-xs font-medium text-slate-500 truncate pr-2">{patient.email||"No email"}</small></span>
+              <span className="text-[13px] font-medium text-slate-600 line-clamp-2">{patient.health_concern||"Not specified"}</span>
+              <strong className="text-[14px] font-extrabold text-[#0785c1]">{visits.length}</strong>
+              <span className="flex flex-col items-start gap-1">
+                <b className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest ${journey.ready?"bg-[#e9faf2] text-[#087a54]":"bg-slate-100 text-slate-600"}`}>
                   {journey.ready?"✓ ":""}{journey.nextAction}
                 </b>
-                <small className="text-[12px] font-medium text-slate-500">{journey.completed}/{journey.total} complete</small>
+                <small className="text-[11px] font-medium text-slate-500">{journey.completed}/{journey.total} complete</small>
               </span>
             </button>;
           })}
