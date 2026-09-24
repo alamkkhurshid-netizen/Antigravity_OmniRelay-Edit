@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, CalendarDays, CheckCircle2, CircleAlert, MapPin, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckCircle2, CircleAlert, MapPin, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
@@ -23,7 +23,7 @@ export default async function DashboardPage() {
   }
 
   const organization = organizations[0];
-  const [{ data: entitlements }, { count: locationCount }, { count: serviceCount }, { data: profile }] = await Promise.all([
+  const [{ data: entitlements }, { count: locationCount }, { count: doctorCount }, { count: serviceCount }, { data: profile }] = await Promise.all([
     supabase
       .from("entitlements")
       .select("plan_id,status,trial_ends_at,conversations_quota")
@@ -33,6 +33,11 @@ export default async function DashboardPage() {
       .from("business_locations")
       .select("id", { count: "exact", head: true })
       .eq("organization_id", organization.id),
+    supabase
+      .from("booking_resources")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organization.id)
+      .eq("resource_type", "doctor"),
     supabase.from("organization_services").select("id", { count: "exact", head: true }).eq("organization_id", organization.id).eq("booking_enabled", true),
     supabase.from("onboarding_profiles").select("primary_phone,email").eq("organization_id", organization.id).maybeSingle(),
   ]);
@@ -85,7 +90,7 @@ export default async function DashboardPage() {
             <span className="text-slate-600">•</span>
             <span>{businessCategory}</span>
             <span className="text-slate-600">•</span>
-            <span>{locationCount ?? 0} locations</span>
+            <span>{doctorCount ?? 0} doctors</span>
           </p>
         </div>
         
@@ -106,7 +111,7 @@ export default async function DashboardPage() {
       <section className="xl:col-span-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {[
           ["Appointments", "0", "Connect WhatsApp to begin", CalendarDays, "text-slate-900", "bg-blue-50 text-blue-600"],
-          ["Locations", String(locationCount ?? 0), "Ready for availability rules", MapPin, "text-slate-900", "bg-teal-50 text-teal-600"],
+          ["Doctors", String(doctorCount ?? 0), "Ready for appointment booking", UsersRound, "text-slate-900", "bg-teal-50 text-teal-600"],
           ["Needs staff attention", "0", "No unresolved action", CircleAlert, "text-rose-600", "bg-rose-50 text-rose-600"],
           ["WhatsApp delivery", "—", "Connect a channel to monitor delivery", ShieldCheck, "text-slate-900", "bg-indigo-50 text-indigo-600"],
         ].map(([label, value, detail, Icon, valueClass, iconBg]) => (
