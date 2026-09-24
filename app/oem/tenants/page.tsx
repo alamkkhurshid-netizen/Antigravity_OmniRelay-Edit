@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { Users, Search, MoreVertical, PowerOff } from "lucide-react";
+import { TenantFeaturesCell } from "./tenant-features-cell";
 
 type TenantOverview = {
   organization_id: string;
@@ -18,6 +19,10 @@ export default async function OemTenantsPage() {
   // Call the new RPC we created in the migration
   const { data: tenantsData } = await supabase.rpc("admin_get_tenant_overview");
   const tenants = (tenantsData || []) as TenantOverview[];
+
+  // Fetch extra config for toggles
+  const { data: orgsExtra } = await supabase.from("organizations").select("id, extra");
+  const extraMap = new Map(orgsExtra?.map(o => [o.id, o.extra]));
 
   return (
     <div className="space-y-6">
@@ -43,6 +48,7 @@ export default async function OemTenantsPage() {
               <tr>
                 <th className="px-6 py-4">Organization</th>
                 <th className="px-6 py-4">Plan / Status</th>
+                <th className="px-6 py-4">Features</th>
                 <th className="px-6 py-4">Messages</th>
                 <th className="px-6 py-4 text-right">Est. Rev (₹)</th>
                 <th className="px-6 py-4 text-right">Actions</th>
@@ -65,6 +71,12 @@ export default async function OemTenantsPage() {
                       </span>
                     </div>
                   </td>
+                  <td className="px-6 py-4">
+                    <TenantFeaturesCell 
+                      organizationId={tenant.organization_id} 
+                      initialGoogleSync={!!(extraMap.get(tenant.organization_id) as any)?.features?.google_calendar_sync} 
+                    />
+                  </td>
                   <td className="px-6 py-4 text-slate-400">
                     {tenant.total_messages.toLocaleString()}
                   </td>
@@ -84,7 +96,7 @@ export default async function OemTenantsPage() {
               
               {tenants.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
                     No tenants found.
                   </td>
                 </tr>
