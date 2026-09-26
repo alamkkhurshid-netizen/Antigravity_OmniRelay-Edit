@@ -15,27 +15,28 @@ export default async function RetailDashboard() {
 
   return (
     <div className="grid gap-6 pb-12">
-      <header className="flex flex-col gap-4 rounded-[1.4rem] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900 via-slate-900 to-black px-6 py-10 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-4">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/20 px-3 py-1 text-xs font-black tracking-widest text-indigo-300 ring-1 ring-indigo-400/30">
-              <Sparkles className="size-3.5" /> RETAIL AUTOMATION
-            </span>
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight sm:text-2xl">
-              Welcome to {businessName}
-            </h1>
-            <p className="mt-2 max-w-xl text-indigo-200">
-              Automate your catalog, accept orders directly on WhatsApp, and scale your customer support with AI. Select your operating scale to get started.
-            </p>
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-200">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <span className="font-semibold text-slate-900">Workspace</span>
+            <span className="text-slate-300">/</span>
+            <span>Retail Automation</span>
           </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/app/retail/orders"
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600/90 px-4 py-2.5 text-sm font-bold text-white shadow-sm ring-1 ring-inset ring-indigo-500 hover:bg-indigo-600 transition-colors"
-            >
-              <Package className="size-4" /> Open Order Pipeline
-            </Link>
-          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Welcome to {businessName}
+          </h1>
+          <p className="max-w-2xl text-sm text-slate-600">
+            Automate your catalog, accept orders directly on WhatsApp, and scale your customer support with AI.
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <Link
+            href="/app/retail/orders"
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition-colors"
+          >
+            <Package className="size-4" /> Open Order Pipeline
+          </Link>
         </div>
       </header>
 
