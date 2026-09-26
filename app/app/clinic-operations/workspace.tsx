@@ -375,95 +375,86 @@ export function ClinicOperationsWorkspace({ today }: { today: string }) {
 
   return (
     <div className="mx-auto grid max-w-7xl gap-5 pb-12">
-      <section className="grid gap-5 overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_82%_12%,rgba(51,198,221,.42),transparent_26%),linear-gradient(115deg,#06182e,#0b4263)] px-6 py-7 text-white shadow-[0_18px_48px_rgba(7,19,38,.14)] sm:px-6 xl:grid-cols-[1fr_auto] xl:items-end">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-black tracking-[.18em] text-teal-300">
-              MULTI-DOCTOR OPERATIONS
-            </span>
-            <span className="rounded-md bg-teal-500/20 border border-teal-300/30 px-2 py-0.5 text-[11px] font-bold text-teal-200">
-              {dayInfo.weekdayName}, {dayInfo.formatted} {dayInfo.isToday && "· Today"}
-            </span>
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <span className="font-semibold text-slate-900">Clinic Operations</span>
+            <span className="text-slate-300">/</span>
+            <span>Roster & Bookings</span>
           </div>
-          <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-2xl">
-            {dayInfo.isToday ? "Today’s" : `${dayInfo.weekdayName}’s`} roster and live bookings
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            {dayInfo.isToday ? "Today" : dayInfo.weekdayName}, {dayInfo.formatted}
           </h1>
-          <p className="mt-3 max-w-2xl text-base leading-7 text-slate-200">
-            One operational view across departments, visiting doctors, chambers,
-            shifts and patient flow.
-          </p>
-
-          {/* Quick Date Stepper Navigation */}
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 rounded-xl bg-white/10 p-1 backdrop-blur-md border border-white/10">
-              <button
-                type="button"
-                onClick={() => changeDay(-1)}
-                className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-100 hover:bg-white/20 transition-colors"
-                title="Previous Day"
-              >
-                ◀ Prev Day
-              </button>
-              <button
-                type="button"
-                onClick={() => setDate(today)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                  date === today
-                    ? "bg-teal-400 text-slate-950 shadow-sm"
-                    : "text-white hover:bg-white/20"
-                }`}
-              >
-                Today
-              </button>
-              <button
-                type="button"
-                onClick={() => changeDay(1)}
-                className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-100 hover:bg-white/20 transition-colors"
-                title="Next Day"
-              >
-                Next Day ▶
-              </button>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-teal-200 font-semibold bg-white/5 rounded-xl px-3 py-2 border border-white/10">
-              <span>Date:</span>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => changeDay(-1)}
+              className="rounded-md px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+            >
+              Previous
+            </button>
+            <div className="w-px h-4 bg-slate-200 mx-1" />
+            <button
+              type="button"
+              onClick={() => setDate(today)}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                date === today
+                  ? "bg-slate-100 text-slate-900 font-semibold"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              Today
+            </button>
+            <div className="w-px h-4 bg-slate-200 mx-1" />
+            <button
+              type="button"
+              onClick={() => changeDay(1)}
+              className="rounded-md px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+            >
+              Next
+            </button>
+            <div className="w-px h-4 bg-slate-200 mx-1" />
+            <div className="flex items-center px-2">
               <input
                 type="date"
                 value={date}
                 onChange={(event) => setDate(event.target.value)}
-                className="rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-slate-900 shadow-sm"
+                className="text-xs font-medium text-slate-600 bg-transparent outline-none cursor-pointer"
               />
             </div>
           </div>
-        </div>
 
-        <div className="flex flex-wrap items-end gap-2">
-          <DoctorRosterImportModal
-            triggerClassName="inline-flex min-h-10 items-center gap-2 rounded-xl bg-teal-500 hover:bg-teal-400 px-3.5 text-sm font-bold text-slate-900 transition-colors shadow-sm"
-            triggerLabel="Upload Doctor Roster (CSV)"
-            onSuccess={() => loadRoster()}
-          />
+          <div className="h-6 w-px bg-slate-200 hidden md:block" />
+
+          <select
+            value={departmentFilter}
+            onChange={(event) => setDepartmentFilter(event.target.value)}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all cursor-pointer"
+          >
+            <option value="">All departments</option>
+            {departments.map((item) => (
+              <option key={item}>{item}</option>
+            ))}
+          </select>
+          
           <button
             type="button"
-            className="inline-flex min-h-10 items-center rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 px-3 text-xs font-bold text-white transition-colors"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
             onClick={runPreDispatchCheck}
           >
             Pre-dispatch check
           </button>
-          <label className="text-xs font-bold text-slate-200">
-            Department
-            <select
-              value={departmentFilter}
-              onChange={(event) => setDepartmentFilter(event.target.value)}
-              className="mt-1 block min-h-10 rounded-xl bg-white px-3 text-xs font-bold text-slate-900 shadow-sm"
-            >
-              <option value="">All departments</option>
-              {departments.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </select>
-          </label>
+
+          <DoctorRosterImportModal
+            triggerClassName="inline-flex items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 transition-all focus:ring-2 focus:ring-slate-900 focus:ring-offset-1"
+            triggerLabel="Upload Roster"
+            onSuccess={() => loadRoster()}
+          />
         </div>
-      </section>
+      </header>
 
       {/* View Switcher Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
