@@ -11,7 +11,7 @@ export default async function ActionCentrePage() {
   const canManageNotifications = ["owner", "admin"].includes(String((actor?.extra as Record<string, unknown> | null)?.role ?? "member"));
   const since = isoBeforeNow(30 * 24 * 60 * 60 * 1000);
 
-  const [{ data: careRuns }, { data: appointmentRuns }, { data: tasks }, { data: deployments }, { data: bookingRequests }, {data:waitlist}, {data:disruptions}, {data:emergencyRecipients}, {data:assignments}, {data:readinessChecks}, {data:pilotControl}] = await Promise.all([
+  const [{ data: careRuns }, { data: appointmentRuns }, { data: tasks }, { data: deployments }, { data: bookingRequests }, {data:waitlist}, {data:disruptions}, {data:emergencyRecipients}, {data:assignments}, {data:readinessChecks}, {data:pilotControl}, {data: aiDrafts}] = await Promise.all([
     supabase.from("care_reminder_runs")
       .select("id,status,scheduled_for,attempt_count,max_attempts,failure_reason,channel,patient:patient_profiles(full_name,phone,care_communications_consent),reminder:care_reminders(title,reminder_type,approval_mode)")
       .eq("organization_id", organization.id).gte("scheduled_for", since).order("scheduled_for", { ascending: false }).limit(300),
