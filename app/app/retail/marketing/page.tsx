@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, Target, Database, Rss, AlertCircle } from "lucide-react";
 import { getWorkspace } from "@/lib/workspace";
+import { CapiExplanation } from "./capi-explanation";
 
 export default async function MarketingAutopilotPage() {
   const { supabase, organization } = await getWorkspace();
@@ -62,6 +63,7 @@ export default async function MarketingAutopilotPage() {
               ? "OmniRelay is actively syncing your completed Kanban orders back to Facebook to train the algorithm."
               : "Please enter your Meta Pixel ID and Access Token to enable server-side tracking."}
           </div>
+          <CapiExplanation />
         </div>
 
         {/* Catalog Sync */}
