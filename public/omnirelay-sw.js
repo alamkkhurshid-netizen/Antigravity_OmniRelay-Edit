@@ -1,40 +1,15 @@
 /*
  * OmniRelay PWA service worker.
- * - Caches the offline fallback page on install.
- * - Serves the offline page when the network is unavailable.
  * - Handles Web Push notifications.
+ * - No patient or workspace response is cached here.
  */
-const OFFLINE_CACHE = "omnirelay-offline-v1";
-const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(OFFLINE_CACHE).then((cache) => cache.add(OFFLINE_URL))
-  );
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((names) =>
-      Promise.all(
-        names
-          .filter((name) => name !== OFFLINE_CACHE)
-          .map((name) => caches.delete(name))
-      )
-    ).then(() => self.clients.claim())
-  );
-});
-
-self.addEventListener("fetch", (event) => {
-  // Only handle navigation requests (page loads)
-  if (event.request.mode === "navigate") {
-    event.respondWith(
-      fetch(event.request).catch(() =>
-        caches.match(OFFLINE_URL)
-      )
-    );
-  }
+  event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener("push", (event) => {
