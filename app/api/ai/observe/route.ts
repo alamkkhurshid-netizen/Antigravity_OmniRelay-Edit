@@ -56,23 +56,15 @@ export async function POST(req: Request) {
       Return your analysis strictly adhering to the JSON schema provided.
     `;
 
-    // 3. Call Gemini 1.5 Flash (with fallback to 1.0 Pro if 1.5 is regionally restricted)
-    let result;
-    try {
-      const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: responseSchema,
-        }
-      });
-      result = await model.generateContent(prompt);
-    } catch (err: any) {
-      console.warn("gemini-1.5-flash failed (likely region or key restriction). Falling back to gemini-pro:", err.message);
-      const fallbackModel = genAI.getGenerativeModel({ model: "gemini-pro" });
-      const fallbackPrompt = prompt + "\n\nCRITICAL: You MUST return ONLY valid JSON matching the requested schema. Do not include markdown formatting.";
-      result = await fallbackModel.generateContent(fallbackPrompt);
-    }
+    // 3. Call Gemini Flash Latest (future-proof model alias)
+    const model = genAI.getGenerativeModel({
+      model: "gemini-flash-latest",
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: responseSchema,
+      }
+    });
+    const result = await model.generateContent(prompt);
 
     let responseText = result.response.text();
     
