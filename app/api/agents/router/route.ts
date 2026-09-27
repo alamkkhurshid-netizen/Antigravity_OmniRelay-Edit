@@ -26,19 +26,50 @@ export async function POST(req: Request) {
     if (apiKey) {
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", generationConfig: { responseMimeType: "application/json" } });
+      const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
 
+      // 1. Generate embedding for the user's message
+      const embedResult = await embeddingModel.embedContent(payload.message || "");
+      const queryEmbedding = embedResult.embedding.values;
+
+      // 2. Perform Vector Search (RAG) in Supabase
+      // Using the Supabase Service Key to bypass RLS in the edge function if necessary, or rely on RLS if authenticated
+      // We will assume the service key is available for system-level RAG lookups
+      const serviceKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+      let ragContext = "No relevant knowledge base documents found.";
+      
+      if (serviceKey) {
+        const adminSupabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", serviceKey);
+        const { data: matchedDocs, error: matchError } = await adminSupabase.rpc('match_documents', {
+          query_embedding: queryEmbedding,
+          match_threshold: 0.5,
+          match_count: 5,
+          p_organization_id: orgId
+        });
+
+        if (!matchError && matchedDocs && matchedDocs.length > 0) {
+          ragContext = matchedDocs.map((doc: any) => doc.content).join("\n\n---\n\n");
+        }
+      }
+
+      // 3. Inject RAG context into the Gemini Prompt
       const prompt = `
-        You are the OmniRelay AI Router.
-        Analyze the following incoming event and determine the appropriate action.
+        You are the OmniRelay AI Customer Support & Sales Agent.
+        Analyze the incoming user message and generate a response based strictly on the provided Knowledge Base context.
+        
+        Knowledge Base Context:
+        ${ragContext}
+        
+        Incoming Event:
         Source: ${source}
         Event Type: ${event_type}
-        Payload: ${JSON.stringify(payload)}
+        User Message: ${JSON.stringify(payload)}
 
         Return a JSON object matching this schema:
         {
           "agent_role": "Customer Support | Sales | Clinical",
           "proposed_action": "Short description of what the AI wants to do",
-          "draft_payload": { "text": "The actual message you want to send" }
+          "draft_payload": { "text": "The exact message to reply to the user based on the knowledge base" }
         }
       `;
 
