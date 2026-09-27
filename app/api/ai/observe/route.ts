@@ -56,9 +56,9 @@ export async function POST(req: Request) {
       Return your analysis strictly adhering to the JSON schema provided.
     `;
 
-    // 3. Call Gemini 1.5 Pro
+    // 3. Call Gemini 1.5 Flash
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-pro",
+      model: "gemini-1.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: responseSchema,
