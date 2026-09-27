@@ -2,14 +2,6 @@ import { GoogleGenerativeAI, SchemaType, Schema } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
-// Initialize Supabase with the secure Service Role Key (bypasses RLS)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 // Define the exact JSON schema we want Gemini to return
 const responseSchema: Schema = {
   type: SchemaType.OBJECT,
@@ -39,6 +31,11 @@ const responseSchema: Schema = {
 
 export async function POST(req: Request) {
   try {
+    // Initialize clients INSIDE the handler so Next.js build doesn't crash from missing env variables
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+    const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", supabaseKey);
+
     // 1. Receive the raw error payload from the Observer (frontend or backend error boundary)
     const errorPayload = await req.json();
 
@@ -59,9 +56,9 @@ export async function POST(req: Request) {
       Return your analysis strictly adhering to the JSON schema provided.
     `;
 
-    // 3. Call Gemini 2.5 Pro
+    // 3. Call Gemini 1.5 Pro
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-pro",
+      model: "gemini-1.5-pro",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: responseSchema,
