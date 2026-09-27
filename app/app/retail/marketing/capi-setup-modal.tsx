@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Script from "next/script";
 import { Key, ShieldCheck, CheckCircle2, ChevronRight, X } from "lucide-react";
+
+declare global {
+  interface Window {
+    FB: any;
+  }
+}
 
 const FacebookIcon = ({ className, fill }: { className?: string; fill?: string }) => (
   <svg
@@ -20,7 +27,7 @@ const FacebookIcon = ({ className, fill }: { className?: string; fill?: string }
   </svg>
 );
 
-export function CapiSetupModal() {
+export function CapiSetupModal({ metaAppId }: { metaAppId?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"choose" | "manual" | "oauth">("choose");
   
@@ -46,16 +53,32 @@ export function CapiSetupModal() {
   };
 
   const handleOauthConnect = () => {
+    if (!metaAppId) {
+      alert("Error: Meta App ID is missing from environment variables.");
+      return;
+    }
+    
+    if (typeof window === "undefined" || !window.FB) {
+      alert("Facebook SDK is loading or blocked. Please try again in a moment.");
+      return;
+    }
+
     setIsOauthConnecting(true);
-    // Simulate OAuth popup flow
-    setTimeout(() => {
+    
+    window.FB.login((response: any) => {
       setIsOauthConnecting(false);
-      setOauthSuccess(true);
-      setTimeout(() => {
-        setIsOpen(false);
-        // window.location.reload();
-      }, 1500);
-    }, 2000);
+      if (response.authResponse) {
+        setOauthSuccess(true);
+        // Here we would securely send response.authResponse.accessToken to our backend
+        setTimeout(() => {
+          setIsOpen(false);
+          setOauthSuccess(false);
+        }, 3000);
+      } else {
+        // User cancelled or failed
+        console.warn('User cancelled login or did not fully authorize.');
+      }
+    }, { scope: 'ads_management,business_management', config_id: process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID });
   };
 
   const closeModal = () => {
@@ -67,6 +90,23 @@ export function CapiSetupModal() {
 
   return (
     <>
+      {metaAppId && (
+        <Script 
+          src="https://connect.facebook.net/en_US/sdk.js" 
+          strategy="lazyOnload" 
+          onLoad={() => {
+            if (window.FB) {
+              window.FB.init({
+                appId: metaAppId,
+                cookie: true,
+                xfbml: true,
+                version: 'v20.0'
+              });
+            }
+          }}
+        />
+      )}
+      
       <button 
         onClick={() => setIsOpen(true)}
         className="mt-4 flex items-center justify-center gap-2 w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition-colors"

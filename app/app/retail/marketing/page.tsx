@@ -64,7 +64,7 @@ export default async function MarketingAutopilotPage() {
               ? "OmniRelay is actively syncing your completed Kanban orders back to Facebook to train the algorithm."
               : "Please connect your Meta account to enable server-side tracking."}
           </div>
-          <CapiSetupModal />
+          <CapiSetupModal metaAppId={process.env.NEXT_PUBLIC_META_APP_ID} />
           <CapiExplanation />
         </div>
 
