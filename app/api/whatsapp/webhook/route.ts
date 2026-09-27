@@ -63,6 +63,58 @@ async function adminUpdate(providerMessageId:string,status:string,timestamp?:str
   }
 }
 
+// Intercept Super CTO approvals from the founder
+async function processSuperCtoApproval(from: string, messageBody: string) {
+  const founderNumber = process.env.FOUNDER_WHATSAPP_NUMBER;
+  if (!founderNumber || from !== founderNumber) return false;
+
+  const match = messageBody.trim().match(/^APPROVE\s+([a-zA-Z0-9-]+)$/i);
+  if (!match) return false;
+
+  const queueId = match[1];
+  const secret = process.env.SUPABASE_SECRET_KEY;
+  if (!secret) return true;
+
+  try {
+    // Mark as approved in Supabase
+    const res = await fetch(`${supabaseUrl}/rest/v1/ai_governance_queue?id=eq.${encodeURIComponent(queueId)}`, {
+      method: "PATCH",
+      headers: { 
+        "Content-Type": "application/json", 
+        apikey: secret, 
+        Authorization: `Bearer ${secret}`,
+        Prefer: "return=representation"
+      },
+      body: JSON.stringify({ status: "approved" })
+    });
+
+    if (res.ok) {
+      console.log(`[Super CTO] Patch ${queueId} approved by founder! Triggering deployment...`);
+      // TODO: Trigger Vercel Deploy Hook or GitHub Action here
+      
+      // Send confirmation back to founder
+      const phoneNumberId = process.env.WHATSAPP_PHONE_ID;
+      const systemToken = process.env.WHATSAPP_SYSTEM_TOKEN;
+      if (phoneNumberId && systemToken) {
+        await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${systemToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            to: founderNumber,
+            type: "text",
+            text: { body: `✅ Patch ${queueId} has been approved! The deployment engine has been triggered.` }
+          })
+        });
+      }
+    }
+  } catch (err) {
+    console.error("[Super CTO] Failed to process approval:", err);
+  }
+
+  return true; // We handled it, don't forward to Hermes
+}
+
 // Forward inbound customer messages to the Hermes Agent via the internal router
 async function forwardInboundMessage(
   from: string, 
@@ -197,6 +249,10 @@ export async function POST(request:Request) {
 
         // Extract deep link ref from Meta Ad click-throughs
         const ref = msg.referral?.ref;
+
+        // Check if this is a Super CTO approval from the founder
+        const isCtoCommand = await processSuperCtoApproval(msg.from, messageBody);
+        if (isCtoCommand) continue;
 
         // Forward to Hermes Agent for intent classification and response
         await forwardInboundMessage(msg.from, messageBody, msg.type, msg.from, profileName, ref);
