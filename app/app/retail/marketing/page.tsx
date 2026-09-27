@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, Target, Database, Rss, AlertCircle } from "lucide-react";
 import { getWorkspace } from "@/lib/workspace";
 import { CapiExplanation } from "./capi-explanation";
+import { CapiSetupModal } from "./capi-setup-modal";
 
 export default async function MarketingAutopilotPage() {
   const { supabase, organization } = await getWorkspace();
@@ -61,8 +62,9 @@ export default async function MarketingAutopilotPage() {
           <div className="mt-4 text-sm text-slate-600">
             {hasCapi 
               ? "OmniRelay is actively syncing your completed Kanban orders back to Facebook to train the algorithm."
-              : "Please enter your Meta Pixel ID and Access Token to enable server-side tracking."}
+              : "Please connect your Meta account to enable server-side tracking."}
           </div>
+          {!hasCapi && <CapiSetupModal />}
           <CapiExplanation />
         </div>
 
