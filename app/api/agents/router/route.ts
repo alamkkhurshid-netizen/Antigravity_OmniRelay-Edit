@@ -14,6 +14,23 @@ export async function POST(req: Request) {
 
     const orgId = profile.active_organization_id;
 
+    // --- OEM CONTROL & MONETIZATION LAYER ---
+    // Check if the tenant actually paid for / was granted the Premium AI Agent
+    const { data: orgData } = await supabase
+      .from('organizations')
+      .select('premium_support_agent_active')
+      .eq('id', orgId)
+      .single();
+
+    if (!orgData?.premium_support_agent_active) {
+      console.log(`[Router] Tenant ${orgId} attempted to use AI Support Agent without PRO tier.`);
+      return NextResponse.json({ 
+        success: false, 
+        error: "PRO Tier Required: The AI Support Lead is only available on premium plans. Please upgrade your workspace." 
+      }, { status: 403 });
+    }
+    // ----------------------------------------
+
     // Parse incoming event
     const body = await req.json();
     const { source, event_type, payload } = body;
