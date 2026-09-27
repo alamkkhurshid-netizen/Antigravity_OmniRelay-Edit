@@ -64,7 +64,7 @@ export default async function MarketingAutopilotPage() {
               ? "OmniRelay is actively syncing your completed Kanban orders back to Facebook to train the algorithm."
               : "Please connect your Meta account to enable server-side tracking."}
           </div>
-          {!hasCapi && <CapiSetupModal />}
+          <CapiSetupModal />
           <CapiExplanation />
         </div>
 
