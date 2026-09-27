@@ -1,7 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { Facebook, Key, ShieldCheck, CheckCircle2, ChevronRight, X } from "lucide-react";
+import { Key, ShieldCheck, CheckCircle2, ChevronRight, X } from "lucide-react";
+
+const FacebookIcon = ({ className, fill }: { className?: string; fill?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill={fill || "none"}
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+  </svg>
+);
 
 export function CapiSetupModal() {
   const [isOpen, setIsOpen] = useState(false);
@@ -89,7 +106,7 @@ export function CapiSetupModal() {
                     className="flex items-start gap-4 rounded-2xl border-2 border-blue-100 bg-blue-50/50 p-5 text-left transition-colors hover:border-blue-500 hover:bg-blue-50 group"
                   >
                     <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
-                      <Facebook className="size-6" fill="currentColor" />
+                      <FacebookIcon className="size-6" fill="currentColor" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
@@ -128,7 +145,7 @@ export function CapiSetupModal() {
                   {!oauthSuccess ? (
                     <>
                       <div className="flex size-16 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 mb-6">
-                        <Facebook className="size-8" fill="currentColor" />
+                        <FacebookIcon className="size-8" fill="currentColor" />
                       </div>
                       <h3 className="text-xl font-bold text-slate-900">Connect Meta Business Manager</h3>
                       <p className="mt-2 max-w-sm text-sm text-slate-500">
