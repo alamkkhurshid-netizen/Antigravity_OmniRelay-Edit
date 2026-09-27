@@ -43,6 +43,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing error payload" }, { status: 400 });
     }
 
+    const orgId = errorPayload.organization_id;
+    if (orgId) {
+      // --- OEM CONTROL & MONETIZATION LAYER ---
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('premium_cto_agent_active')
+        .eq('id', orgId)
+        .single();
+
+      if (!orgData?.premium_cto_agent_active) {
+        console.log(`[Super CTO] Tenant ${orgId} attempted to use AI CTO Agent without PRO tier.`);
+        return NextResponse.json({ 
+          success: false, 
+          error: "PRO Tier Required: The AI Super CTO is only available on premium plans. Please upgrade your workspace." 
+        }, { status: 403 });
+      }
+      // ----------------------------------------
+    }
+
     // 2. Formulate the System Prompt for the Super CTO Agent
     const prompt = `
       You are the OmniRelay "Super CTO" Autonomous Agent.
