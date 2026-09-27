@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, Schema, Type } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType, Schema } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -12,23 +12,24 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Define the exact JSON schema we want Gemini to return
 const responseSchema: Schema = {
-  type: Type.OBJECT,
+  type: SchemaType.OBJECT,
   properties: {
     diagnosis: {
-      type: Type.STRING,
+      type: SchemaType.STRING,
       description: "A clear, CTO-level explanation of what went wrong based on the error log and stack trace."
     },
     affected_files: {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
+      type: SchemaType.ARRAY,
+      items: { type: SchemaType.STRING },
       description: "List of file paths that need to be patched to fix this error."
     },
     proposed_patch: {
-      type: Type.STRING,
+      type: SchemaType.STRING,
       description: "The exact code diff or replacement code required to fix the issue."
     },
     risk_level: {
-      type: Type.STRING,
+      type: SchemaType.STRING,
+
       enum: ["low", "medium", "high"],
       description: "Assess the risk level of applying this patch."
     }
