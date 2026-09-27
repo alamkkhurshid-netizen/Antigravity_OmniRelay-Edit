@@ -20,9 +20,9 @@ export default async function OemTenantsPage() {
   const { data: tenantsData } = await supabase.rpc("admin_get_tenant_overview");
   const tenants = (tenantsData || []) as TenantOverview[];
 
-  // Fetch extra config for toggles
-  const { data: orgsExtra } = await supabase.from("organizations").select("id, extra");
-  const extraMap = new Map(orgsExtra?.map(o => [o.id, o.extra]));
+  // Fetch extra config and premium AI flags for toggles
+  const { data: orgsExtra } = await supabase.from("organizations").select("id, extra, premium_support_agent_active, premium_growth_agent_active, premium_cto_agent_active, premium_admin_agent_active");
+  const orgMap = new Map(orgsExtra?.map(o => [o.id, o]));
 
   return (
     <div className="space-y-6">
@@ -74,7 +74,10 @@ export default async function OemTenantsPage() {
                   <td className="px-6 py-4">
                     <TenantFeaturesCell 
                       organizationId={tenant.organization_id} 
-                      initialGoogleSync={!!(extraMap.get(tenant.organization_id) as any)?.features?.google_calendar_sync} 
+                      initialGoogleSync={!!(orgMap.get(tenant.organization_id) as any)?.extra?.features?.google_calendar_sync} 
+                      initialSupportAgent={!!(orgMap.get(tenant.organization_id) as any)?.premium_support_agent_active}
+                      initialCtoAgent={!!(orgMap.get(tenant.organization_id) as any)?.premium_cto_agent_active}
+                      initialGrowthAgent={!!(orgMap.get(tenant.organization_id) as any)?.premium_growth_agent_active}
                     />
                   </td>
                   <td className="px-6 py-4 text-slate-400">

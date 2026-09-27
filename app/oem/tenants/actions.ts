@@ -28,3 +28,25 @@ export async function toggleGoogleCalendarSync(organizationId: string, enabled: 
   revalidatePath("/oem/tenants");
   return { success: true };
 }
+
+export async function togglePremiumAgent(organizationId: string, agentType: 'support' | 'growth' | 'cto', enabled: boolean) {
+  const supabase = await createClient();
+  
+  const columnMap = {
+    'support': 'premium_support_agent_active',
+    'growth': 'premium_growth_agent_active',
+    'cto': 'premium_cto_agent_active'
+  };
+
+  const updatePayload = { [columnMap[agentType]]: enabled };
+
+  const { error } = await supabase
+    .from("organizations")
+    .update(updatePayload)
+    .eq("id", organizationId);
+
+  if (error) return { error: error.message };
+  
+  revalidatePath("/oem/tenants");
+  return { success: true };
+}
