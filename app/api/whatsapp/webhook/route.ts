@@ -90,7 +90,37 @@ async function processSuperCtoApproval(from: string, messageBody: string) {
 
     if (res.ok) {
       console.log(`[Super CTO] Patch ${queueId} approved by founder! Triggering deployment...`);
-      // TODO: Trigger Vercel Deploy Hook or GitHub Action here
+      
+      const updatedRows = await res.json();
+      const patchData = updatedRows[0];
+
+      // Trigger GitHub Action Deployment Engine
+      const githubRepo = process.env.GITHUB_REPO; // e.g. "username/repo"
+      const githubToken = process.env.GITHUB_PAT;
+      
+      if (githubRepo && githubToken && patchData) {
+        try {
+          await fetch(`https://api.github.com/repos/${githubRepo}/dispatches`, {
+            method: "POST",
+            headers: {
+              "Accept": "application/vnd.github.v3+json",
+              "Authorization": `token ${githubToken}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              event_type: "super-cto-deploy",
+              client_payload: {
+                queue_id: queueId,
+                affected_files: patchData.affected_files,
+                proposed_patch: patchData.proposed_patch
+              }
+            })
+          });
+          console.log(`[Super CTO] Successfully dispatched to GitHub Actions!`);
+        } catch (githubErr) {
+          console.error(`[Super CTO] Failed to trigger GitHub Action:`, githubErr);
+        }
+      }
       
       // Send confirmation back to founder
       const phoneNumberId = process.env.WHATSAPP_PHONE_ID;

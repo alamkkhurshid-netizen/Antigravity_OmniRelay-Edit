@@ -1,0 +1,90 @@
+name: Super CTO Auto-Deploy
+
+on:
+  repository_dispatch:
+    types: [super-cto-deploy]
+
+jobs:
+  apply-ai-patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Apply AI Patch
+        id: patch
+        run: |
+          # We write a tiny Node script to apply the patch directly to the file(s)
+          cat << 'EOF' > apply_patch.js
+          const fs = require('fs');
+          const path = require('path');
+          
+          // Read from the GitHub Actions event payload
+          const eventPath = process.env.GITHUB_EVENT_PATH;
+          const event = JSON.parse(fs.readFileSync(eventPath, 'utf8'));
+          const payload = event.client_payload;
+          
+          if (!payload || !payload.proposed_patch || !payload.affected_files) {
+            console.error("Missing payload data");
+            process.exit(1);
+          }
+
+          console.log(`Applying patch ${payload.queue_id}...`);
+          
+          // For MVP, if it's a direct replacement string or unified diff
+          // We will attempt to use simple replacement, or if it's complex, we'd use 'patch'
+          // Since Gemini generated this, we'll try to just overwrite the file for the exact function
+          // OR if it provided full file content, we overwrite. 
+          
+          // Note: In a production system, this script parses unified diffs using "diff" or "patch"
+          // For this MVP, if the AI provided full replacement code, we write it.
+          // Because Gemini's prompt requested the "exact code diff or replacement code", 
+          // we'll save the raw patch to a file and attempt to apply it via the standard GNU patch tool.
+          
+          fs.writeFileSync('ai_fix.patch', payload.proposed_patch);
+          console.log("Patch file saved.");
+          EOF
+          
+          node apply_patch.js
+          
+          # Attempt to apply the patch (if it's a valid unified diff)
+          # If it fails, it means the AI just output raw replacement code without diff syntax.
+          patch -p1 < ai_fix.patch || echo "Could not apply diff cleanly, manual review required."
+          
+          # Clean up
+          rm apply_patch.js ai_fix.patch || true
+
+      - name: Commit and Push Fix
+        run: |
+          git config --global user.name "Super CTO [Bot]"
+          git config --global user.email "cto@omnirelay.ai"
+          
+          # Create a new branch for the fix
+          BRANCH_NAME="super-cto-fix-${{ github.event.client_payload.queue_id }}"
+          git checkout -b $BRANCH_NAME
+          
+          git add .
+          git commit -m "fix: AI auto-patch ${{ github.event.client_payload.queue_id }}" || echo "No changes to commit"
+          git push origin $BRANCH_NAME
+
+      - name: Create Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH_NAME="super-cto-fix-${{ github.event.client_payload.queue_id }}"
+          gh pr create \
+            --title "🤖 Super CTO Fix: Patch ${{ github.event.client_payload.queue_id }}" \
+            --body "This PR was autonomously generated and approved via WhatsApp by the founder. 
+            
+            Queue ID: \`${{ github.event.client_payload.queue_id }}\`" \
+            --head $BRANCH_NAME \
+            --base main
