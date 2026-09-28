@@ -20,7 +20,7 @@ BEGIN
   PERFORM net.http_post(
     url := 'https://omnirelay-main.vercel.app/api/ai/notify',
     body := payload,
-    headers := '{"Content-Type": "application/json", "x-webhook-secret": "super_cto_secure_secret_123"}'::jsonb
+    headers := '{"Content-Type": "application/json", "x-webhook-secret": "123456"}'::jsonb
   );
   
   RETURN NEW;
