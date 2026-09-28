@@ -18,13 +18,24 @@ type TenantOverview = {
 export default async function OemTenantsPage() {
   const supabase = await createClient();
   
-  // Call the new RPC we created in the migration
-  const { data: tenantsData } = await supabase.rpc("admin_get_tenant_overview");
-  const tenants = (tenantsData || []) as TenantOverview[];
+  let tenantsData = null;
+  let orgsExtra = null;
+  let errorMsg = null;
 
-  // Fetch extra config and premium AI flags for toggles
-  const { data: orgsExtra } = await supabase.from("organizations").select("id, extra, premium_support_agent_active, premium_growth_agent_active, premium_cto_agent_active, premium_admin_agent_active");
-  const orgMap = new Map(orgsExtra?.map(o => [o.id, o]));
+  try {
+    const rpcRes = await supabase.rpc("admin_get_tenant_overview");
+    if (rpcRes.error) throw new Error("RPC Error: " + rpcRes.error.message);
+    tenantsData = rpcRes.data;
+
+    const orgRes = await supabase.from("organizations").select("id, extra, premium_support_agent_active, premium_growth_agent_active, premium_cto_agent_active, premium_admin_agent_active");
+    if (orgRes.error) throw new Error("Orgs Error: " + orgRes.error.message);
+    orgsExtra = orgRes.data;
+  } catch (err: any) {
+    errorMsg = err.message;
+  }
+
+  const tenants = (tenantsData || []) as TenantOverview[];
+  const orgMap = new Map(orgsExtra?.map((o: any) => [o.id, o]));
 
   return (
     <div className="space-y-6">
@@ -42,6 +53,12 @@ export default async function OemTenantsPage() {
           />
         </div>
       </header>
+
+      {errorMsg && (
+        <div className="rounded-xl border border-rose-900/50 bg-rose-950/30 p-4 text-rose-400 font-mono text-sm">
+          <strong>Backend Error:</strong> {errorMsg}
+        </div>
+      )}
 
       <div className="rounded-xl border border-slate-800 bg-slate-900/50 overflow-hidden">
         <div className="overflow-x-auto">
@@ -84,7 +101,7 @@ export default async function OemTenantsPage() {
                     />
                   </td>
                   <td className="px-6 py-4 text-slate-400">
-                    {tenant.total_messages.toLocaleString()}
+                    {tenant.total_messages?.toLocaleString?.() || "0"}
                   </td>
                   <td className="px-6 py-4 text-right font-medium text-slate-300">
                     {tenant.estimated_revenue_paise ? (tenant.estimated_revenue_paise / 100).toLocaleString("en-IN") : "0"}
