@@ -409,20 +409,31 @@ export function PatientDirectory({patients,appointments,encounters,prescriptions
 
   return <main className="mx-auto grid max-w-[1400px] gap-5 pb-16 pt-5">
     {/* 1. Hero Section - Refined Glassmorphism */}
-    <section className="relative overflow-hidden rounded-2xl bg-[#021021] px-6 py-6 text-white shadow-xl sm:px-6 xl:grid xl:grid-cols-[1fr_minmax(280px,.4fr)] xl:items-end xl:gap-6">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(38,187,222,0.25),transparent_40%),radial-gradient(circle_at_0%_100%,rgba(51,198,221,0.15),transparent_40%)]" />
-      <div className="absolute -left-12 -top-12 h-64 w-64 rounded-full bg-teal-500/20 blur-3xl" />
-      <div className="absolute -bottom-12 -right-12 h-64 w-64 rounded-full bg-blue-500/20 blur-3xl" />
+    <section className="relative flex flex-col gap-6 overflow-hidden rounded-2xl bg-slate-950 px-6 py-8 text-white shadow-xl sm:px-6 xl:grid xl:grid-cols-[1fr_minmax(280px,.4fr)] xl:items-end xl:gap-6 isolate">
+      {/* Ambient Orbs & Grain */}
+      <div className="absolute -top-32 -right-32 h-[30rem] w-[30rem] rounded-full bg-teal-500/20 blur-[120px] -z-10 pointer-events-none" />
+      <div className="absolute -bottom-32 -left-32 h-[30rem] w-[30rem] rounded-full bg-blue-600/20 blur-[120px] -z-10 pointer-events-none" />
+      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none -z-10" />
       
-      <div className="relative z-10">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-400/30 bg-teal-400/10 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-teal-300 backdrop-blur-sm uppercase">PATIENT CRM</span>
-        <h1 className="mt-4 text-2xl font-bold tracking-tight sm:text-2xl lg:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-white via-teal-50 to-teal-100">Every patient, every visit, <br className="hidden sm:block"/>one trusted timeline.</h1>
-        <p className="mt-3 max-w-2xl text-base font-medium leading-relaxed text-slate-300">Search contact details, review booking history and understand consent before any future communication.</p>
+      <div className="relative z-10 max-w-2xl">
+        <span className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-bold tracking-widest text-teal-400 ring-1 ring-inset ring-teal-500/20 uppercase">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-500"></span>
+          </span>
+          PATIENT CRM
+        </span>
+        <h1 className="mt-4 text-2xl sm:text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-slate-100 to-slate-400 leading-[1.15]">
+          Every patient, every visit, <br className="hidden sm:block"/>one trusted timeline.
+        </h1>
+        <p className="mt-4 text-sm sm:text-base text-slate-400 font-medium tracking-wide">
+          Search contact details, review booking history and understand consent before any future communication.
+        </p>
       </div>
       <div className="relative z-10 mt-6 xl:mt-0">
-        <label className="flex h-12 items-center gap-2.5 rounded-xl border border-white/20 bg-white/10 px-4 text-white shadow-inner backdrop-blur-md transition-all focus-within:border-teal-400/50 focus-within:bg-white/15">
-          <svg className="size-4 text-teal-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-          <input className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-slate-300/80" value={query} onChange={(event)=>setQuery(event.target.value)} placeholder="Search patient, phone, concern or PIN"/>
+        <label className="flex h-12 items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 px-4 text-white shadow-inner backdrop-blur-md transition-all focus-within:border-white/20 focus-within:bg-white/10">
+          <svg className="size-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <input className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-slate-400" value={query} onChange={(event)=>setQuery(event.target.value)} placeholder="Search patient, phone, concern or PIN"/>
         </label>
       </div>
     </section>

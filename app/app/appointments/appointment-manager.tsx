@@ -239,7 +239,35 @@ export function AppointmentManager({ organizationId, organizationName, businessC
   }
 
   return <section className="mx-auto grid max-w-7xl gap-5 pb-12">
-    <div className="grid gap-5 overflow-hidden rounded-2xl bg-[radial-gradient(circle_at_82%_12%,rgba(51,198,221,.42),transparent_26%),linear-gradient(115deg,#06182e,#0b4263)] px-6 py-7 text-white shadow-[0_18px_48px_rgba(7,19,38,.14)] sm:px-6 xl:grid-cols-[1fr_auto] xl:items-end"><div><span className="or-type-label text-teal-300">OPERATIONS CALENDAR</span><h1 className="or-type-page mt-3">Appointments</h1><p className="mt-3 max-w-2xl text-base leading-7 text-slate-200">Run the daily schedule, manage staff hours and resolve changes without double-booking.</p></div><div className="flex flex-wrap gap-2">{bookingSlug&&<><a className="inline-flex min-h-10 items-center rounded-xl bg-white/10 px-3 text-sm font-bold text-white hover:bg-white/20" href={`/book/${bookingSlug}`} target="_blank" rel="noreferrer">Open booking page</a><BookingShare slug={bookingSlug} whatsappNumber={whatsappNumber} businessName={organizationName} businessCategory={businessCategory}/></>}<button className="inline-flex min-h-10 items-center rounded-xl bg-white/10 px-3 text-sm font-bold text-white hover:bg-white/20" onClick={()=>setDisruptionOpen(!disruptionOpen)}>Emergency change</button><button className="inline-flex min-h-10 items-center rounded-xl bg-white/10 px-3 text-sm font-bold text-white hover:bg-white/20" onClick={()=>setAvailabilityOpen(!availabilityOpen)}>Availability</button><button className="inline-flex min-h-10 items-center rounded-xl bg-white px-3 text-sm font-bold text-primary hover:bg-slate-100" onClick={()=>setOpen(!open)} disabled={!ready}>{open?"Close":"+ New appointment"}</button></div></div>
+    <section className="relative flex flex-col gap-6 overflow-hidden rounded-2xl bg-slate-950 px-6 py-8 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between sm:px-8 isolate">
+      {/* Ambient Orbs & Grain */}
+      <div className="absolute -top-32 -right-32 h-[30rem] w-[30rem] rounded-full bg-teal-500/20 blur-[120px] -z-10 pointer-events-none" />
+      <div className="absolute -bottom-32 -left-32 h-[30rem] w-[30rem] rounded-full bg-blue-600/20 blur-[120px] -z-10 pointer-events-none" />
+      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none -z-10" />
+      
+      <div className="z-10 max-w-2xl">
+        <span className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-bold tracking-widest text-teal-400 ring-1 ring-inset ring-teal-500/20 uppercase">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-500"></span>
+          </span>
+          OPERATIONS CALENDAR
+        </span>
+        <h1 className="mt-4 text-2xl sm:text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-slate-100 to-slate-400 leading-[1.15]">
+          Appointments
+        </h1>
+        <p className="mt-4 text-sm sm:text-base text-slate-400 font-medium tracking-wide">
+          Run the daily schedule, manage staff hours and resolve changes without double-booking.
+        </p>
+      </div>
+      
+      <div className="flex flex-wrap items-center gap-3 z-10">
+        {bookingSlug&&<><a className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 text-[13px] font-bold text-white shadow-sm backdrop-blur-md transition-all hover:bg-white/10" href={`/book/${bookingSlug}`} target="_blank" rel="noreferrer">Open booking page</a><BookingShare slug={bookingSlug} whatsappNumber={whatsappNumber} businessName={organizationName} businessCategory={businessCategory}/></>}
+        <button className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 text-[13px] font-bold text-white shadow-sm backdrop-blur-md transition-all hover:bg-white/10" onClick={()=>setDisruptionOpen(!disruptionOpen)}>Emergency change</button>
+        <button className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 text-[13px] font-bold text-white shadow-sm backdrop-blur-md transition-all hover:bg-white/10" onClick={()=>setAvailabilityOpen(!availabilityOpen)}>Availability</button>
+        <button className="inline-flex min-h-10 items-center justify-center rounded-xl bg-gradient-to-r from-teal-400 to-blue-500 px-4 text-[13px] font-bold text-slate-950 shadow-[0_0_20px_rgba(45,212,191,0.25)] transition-all hover:from-teal-300 hover:to-blue-400 hover:scale-[1.02]" onClick={()=>setOpen(!open)} disabled={!ready}>{open?"Close":"+ New appointment"}</button>
+      </div>
+    </section>
     {!ready && <div className="form-message">Complete at least one location and service in <Link href="/app/settings">Business setup</Link>.</div>}
     {open && <form className="appointment-form" onSubmit={createAppointment}>
       <header><div><span className="app-eyebrow">NEW BOOKING</span><h3>Schedule an appointment</h3></div><span>Asia/Kolkata</span></header>

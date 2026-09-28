@@ -19,8 +19,38 @@ export default async function IntegrationsPage() {
   const approved=templates?.filter((item)=>item.status==="approved").length??0;
   const metaAppId=process.env.META_APP_ID??"973751725720667";
   const embeddedSignupConfigurationId=process.env.META_EMBEDDED_SIGNUP_CONFIG_ID;
-  return <section className="channel-page">
-    <header className="channel-hero"><div><span className="app-eyebrow">WHATSAPP DELIVERY</span><h2>Turn every booking event into a reliable patient message.</h2><p>OmniRelay owns the appointment state, reminder schedule and retry history. Meta Cloud API delivers approved templates without exposing privileged credentials to the browser.</p></div><i className={connected?"live":""}>{connected?connection.status:"READY TO CONNECT"}</i></header>
+  return <section className="mx-auto grid max-w-7xl gap-5 pb-12">
+    <header className="relative flex flex-col gap-6 overflow-hidden rounded-2xl bg-slate-950 px-6 py-8 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between sm:px-8 isolate mb-6">
+      {/* Ambient Orbs & Grain */}
+      <div className="absolute -top-32 -right-32 h-[30rem] w-[30rem] rounded-full bg-teal-500/20 blur-[120px] -z-10 pointer-events-none" />
+      <div className="absolute -bottom-32 -left-32 h-[30rem] w-[30rem] rounded-full bg-blue-600/20 blur-[120px] -z-10 pointer-events-none" />
+      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none -z-10" />
+      
+      <div className="z-10 max-w-2xl">
+        <span className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-bold tracking-widest text-teal-400 ring-1 ring-inset ring-teal-500/20 uppercase">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-500"></span>
+          </span>
+          WHATSAPP DELIVERY
+        </span>
+        <h2 className="mt-4 text-2xl sm:text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-slate-100 to-slate-400 leading-[1.15]">
+          Turn every booking event into a reliable patient message.
+        </h2>
+        <p className="mt-4 text-sm sm:text-base text-slate-400 font-medium tracking-wide">
+          OmniRelay owns the appointment state, reminder schedule and retry history. Meta Cloud API delivers approved templates without exposing privileged credentials to the browser.
+        </p>
+      </div>
+      
+      <div className="flex flex-wrap items-center gap-3 z-10">
+        <div className={`inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-[13px] font-bold text-white shadow-sm backdrop-blur-md`}>
+          <div className="flex flex-col text-right">
+            <span>{connected ? "Active Connection" : "Test Mode / Pending"}</span>
+            <span className={connected ? "text-teal-400" : "text-amber-400"}>{connected ? connection.status : "READY TO CONNECT"}</span>
+          </div>
+        </div>
+      </div>
+    </header>
     <div className="channel-metrics"><article><span>Connection</span><b>{connected?"Active":"Pending"}</b><small>{connection?.display_address||"Meta credentials required"}</small></article><article><span>Approved templates</span><b>{approved}/{templates?.length??0}</b><small>Meta-approved utility messages</small></article><article><span>Queued</span><b>{queued??0}</b><small>Waiting for delivery</small></article><article><span>Delivered to provider</span><b>{sent??0}</b><small>{failed??0} failed attempts</small></article></div>
     <WhatsAppConnect appId={metaAppId} configurationId={embeddedSignupConfigurationId} connected={connected} displayAddress={connection?.display_address} onboardingMode={(connection?.capabilities as {onboarding_mode?:string}|null)?.onboarding_mode}/>
     <section className="meta-onboarding-path"><header><div><span className="app-eyebrow">SMOOTH CLINIC ONBOARDING</span><h3>One guided Meta connection</h3></div><span>Recommended: Coexistence</span></header><div><article><i>1</i><b>Continue with Meta<small>Clinic owner signs in directly; OmniRelay never receives the Meta password.</small></b></article><article><i>2</i><b>Select the business<small>Choose the verified business portfolio and WhatsApp Business Account.</small></b></article><article><i>3</i><b>Keep the existing number<small>Where Meta marks it eligible, connect through Coexistence and retain the Business app.</small></b></article><article><i>4</i><b>Automatic verification<small>OmniRelay maps the tenant, subscribes webhooks and verifies the number before activation.</small></b></article></div><p><b>Existing WhatsApp Business app number:</b> choose Coexistence only when Meta offers it. If it is not offered, exit without changes and review eligibility; OmniRelay will never silently migrate or replace that number. <b>New spare SIM:</b> choose Meta&apos;s new-phone-number path instead—Coexistence is not required.</p></section>

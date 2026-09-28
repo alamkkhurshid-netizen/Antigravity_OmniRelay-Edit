@@ -71,7 +71,38 @@ export default async function ReadinessPage() {
   const testLabels: Record<string,string>={deposit_payment:"Deposit payment completion",commands_handoff:"STOP/START and human handoff",abandoned_recovery:"Abandoned booking recovery"};
   const multiDoctorLabels:Record<string,string>={clinic_mode:"Clinic operating mode",department_routing:"Department routing",provider_resolution:"Provider assignment",any_available_doctor:"Any available doctor",booking_safety:"Live slots and concurrency",payment_reschedule_cancel:"Payment and appointment management"};
 
-  return <main className="readiness-page"><section className={`readiness-hero ${launchReady ? "ready" : "blocked"}`}><div><span className="app-eyebrow">CLINIC PRODUCTION GATE</span><h2>{launchReady ? "Clinic pilot is cleared for controlled launch." : "Clinic launch still has open gates."}</h2><p>This control room combines live technical evidence with accountable owner sign-off. It does not mark a clinic ready based on assumptions.</p></div><aside><b>{readyCount}/{total}</b><span>gates ready</span><i>{launchReady ? "GO" : "HOLD"}</i></aside></section>
+  return <main className="mx-auto grid max-w-7xl gap-5 pb-12">
+    <section className="relative flex flex-col gap-6 overflow-hidden rounded-2xl bg-slate-950 px-6 py-8 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between sm:px-8 isolate mb-6">
+      {/* Ambient Orbs & Grain */}
+      <div className="absolute -top-32 -right-32 h-[30rem] w-[30rem] rounded-full bg-teal-500/20 blur-[120px] -z-10 pointer-events-none" />
+      <div className="absolute -bottom-32 -left-32 h-[30rem] w-[30rem] rounded-full bg-blue-600/20 blur-[120px] -z-10 pointer-events-none" />
+      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none -z-10" />
+      
+      <div className="z-10 max-w-2xl">
+        <span className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-bold tracking-widest text-teal-400 ring-1 ring-inset ring-teal-500/20 uppercase">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-500"></span>
+          </span>
+          CLINIC PRODUCTION GATE
+        </span>
+        <h2 className="mt-4 text-2xl sm:text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-slate-100 to-slate-400 leading-[1.15]">
+          {launchReady ? "Clinic pilot is cleared for controlled launch." : "Clinic launch still has open gates."}
+        </h2>
+        <p className="mt-4 text-sm sm:text-base text-slate-400 font-medium tracking-wide">
+          This control room combines live technical evidence with accountable owner sign-off. It does not mark a clinic ready based on assumptions.
+        </p>
+      </div>
+      
+      <div className="flex flex-wrap items-center gap-3 z-10">
+        <div className={`inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-[13px] font-bold text-white shadow-sm backdrop-blur-md`}>
+          <div className="flex flex-col text-right">
+            <span>{readyCount}/{total} gates ready</span>
+            <span className={launchReady ? "text-teal-400" : "text-slate-400"}>{launchReady ? "GO" : "HOLD"}</span>
+          </div>
+        </div>
+      </div>
+    </section>
     <section className="readiness-gates"><header><div><span className="app-eyebrow">AUTOMATIC EVIDENCE</span><h3>Live system checks</h3></div><span>{gates.filter((gate) => gate.ready).length}/{gates.length} passing</span></header><div>{gates.map((gate) => <article className={gate.ready ? "ready" : "blocked"} key={gate.title}><i>{gate.ready ? "✓" : "!"}</i><div><b>{gate.title}</b><span>{gate.detail}</span></div><Link href={gate.href}>{gate.ready ? "Review" : "Resolve"} →</Link></article>)}</div></section>
     <section className="readiness-rule"><b>Phase 1 closure direction</b><span>Prove one controlled patient lifecycle: WhatsApp booking, completed visit, care-plan or prescription handoff, named follow-up owner, and one consented reminder outcome. This records evidence only; it does not send messages or change patient records.</span></section>
     <ReadinessWorkspace initialChecks={manualChecks ?? []} lifecycleEvidence={lifecycleEvidence} evidenceHistory={(readinessAudit ?? []) as ReadinessAuditEvent[]}/>

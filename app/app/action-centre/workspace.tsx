@@ -159,31 +159,38 @@ export function ActionCentreWorkspace({careRuns,appointmentRuns,tasks,deployment
         options: { primaryColor: '#1688a6', zIndex: 10000 }
       }} 
     />
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <span className="font-semibold text-slate-900">Workspace</span>
-            <span className="text-slate-300">/</span>
-            <span>Action Centre</span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+      <section className="relative flex flex-col gap-6 overflow-hidden rounded-2xl bg-slate-950 px-6 py-8 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between sm:px-8 isolate mb-6">
+        {/* Ambient Orbs & Grain */}
+        <div className="absolute -top-32 -right-32 h-[30rem] w-[30rem] rounded-full bg-teal-500/20 blur-[120px] -z-10 pointer-events-none" />
+        <div className="absolute -bottom-32 -left-32 h-[30rem] w-[30rem] rounded-full bg-blue-600/20 blur-[120px] -z-10 pointer-events-none" />
+        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none -z-10" />
+        
+        <div className="z-10 max-w-2xl">
+          <span className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-bold tracking-widest text-teal-400 ring-1 ring-inset ring-teal-500/20 uppercase">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-500"></span>
+            </span>
+            WORKSPACE / ACTION CENTRE
+          </span>
+          <h1 className="mt-4 text-2xl sm:text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-slate-100 to-slate-400 leading-[1.15]">
             One review. Routine work moves safely.
           </h1>
-          <p className="max-w-2xl text-sm text-slate-600">
+          <p className="mt-4 text-sm sm:text-base text-slate-400 font-medium tracking-wide">
             OmniRelay separates safe operational actions from cases that need a person—without patient-by-patient checking.
           </p>
         </div>
         
-        <aside className="flex min-w-48 flex-col justify-center rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <aside className="flex min-w-48 flex-col justify-center rounded-xl border border-white/10 bg-white/5 p-4 shadow-sm backdrop-blur-md z-10">
           <div className="flex items-baseline gap-2">
-            <b className="text-2xl font-bold tracking-tight text-slate-900">{deployable+automaticCare.length+automaticAppointments.length}</b>
-            <span className="text-sm font-medium text-slate-500">routine actions due</span>
+            <b className="text-2xl font-bold tracking-tight text-white">{deployable+automaticCare.length+automaticAppointments.length}</b>
+            <span className="text-sm font-medium text-slate-400">routine actions due</span>
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-amber-600">
+          <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-amber-400">
             <ShieldAlert size={14}/>{exceptions.length} held for review
           </div>
         </aside>
-      </header>
+      </section>
     {exceptions.length>0&&<section className="flex flex-col gap-4 rounded-2xl border border-rose-200 bg-rose-50 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rose-600 text-sm font-black text-white">!</span><div><span className="text-xs font-black tracking-[.1em] text-rose-600">NEEDS ATTENTION</span><h2 className="text-lg font-bold text-slate-900 mt-1">{exceptions.length} action{exceptions.length===1?"":"s"} waiting for review</h2><p className="mt-1 text-sm leading-6 text-slate-600">The most urgent items are first. Claim an item before opening the protected patient record.</p></div></div><Link className={`${buttonBase} shrink-0 bg-rose-600 text-white hover:bg-rose-700`} href="#priority-review-queue">Open review queue <ArrowUpRight size={15}/></Link></section>}
     <section className="grid gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-[1fr_auto] lg:items-center"><div><span className="text-xs font-black tracking-[.1em] text-slate-500">READY TO DEPLOY</span><h2 className="text-lg font-bold text-slate-900 mt-1">Today&apos;s patient action plan</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">Consent, mobile number, timing, retry limits and approved workflows are checked again during deployment.</p></div><button className={`${buttonBase} bg-slate-900 text-white hover:bg-slate-800`} disabled={busy||deployable===0} onClick={deploy}><SendHorizontal size={16}/>{busy?"Deploying safely…":deployable?`Review & deploy ${deployable} actions`:"Routine actions already automated"}</button>{result&&<p className="flex items-center gap-2 text-sm font-medium text-emerald-700 lg:col-span-2"><CheckCircle2 size={16}/> {result.deployed_count} released · {result.automatic_count} automatic actions remain queued · {result.exception_count} exceptions retained</p>}{error&&<p className="text-sm font-medium text-rose-600 lg:col-span-2">{error}</p>}</section>
     {canManageNotifications&&<section className="flex flex-col gap-4 rounded-2xl border border-border bg-secondary/40 p-5 lg:flex-row lg:items-center lg:justify-between"><div><span className="text-xs font-black tracking-[.15em] text-primary">MOBILE ALERTS</span><h2 className="mt-2 text-xl font-semibold">Alert controls</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Run a patient-free device test, or archive only stale alerts. Neither action sends WhatsApp messages.</p></div><nav className="flex flex-wrap gap-2"><button className={`${buttonBase} border border-primary/20 bg-white text-primary hover:bg-primary/5`} onClick={testMobileAlert} disabled={working!==null}><BellRing size={16}/>{working==="mobile-alert-test"?"Sending test…":"Send test alert"}</button><button className={`${buttonBase} border border-border bg-white text-foreground hover:bg-muted`} onClick={archiveHistoricalAlerts} disabled={working!==null}><ClipboardCheck size={16}/>{working==="archive-historical-alerts"?"Archiving…":"Archive history"}</button></nav></section>}

@@ -270,6 +270,29 @@ export function WorkspaceForm({ organization, profile, locations: initialLocatio
 
   return (
     <form className="foundation-form mx-auto grid max-w-7xl gap-5 pb-12" onSubmit={save}>
+      <section className="relative flex flex-col gap-6 overflow-hidden rounded-2xl bg-slate-950 px-6 py-8 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between sm:px-8 isolate mb-6 mt-2">
+        {/* Ambient Orbs & Grain */}
+        <div className="absolute -top-32 -right-32 h-[30rem] w-[30rem] rounded-full bg-teal-500/20 blur-[120px] -z-10 pointer-events-none" />
+        <div className="absolute -bottom-32 -left-32 h-[30rem] w-[30rem] rounded-full bg-blue-600/20 blur-[120px] -z-10 pointer-events-none" />
+        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none -z-10" />
+        
+        <div className="z-10 max-w-2xl">
+          <span className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-bold tracking-widest text-teal-400 ring-1 ring-inset ring-teal-500/20 uppercase">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-500"></span>
+            </span>
+            WORKSPACE SETTINGS
+          </span>
+          <h2 className="mt-4 text-2xl sm:text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-slate-100 to-slate-400 leading-[1.15]">
+            Business setup
+          </h2>
+          <p className="mt-4 text-sm sm:text-base text-slate-400 font-medium tracking-wide">
+            Configure your business profile, providers, locations, and services.
+          </p>
+        </div>
+      </section>
+
       <section className="foundation-section">
         <header><div><span className="app-eyebrow">BUSINESS PROFILE</span><h2>Tell OmniRelay how your business operates</h2></div><span className="section-status">Required</span></header><p className="required-note"><Required /> Required to set up booking and customer communication.</p>
         <div className="form-grid">

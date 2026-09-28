@@ -53,11 +53,28 @@ export function CtoWorkspace() {
 
   return (
     <main className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto p-6">
-      <header className="mb-6">
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-3 py-1 rounded-full">Meta-Agent Layer</span>
-        <h1 className="text-2xl font-black tracking-tight text-slate-900 mt-3">Super CTO Architecture Bot</h1>
-        <p className="text-slate-600 mt-2">Ask detailed questions about OmniRelay&apos;s architecture, AI pipelines, and business logic.</p>
-      </header>
+      <section className="relative flex flex-col gap-6 overflow-hidden rounded-2xl bg-slate-950 px-6 py-8 text-white shadow-xl sm:px-8 isolate mb-6 shrink-0">
+        {/* Ambient Orbs & Grain */}
+        <div className="absolute -top-32 -right-32 h-[30rem] w-[30rem] rounded-full bg-teal-500/20 blur-[120px] -z-10 pointer-events-none" />
+        <div className="absolute -bottom-32 -left-32 h-[30rem] w-[30rem] rounded-full bg-blue-600/20 blur-[120px] -z-10 pointer-events-none" />
+        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none -z-10" />
+
+        <div className="z-10 max-w-2xl">
+          <span className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-bold tracking-widest text-teal-400 ring-1 ring-inset ring-teal-500/20 uppercase">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-500"></span>
+            </span>
+            META-AGENT LAYER
+          </span>
+          <h1 className="mt-4 text-2xl sm:text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-slate-100 to-slate-400 leading-[1.15]">
+            Super CTO Architecture Bot
+          </h1>
+          <p className="mt-4 text-sm sm:text-base text-slate-400 font-medium tracking-wide">
+            Ask detailed questions about OmniRelay&apos;s architecture, AI pipelines, and business logic.
+          </p>
+        </div>
+      </section>
 
       <div 
         ref={scrollRef}
