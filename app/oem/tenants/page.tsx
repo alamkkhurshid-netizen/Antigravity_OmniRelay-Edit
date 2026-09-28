@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Users, Search, MoreVertical, PowerOff } from "lucide-react";
 import { TenantFeaturesCell } from "./tenant-features-cell";
 
+export const dynamic = "force-dynamic";
+
 type TenantOverview = {
   organization_id: string;
   organization_name: string;

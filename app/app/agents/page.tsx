@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getWorkspace } from "@/lib/workspace";
 import { KnowledgeWorkspace } from "./knowledge-workspace";
+
+export const dynamic = "force-dynamic";
 import { PremiumUpsell } from "./premium-upsell";
 
 export default async function AgentsPage() {
