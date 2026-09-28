@@ -78,6 +78,7 @@ export default async function OemTenantsPage() {
                       initialSupportAgent={!!(orgMap.get(tenant.organization_id) as any)?.premium_support_agent_active}
                       initialCtoAgent={!!(orgMap.get(tenant.organization_id) as any)?.premium_cto_agent_active}
                       initialGrowthAgent={!!(orgMap.get(tenant.organization_id) as any)?.premium_growth_agent_active}
+                      initialAdminAgent={!!(orgMap.get(tenant.organization_id) as any)?.premium_admin_agent_active}
                     />
                   </td>
                   <td className="px-6 py-4 text-slate-400">

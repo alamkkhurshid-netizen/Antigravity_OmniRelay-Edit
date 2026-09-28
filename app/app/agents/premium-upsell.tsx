@@ -5,13 +5,15 @@ import { Check, Sparkles, Shield, Rocket, ArrowRight } from "lucide-react";
 export function PremiumUpsell({
   supportActive,
   ctoActive,
-  growthActive
+  growthActive,
+  adminActive
 }: {
   supportActive: boolean;
   ctoActive: boolean;
   growthActive: boolean;
+  adminActive: boolean;
 }) {
-  const isAllActive = supportActive && ctoActive && growthActive;
+  const isAllActive = supportActive && ctoActive && growthActive && adminActive;
 
   if (isAllActive) return null; // Only show if they need to upgrade
 
@@ -27,7 +29,7 @@ export function PremiumUpsell({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Support Agent */}
         <div className={`relative flex flex-col justify-between rounded-xl border p-5 transition-all ${supportActive ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md'}`}>
           <div>
@@ -80,6 +82,26 @@ export function PremiumUpsell({
             <p className="text-sm text-slate-600">Analyzes your weekly traffic, conversations, and drop-offs to deliver actionable business strategy briefs directly to you.</p>
           </div>
           {!growthActive && (
+            <button className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-600">
+              Upgrade to Unlock <ArrowRight className="size-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Admin Agent */}
+        <div className={`relative flex flex-col justify-between rounded-xl border p-5 transition-all ${adminActive ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md'}`}>
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${adminActive ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                {adminActive ? <><Check className="size-3" /> Active</> : 'PRO Tier'}
+              </span>
+            </div>
+            <h3 className="mb-2 flex items-center gap-2 text-base font-bold text-slate-800">
+              Admin Agent
+            </h3>
+            <p className="text-sm text-slate-600">The Ultimate Manager. Streamlines operations, manages permissions, and automates back-office administrative tasks.</p>
+          </div>
+          {!adminActive && (
             <button className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-600">
               Upgrade to Unlock <ArrowRight className="size-4" />
             </button>

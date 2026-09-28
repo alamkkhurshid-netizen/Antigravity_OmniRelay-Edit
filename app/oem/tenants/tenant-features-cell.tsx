@@ -11,18 +11,19 @@ export function TenantFeaturesCell({
   initialGrowthAgent
 }: { 
   organizationId: string, 
-  initialGoogleSync: boolean,
   initialSupportAgent: boolean,
   initialCtoAgent: boolean,
-  initialGrowthAgent: boolean
+  initialGrowthAgent: boolean,
+  initialAdminAgent: boolean
 }) {
   const [googleSync, setGoogleSync] = useState(initialGoogleSync);
   const [supportAgent, setSupportAgent] = useState(initialSupportAgent);
   const [ctoAgent, setCtoAgent] = useState(initialCtoAgent);
   const [growthAgent, setGrowthAgent] = useState(initialGrowthAgent);
+  const [adminAgent, setAdminAgent] = useState(initialAdminAgent);
   const [isPending, setIsPending] = useState(false);
 
-  async function handleToggle(type: 'google' | 'support' | 'cto' | 'growth') {
+  async function handleToggle(type: 'google' | 'support' | 'cto' | 'growth' | 'admin') {
     setIsPending(true);
     
     if (type === 'google') {
@@ -45,6 +46,11 @@ export function TenantFeaturesCell({
       setGrowthAgent(newValue);
       const res = await togglePremiumAgent(organizationId, 'growth', newValue);
       if (res?.error) { setGrowthAgent(!newValue); alert(res.error); }
+    } else if (type === 'admin') {
+      const newValue = !adminAgent;
+      setAdminAgent(newValue);
+      const res = await togglePremiumAgent(organizationId, 'admin', newValue);
+      if (res?.error) { setAdminAgent(!newValue); alert(res.error); }
     }
     
     setIsPending(false);
@@ -106,6 +112,20 @@ export function TenantFeaturesCell({
           <div className={`absolute top-0.5 left-0.5 bg-white w-3 h-3 rounded-full transition-transform ${growthAgent ? 'translate-x-4' : ''}`} />
         </div>
         <span className="text-xs font-medium text-amber-400">PRO Growth Officer</span>
+      </label>
+
+      <label className={`flex items-center gap-2 cursor-pointer transition-opacity ${isPending ? 'opacity-50' : 'opacity-90 hover:opacity-100'}`}>
+        <input 
+          type="checkbox" 
+          className="sr-only" 
+          checked={adminAgent} 
+          onChange={() => handleToggle('admin')}
+          disabled={isPending}
+        />
+        <div className={`w-8 h-4 rounded-full transition-colors ${adminAgent ? 'bg-[#ffb020]' : 'bg-slate-700'} relative`}>
+          <div className={`absolute top-0.5 left-0.5 bg-white w-3 h-3 rounded-full transition-transform ${adminAgent ? 'translate-x-4' : ''}`} />
+        </div>
+        <span className="text-xs font-medium text-amber-400">PRO Admin Agent</span>
       </label>
     </div>
   );

@@ -9,7 +9,7 @@ export default async function AgentsPage() {
   const [{data:documents},{data:agents}, {data:orgInfo}]=await Promise.all([
     supabase.from("rag_knowledge_items").select("*").eq("organization_id",organization.id).order("updated_at",{ascending:false}),
     supabase.from("ai_agent_profiles").select("*").eq("organization_id",organization.id).order("created_at"),
-    supabase.from("organizations").select("premium_support_agent_active, premium_cto_agent_active, premium_growth_agent_active").eq("id",organization.id).single()
+    supabase.from("organizations").select("premium_support_agent_active, premium_cto_agent_active, premium_growth_agent_active, premium_admin_agent_active").eq("id",organization.id).single()
   ]);
 
   return (
@@ -18,6 +18,7 @@ export default async function AgentsPage() {
         supportActive={!!orgInfo?.premium_support_agent_active}
         ctoActive={!!orgInfo?.premium_cto_agent_active}
         growthActive={!!orgInfo?.premium_growth_agent_active}
+        adminActive={!!orgInfo?.premium_admin_agent_active}
       />
       <KnowledgeWorkspace organizationId={organization.id} documents={documents??[]} agents={agents??[]}/>
     </div>
