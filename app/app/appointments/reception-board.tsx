@@ -63,22 +63,40 @@ export function ReceptionBoard({organizationId,appointments,resources,locations,
   async function assignToken(appointment:Appointment){setBusy(appointment.id);setNotice("");const {data,error}=await createClient().rpc("assign_appointment_queue_token",{p_organization_id:organizationId,p_appointment_id:appointment.id});setBusy("");setNotice(error?.message??`${appointment.customer_name}: token #${data.token_number} assigned.`);if(!error)window.location.reload();}
   async function setServing(entry:QueueEntry){setBusy(entry.appointment_id);setNotice("");const {error}=await createClient().rpc("set_queue_now_serving",{p_organization_id:organizationId,p_resource_id:entry.resource_id,p_location_id:entry.location_id,p_queue_date:entry.queue_date,p_token_number:entry.token_number});setBusy("");setNotice(error?.message??`Now serving token #${entry.token_number}. Patient WhatsApp queue alerts remain off until the dedicated Meta template is approved.`);if(!error)window.location.reload();}
   return <section className="reception-board" id="reception-board">
-    <header>
-      <div>
-        <span className="app-eyebrow">RECEPTION OPERATIONS</span>
-        <h3>Today&apos;s patient board</h3>
-        <p>Use any date, doctor or chamber. Batch arrival and follow-up actions reduce end-of-session work; clinical completion remains protected in the appointment record.</p>
+    <section className="relative flex flex-col gap-6 overflow-hidden rounded-2xl bg-slate-950 px-6 py-8 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between sm:px-8 isolate mb-6">
+      {/* Ambient Orbs & Grain */}
+      <div className="absolute -top-32 -right-32 h-[30rem] w-[30rem] rounded-full bg-teal-500/20 blur-[120px] -z-10 pointer-events-none" />
+      <div className="absolute -bottom-32 -left-32 h-[30rem] w-[30rem] rounded-full bg-blue-600/20 blur-[120px] -z-10 pointer-events-none" />
+      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none -z-10" />
+      
+      <div className="z-10 max-w-2xl">
+        <span className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-bold tracking-widest text-teal-400 ring-1 ring-inset ring-teal-500/20 uppercase">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-500"></span>
+          </span>
+          RECEPTION OPERATIONS
+        </span>
+        <h1 className="mt-4 text-2xl sm:text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-slate-100 to-slate-400 leading-[1.15]">
+          Appointments & Patient Board
+        </h1>
+        <p className="mt-4 text-sm sm:text-base text-slate-400 font-medium tracking-wide">
+          Use any date, doctor or chamber. Batch arrival and follow-up actions reduce end-of-session work; clinical completion remains protected in the appointment record.
+        </p>
       </div>
-      <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
-        <button type="button" className="secondary-button" onClick={downloadRoster} title="Download Doctor-wise Booking Story as Excel/CSV">
-          📥 Download Sheet (CSV)
+      
+      <div className="flex flex-wrap items-center gap-3 z-10">
+        <button type="button" className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 text-[13px] font-bold text-white shadow-sm backdrop-blur-md transition-all hover:bg-white/10" onClick={downloadRoster} title="Download Doctor-wise Booking Story as Excel/CSV">
+          📥 Download Sheet
         </button>
-        <button type="button" className="secondary-button" disabled={busy!==""} onClick={triggerEmailDispatch} title="Send Daily Summary Email to Clinic & Doctors">
+        <button type="button" className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 text-[13px] font-bold text-white shadow-sm backdrop-blur-md transition-all hover:bg-white/10" disabled={busy!==""} onClick={triggerEmailDispatch} title="Send Daily Summary Email to Clinic & Doctors">
           {busy==="dispatch" ? "Dispatching..." : "✉️ Dispatch Email"}
         </button>
-        <span>{rows.length} active visit{rows.length===1?"":"s"}</span>
+        <span className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-teal-400 to-blue-500 px-4 py-2 text-[13px] font-bold text-slate-950 shadow-[0_0_20px_rgba(45,212,191,0.25)]">
+          {rows.length} active visit{rows.length===1?"":"s"}
+        </span>
       </div>
-    </header>
+    </section>
     <div className="reception-filters">
       <label>
         Date
