@@ -29,13 +29,14 @@ export async function toggleGoogleCalendarSync(organizationId: string, enabled: 
   return { success: true };
 }
 
-export async function togglePremiumAgent(organizationId: string, agentType: 'support' | 'growth' | 'cto', enabled: boolean) {
+export async function togglePremiumAgent(organizationId: string, agentType: 'support' | 'growth' | 'cto' | 'admin', enabled: boolean) {
   const supabase = await createClient();
   
   const columnMap = {
     'support': 'premium_support_agent_active',
     'growth': 'premium_growth_agent_active',
-    'cto': 'premium_cto_agent_active'
+    'cto': 'premium_cto_agent_active',
+    'admin': 'premium_admin_agent_active'
   };
 
   const updatePayload = { [columnMap[agentType]]: enabled };
