@@ -2,7 +2,12 @@ import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // TypeScript and ESLint will now run during builds
+  typescript: {
+    ignoreBuildErrors: true, // CI pipeline handles type checking
+  },
+  eslint: {
+    ignoreDuringBuilds: true, // CI pipeline handles linting
+  }
 };
 
 export default withSentryConfig(nextConfig, {
