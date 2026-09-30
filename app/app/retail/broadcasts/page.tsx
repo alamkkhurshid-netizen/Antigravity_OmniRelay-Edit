@@ -5,6 +5,7 @@ import { BroadcastForm } from "./broadcast-form";
 
 export default async function BroadcastsPage() {
   const { supabase, organization } = await getWorkspace();
+  if (!organization) return null;
   
   // Fetch existing broadcasts
   const { data: broadcasts } = await supabase

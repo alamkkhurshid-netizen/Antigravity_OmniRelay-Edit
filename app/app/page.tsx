@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight, CalendarDays, CheckCircle2, CircleAlert, MapPin, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { WorkspaceHero } from "@/components/workspace-hero";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -68,60 +69,51 @@ export default async function DashboardPage() {
   return (
     <div className="grid gap-6 pb-12 xl:grid-cols-4 px-2">
       {/* 1. HERO SECTION */}
-      <section className="relative xl:col-span-4 flex flex-col gap-6 overflow-hidden rounded-2xl bg-slate-950 px-6 py-6 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between sm:px-6 isolate">
-        {/* Ambient Orbs & Grain */}
-        <div className="absolute -top-32 -right-32 h-[30rem] w-[30rem] rounded-full bg-teal-500/20 blur-[120px] -z-10 pointer-events-none" />
-        <div className="absolute -bottom-32 -left-32 h-[30rem] w-[30rem] rounded-full bg-blue-600/20 blur-[120px] -z-10 pointer-events-none" />
-        <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none -z-10" />
-        
-        <div className="z-10 max-w-2xl">
-          <span className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-bold tracking-widest text-teal-400 ring-1 ring-inset ring-teal-500/20 uppercase">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-500"></span>
-            </span>
-            TODAY&apos;S CLINIC PULSE
-          </span>
-          <h2 className="mt-4 text-2xl sm:text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-slate-100 to-slate-400 leading-[1.15]">
-            Keep every patient <br className="hidden sm:block" /> journey moving.
-          </h2>
-          <p className="mt-4 text-sm sm:text-base text-slate-400 font-medium tracking-wide flex items-center flex-wrap gap-2">
-            <span className="text-slate-300">{organization.name}</span>
-            <span className="text-slate-600">•</span>
-            <span>{businessCategory}</span>
-            <span className="text-slate-600">•</span>
-            <span>{doctorCount ?? 0} doctors</span>
-          </p>
-        </div>
-        
-        <div className="flex flex-col sm:flex-row items-center gap-3 z-10">
-          <Link className="group flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 px-4 py-3 text-[13px] font-semibold text-white backdrop-blur-md border border-white/10 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(255,255,255,0.05)]" href="/app/analytics">
-            <Sparkles className="size-4 text-teal-400 group-hover:text-teal-300 transition-colors" />
-            <span>Deep Analytics</span>
-            <ArrowRight className="size-3.5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-          </Link>
-          <Link className="group flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-400 to-blue-500 hover:from-teal-300 hover:to-blue-400 px-4 py-3 text-[13px] font-bold text-slate-950 transition-all duration-300 hover:scale-[1.02] shadow-[0_0_20px_rgba(45,212,191,0.25)] hover:shadow-[0_0_30px_rgba(45,212,191,0.4)]" href="/app/appointments">
-            <CalendarDays className="size-4" />
-            <span>New appointment</span>
-          </Link>
-        </div>
-      </section>
+      <div className="xl:col-span-4">
+        <WorkspaceHero
+          tag="TODAY'S CLINIC PULSE"
+          title={<>Keep every patient <br className="hidden sm:block" /> journey moving.</>}
+          subtitle={
+            <>
+              <span className="text-slate-300">{organization.name}</span>
+              <span className="text-slate-600">•</span>
+              <span>{businessCategory}</span>
+              <span className="text-slate-600">•</span>
+              <span>{doctorCount ?? 0} doctors</span>
+            </>
+          }
+          action={
+            <>
+              <Link className="group flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 px-4 py-3 text-[13px] font-semibold text-white backdrop-blur-md border border-white/10 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(255,255,255,0.05)]" href="/app/analytics">
+                <Sparkles className="size-4 text-teal-400 group-hover:text-teal-300 transition-colors" />
+                <span>Deep Analytics</span>
+                <ArrowRight className="size-3.5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+              </Link>
+              <Link className="group flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-400 to-blue-500 hover:from-teal-300 hover:to-blue-400 px-4 py-3 text-[13px] font-bold text-slate-950 transition-all duration-300 hover:scale-[1.02] shadow-[0_0_20px_rgba(45,212,191,0.25)] hover:shadow-[0_0_30px_rgba(45,212,191,0.4)]" href="/app/appointments">
+                <CalendarDays className="size-4" />
+                <span>New appointment</span>
+              </Link>
+            </>
+          }
+        />
+      </div>
 
       {/* 2. STAT CARDS */}
       {/* 2. STAT CARDS */}
       <section className="xl:col-span-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          ["Appointments", "0", "Connect WhatsApp to begin", CalendarDays, "text-slate-900", "bg-blue-50 text-blue-600", "/app/appointments"],
-          ["Doctors", String(doctorCount ?? 0), "Ready for appointment booking", UsersRound, "text-slate-900", "bg-teal-50 text-teal-600", "/app/team"],
-          ["Needs staff attention", "0", "No unresolved action", CircleAlert, "text-rose-600", "bg-rose-50 text-rose-600", "/app/action-centre"],
-          ["WhatsApp delivery", "—", "Connect a channel to monitor delivery", ShieldCheck, "text-slate-900", "bg-indigo-50 text-indigo-600", "/app/integrations"],
-        ].map(([label, value, detail, Icon, valueClass, iconBg, href]) => (
-          <Link href={href as string} key={label as string} className="group relative overflow-hidden rounded-2xl bg-white p-5 shadow-[0_4px_20px_#05234206] border border-slate-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50 hover:border-slate-300 block">
+        {(
+          [
+            ["Appointments", "0", "Connect WhatsApp to begin", CalendarDays, "text-slate-900", "bg-blue-50 text-blue-600", "/app/appointments"],
+            ["Doctors", String(doctorCount ?? 0), "Ready for appointment booking", UsersRound, "text-slate-900", "bg-teal-50 text-teal-600", "/app/team"],
+            ["Needs staff attention", "0", "No unresolved action", CircleAlert, "text-rose-600", "bg-rose-50 text-rose-600", "/app/action-centre"],
+            ["WhatsApp delivery", "—", "Connect a channel to monitor delivery", ShieldCheck, "text-slate-900", "bg-indigo-50 text-indigo-600", "/app/integrations"],
+          ] as [string, string, string, any, string, string, string][]
+        ).map(([label, value, detail, Icon, valueClass, iconBg, href]) => (
+          <Link href={href} key={label} className="group relative overflow-hidden rounded-2xl bg-white p-5 shadow-[0_4px_20px_#05234206] border border-slate-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50 hover:border-slate-300 block">
             <div className="absolute right-0 top-0 h-32 w-32 -translate-y-16 translate-x-16 rounded-full bg-slate-50 opacity-50 transition-transform duration-700 ease-out group-hover:scale-150" />
             <div className="relative flex items-center justify-between">
               <h3 className="text-[11px] font-bold text-slate-500 tracking-widest uppercase">{label}</h3>
               <div className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors duration-300 ${iconBg}`}>
-                {/* @ts-ignore */}
                 <Icon className="size-4.5" />
               </div>
             </div>

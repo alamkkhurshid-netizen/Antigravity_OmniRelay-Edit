@@ -1,7 +1,7 @@
 "use client";
-import "./reception-board.css";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Clock, MapPin, Stethoscope } from "lucide-react";
 
@@ -14,6 +14,7 @@ const toIso=(date:string)=>new Date(`${date}T09:00:00+05:30`).toISOString();
 const label=(value:string)=>new Intl.DateTimeFormat("en-IN",{timeZone:"Asia/Kolkata",hour:"numeric",minute:"2-digit"}).format(new Date(value));
 
 export function ReceptionBoard({organizationId,appointments,resources,locations,queueEntries,nowIso}:{organizationId:string;appointments:Appointment[];resources:Option[];locations:Option[];queueEntries:QueueEntry[];nowIso:string}){
+  const router = useRouter();
   const todayDate = dayKey(new Date(nowIso));
   const tomorrowDate = addDays(todayDate, 1);
   const [date,setDate]=useState(todayDate),[resourceId,setResourceId]=useState(""),[locationId,setLocationId]=useState(""),[selected,setSelected]=useState<string[]>([]),[busy,setBusy]=useState(""),[notice,setNotice]=useState("");
@@ -57,11 +58,11 @@ export function ReceptionBoard({organizationId,appointments,resources,locations,
   async function markArrived(ids:string[]){
     if(!ids.length)return;setBusy("arrived");setNotice("");
     const client=createClient();const results=await Promise.all(ids.map(id=>client.rpc("update_appointment_status",{p_organization_id:organizationId,p_appointment_id:id,p_status:"arrived"})));
-    const failed=results.find(item=>item.error);setBusy("");setSelected([]);setNotice(failed?.error?.message??`${ids.length} patient${ids.length===1?"":"s"} marked arrived.`);if(!failed)window.location.reload();
+    const failed=results.find(item=>item.error);setBusy("");setSelected([]);setNotice(failed?.error?.message??`${ids.length} patient${ids.length===1?"":"s"} marked arrived.`);if(!failed)router.refresh();
   }
-  async function followUp(appointment:Appointment,days:number){setBusy(appointment.id);setNotice("");const {error}=await createClient().rpc("set_appointment_follow_up",{p_organization_id:organizationId,p_appointment_id:appointment.id,p_follow_up_at:toIso(addDays(date,days)),p_note:`Follow-up planned ${days} days after visit.`});setBusy("");setNotice(error?.message??`${appointment.customer_name}: follow-up planned.`);if(!error)window.location.reload();}
-  async function assignToken(appointment:Appointment){setBusy(appointment.id);setNotice("");const {data,error}=await createClient().rpc("assign_appointment_queue_token",{p_organization_id:organizationId,p_appointment_id:appointment.id});setBusy("");setNotice(error?.message??`${appointment.customer_name}: token #${data.token_number} assigned.`);if(!error)window.location.reload();}
-  async function setServing(entry:QueueEntry){setBusy(entry.appointment_id);setNotice("");const {error}=await createClient().rpc("set_queue_now_serving",{p_organization_id:organizationId,p_resource_id:entry.resource_id,p_location_id:entry.location_id,p_queue_date:entry.queue_date,p_token_number:entry.token_number});setBusy("");setNotice(error?.message??`Now serving token #${entry.token_number}. Patient WhatsApp queue alerts remain off until the dedicated Meta template is approved.`);if(!error)window.location.reload();}
+  async function followUp(appointment:Appointment,days:number){setBusy(appointment.id);setNotice("");const {error}=await createClient().rpc("set_appointment_follow_up",{p_organization_id:organizationId,p_appointment_id:appointment.id,p_follow_up_at:toIso(addDays(date,days)),p_note:`Follow-up planned ${days} days after visit.`});setBusy("");setNotice(error?.message??`${appointment.customer_name}: follow-up planned.`);if(!error)router.refresh();}
+  async function assignToken(appointment:Appointment){setBusy(appointment.id);setNotice("");const {data,error}=await createClient().rpc("assign_appointment_queue_token",{p_organization_id:organizationId,p_appointment_id:appointment.id});setBusy("");setNotice(error?.message??`${appointment.customer_name}: token #${data.token_number} assigned.`);if(!error)router.refresh();}
+  async function setServing(entry:QueueEntry){setBusy(entry.appointment_id);setNotice("");const {error}=await createClient().rpc("set_queue_now_serving",{p_organization_id:organizationId,p_resource_id:entry.resource_id,p_location_id:entry.location_id,p_queue_date:entry.queue_date,p_token_number:entry.token_number});setBusy("");setNotice(error?.message??`Now serving token #${entry.token_number}. Patient WhatsApp queue alerts remain off until the dedicated Meta template is approved.`);if(!error)router.refresh();}
   return <section className="reception-board" id="reception-board">
     <section className="relative flex flex-col gap-6 overflow-hidden rounded-2xl bg-slate-950 px-6 py-8 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between sm:px-8 isolate mb-6">
       {/* Ambient Orbs & Grain */}

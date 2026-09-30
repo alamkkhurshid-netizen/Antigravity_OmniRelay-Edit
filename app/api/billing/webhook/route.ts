@@ -1,16 +1,26 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-// Note: We use the service role key here because Webhooks aren't authenticated by a user session.
-// We must bypass RLS to credit the wallet.
+import crypto from "crypto";
 
 export async function POST(request: Request) {
   try {
-    const payload = await request.json();
+    const rawBody = await request.text();
+    const signature = request.headers.get("x-razorpay-signature");
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-    // Verify Razorpay signature in production...
-    // const signature = request.headers.get("x-razorpay-signature");
+    if (process.env.NODE_ENV === "production") {
+      if (!signature || !secret) {
+        return NextResponse.json({ error: "Missing signature or secret" }, { status: 400 });
+      }
+      const expectedSignature = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+      if (expectedSignature !== signature) {
+        return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+      }
+    }
 
-    if (payload.event !== "payment.captured") {
+    const payload = JSON.parse(rawBody);
+
+    if (payload.event !== "payment.captured" && payload.event !== "refund.created") {
       return NextResponse.json({ received: true });
     }
 
@@ -32,7 +42,26 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Call our Idempotent RPC to securely credit the wallet
+    if (payload.event === "refund.created") {
+      // Process refund
+      const refundId = payload.payload.refund.entity.id;
+      const { error: refundError } = await supabaseAdmin.rpc("debit_wallet_for_refund", {
+        p_organization_id: organizationId,
+        p_amount_paise: amountPaise,
+        p_razorpay_payment_id: paymentId,
+        p_razorpay_refund_id: refundId,
+      });
+
+      if (refundError) {
+        console.error("Refund RPC failed:", refundError);
+        return NextResponse.json({ error: "Failed to process refund" }, { status: 500 });
+      }
+
+      console.log(`Wallet ${organizationId} debited for refund ${refundId}`);
+      return NextResponse.json({ success: true, refunded: true });
+    }
+
+    // Process payment capture
     const { data: credited, error } = await supabaseAdmin.rpc("credit_wallet", {
       p_organization_id: organizationId,
       p_amount_paise: amountPaise,
@@ -45,11 +74,30 @@ export async function POST(request: Request) {
     }
 
     if (!credited) {
-      // This means the Razorpay Payment ID was already in our wallet_transactions table.
-      // This is expected during webhook retries.
       console.log(`Payment ${paymentId} already credited. Idempotency respected.`);
     } else {
       console.log(`Wallet ${organizationId} credited with ₹${amountPaise / 100}`);
+      
+      // Automated receipt generation mock
+      if (payment.email && process.env.RESEND_API_KEY) {
+        try {
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              from: process.env.NOTIFICATION_FROM_EMAIL || "billing@omnirelay.in",
+              to: payment.email,
+              subject: "Payment Receipt - OmniRelay",
+              html: `<p>Thank you for your payment of ₹${amountPaise / 100}.</p><p>Payment ID: ${paymentId}</p>`
+            })
+          });
+        } catch (e) {
+          console.error("Failed to send receipt:", e);
+        }
+      }
     }
 
     return NextResponse.json({ success: true, credited });

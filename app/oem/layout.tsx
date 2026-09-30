@@ -2,9 +2,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { ShieldAlert, Users, CreditCard, Activity, Box } from "lucide-react";
-import "../appointments-refresh.css";
-import "../clinic-operations-refresh.css";
-import "../typography-polish.css";
 
 export const metadata = {
   title: "OEM Control Panel | OmniRelay",

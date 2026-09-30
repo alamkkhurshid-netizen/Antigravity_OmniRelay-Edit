@@ -36,5 +36,5 @@ export default async function ActionCentrePage() {
     supabase.from("ai_agent_drafts").select("*").eq("organization_id", organization.id).eq("status", "pending_approval"),
   ]);
 
-  return <ActionCentreWorkspace careRuns={careRuns ?? []} appointmentRuns={appointmentRuns ?? []} tasks={tasks ?? []} deployments={deployments ?? []} bookingRequests={bookingRequests ?? []} waitlist={waitlist??[]} disruptions={disruptions??[]} emergencyRecipients={emergencyRecipients??[]} assignments={assignments??[]} readinessChecks={readinessChecks??[]} pilotControl={pilotControl} aiDrafts={aiDrafts ?? []} currentUserId={user?.id??""} canManageNotifications={canManageNotifications} nowIso={isoNow()} />;
+  return <ActionCentreWorkspace careRuns={careRuns as any ?? []} appointmentRuns={appointmentRuns as any ?? []} tasks={tasks as any ?? []} deployments={deployments as any ?? []} bookingRequests={bookingRequests as any ?? []} waitlist={waitlist as any ?? []} disruptions={disruptions as any ?? []} emergencyRecipients={emergencyRecipients as any ?? []} assignments={assignments as any ?? []} readinessChecks={readinessChecks as any ?? []} pilotControl={pilotControl as any} aiDrafts={aiDrafts as any ?? []} currentUserId={user?.id??""} canManageNotifications={canManageNotifications} nowIso={isoNow()} />;
 }

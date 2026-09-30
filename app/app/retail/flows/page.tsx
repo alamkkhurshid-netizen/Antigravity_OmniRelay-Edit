@@ -5,6 +5,7 @@ import { FlowCanvas } from "./flow-canvas";
 
 export default async function FlowsPage() {
   const { supabase, organization } = await getWorkspace();
+  if (!organization) return null;
 
   return (
     <div className="flex h-[calc(100vh-6rem)] flex-col gap-6">

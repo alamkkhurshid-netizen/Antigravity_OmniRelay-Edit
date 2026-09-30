@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Template = {id:string;event_type:string;provider_template_name:string;language_code:string;status:string;variable_map:Record<string,string>|null};
@@ -16,6 +17,7 @@ const lifecycleGroups=[
 ];
 
 export function TemplateReadiness({templates,reminders,doctorDispatches}:{templates:Template[];reminders:Reminder[];doctorDispatches:DoctorDispatch[]}){
+  const router = useRouter();
   const [confirmed,setConfirmed]=useState<Record<string,boolean>>({});
   const [busy,setBusy]=useState("");
   const [notice,setNotice]=useState("");
@@ -31,7 +33,7 @@ export function TemplateReadiness({templates,reminders,doctorDispatches}:{templa
     setBusy(key);setNotice("");
     const {error}=await createClient().from("channel_message_templates").update({status:"approved",updated_at:new Date().toISOString()}).in("id",ids);
     if(error){setNotice(error.message);setBusy("");return;}
-    window.location.reload();
+    router.refresh();
   }
 
   return <section className="template-activation">

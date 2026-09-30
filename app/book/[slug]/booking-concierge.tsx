@@ -23,7 +23,7 @@ type RazorpayOptions={key:string;amount:number;currency:string;order_id:string;n
 type InitialSelection={serviceId:string;locationId:string;resourceId:string;date:string;slot:string;source:string;handoffToken?:string;patientName?:string;bookingContactName?:string;bookingContactPhone?:string;relationship?:PatientRelationship};
 type OtpStatus={available:boolean};
 
-declare global { interface Window { Razorpay?:new(options:RazorpayOptions)=>{open:()=>void}; } }
+
 
 function dateKey(value: Date) {
   const parts = new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(value);
@@ -105,7 +105,7 @@ export function BookingConcierge({ page, initialSelection }: { page: BookingPage
   }
 
   async function loadRazorpay() {
-    if(window.Razorpay)return;
+    if((window as any).Razorpay)return;
     await new Promise<void>((resolve,reject)=>{
       const existing=document.querySelector<HTMLScriptElement>('script[data-omnirelay-razorpay]');
       if(existing){existing.addEventListener("load",()=>resolve(),{once:true});existing.addEventListener("error",()=>reject(new Error("Unable to load secure checkout")),{once:true});return}
@@ -131,13 +131,13 @@ export function BookingConcierge({ page, initialSelection }: { page: BookingPage
     if(!orderResponse.ok)throw new Error(order.error||"Unable to reserve the appointment");
     if(!initialSelection?.handoffToken){await attachIdentity(order.booking_reference,order.manage_token,details);await consumeOtp(order.booking_reference,order.manage_token);}
     await loadRazorpay();
-    if(!window.Razorpay)throw new Error("Secure checkout is unavailable");
-    const checkout=new window.Razorpay({
+    if(!(window as any).Razorpay)throw new Error("Secure checkout is unavailable");
+    const checkout=new (window as any).Razorpay({
       key:order.key_id,amount:order.amount,currency:order.currency,order_id:order.order_id,
       name:page.business.name,description:`${service?.name??"Appointment"} · ${location?.name??"Clinic"}`,
       prefill:{name:details.name,email:details.email,contact:details.phone},theme:{color:page.accent_color||"#177dff"},
       modal:{ondismiss:()=>{setBusy(false);setMessage(`Payment not completed. Your slot is held until ${new Intl.DateTimeFormat("en-IN",{hour:"numeric",minute:"2-digit",timeZone:"Asia/Kolkata"}).format(new Date(order.expires_at))}.`)}},
-      handler:async(result)=>{
+      handler:async(result: any)=>{
         try {
           const verifyResponse=await fetch("/api/payments/verify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...result,booking_reference:order.booking_reference,manage_token:order.manage_token})});
           const verified=await verifyResponse.json() as Confirmation&{error?:string};

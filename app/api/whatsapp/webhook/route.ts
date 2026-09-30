@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseUrl } from "@/lib/supabase/config";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 function equalBytes(left:Uint8Array,right:Uint8Array) {
   if(left.length!==right.length)return false;
@@ -24,10 +25,14 @@ async function adminUpdate(providerMessageId:string,status:string,timestamp?:str
   if(status==="failed")patch.status="failed";
   else patch.status="sent";
   delete patch.status_provider;
+  const adminClient = createAdminClient();
   try {
-    await fetch(`${supabaseUrl}/rest/v1/reminder_events?provider_message_id=eq.${encodeURIComponent(providerMessageId)}`,{
-      method:"PATCH",headers:{"Content-Type":"application/json",apikey:secret,Authorization:`Bearer ${secret}`,Prefer:"return=minimal"},body:JSON.stringify(patch),
-    });
+    const { error } = await adminClient
+      .from("reminder_events")
+      .update(patch)
+      .eq("provider_message_id", providerMessageId);
+      
+    if (error) throw error;
   } catch (error) {
     console.error("[Webhook] Failed to update delivery status in Supabase:", error);
   }
@@ -36,10 +41,12 @@ async function adminUpdate(providerMessageId:string,status:string,timestamp?:str
   if (process.env.ENABLE_ACTIVE_BILLING === "true" && (status === "sent" || status === "delivered")) {
     try {
       // 1. We need to look up the organization_id from the reminder event
-      const res = await fetch(`${supabaseUrl}/rest/v1/reminder_events?provider_message_id=eq.${encodeURIComponent(providerMessageId)}&select=organization_id,event_type`, {
-        headers: {apikey: secret, Authorization: `Bearer ${secret}`}
-      });
-      const events = await res.json();
+      const { data: events, error: fetchError } = await adminClient
+        .from("reminder_events")
+        .select("organization_id,event_type")
+        .eq("provider_message_id", providerMessageId);
+        
+      if (fetchError) throw fetchError;
       
       if (events && events.length > 0) {
         const orgId = events[0].organization_id;
@@ -47,15 +54,12 @@ async function adminUpdate(providerMessageId:string,status:string,timestamp?:str
         const category = "utility"; 
         
         // 2. Execute the atomic deduction RPC
-        await fetch(`${supabaseUrl}/rpc/record_and_deduct`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", apikey: secret, Authorization: `Bearer ${secret}` },
-          body: JSON.stringify({
-            p_organization_id: orgId,
-            p_meta_message_id: providerMessageId,
-            p_category: category
-          })
+        const { error: rpcError } = await adminClient.rpc("record_and_deduct", {
+          p_organization_id: orgId,
+          p_meta_message_id: providerMessageId,
+          p_category: category
         });
+        if (rpcError) throw rpcError;
       }
     } catch (e) {
       console.error("Active Billing Deduction failed:", e);
@@ -77,21 +81,16 @@ async function processSuperCtoApproval(from: string, messageBody: string) {
 
   try {
     // Mark as approved in Supabase
-    const res = await fetch(`${supabaseUrl}/rest/v1/ai_governance_queue?id=eq.${encodeURIComponent(queueId)}`, {
-      method: "PATCH",
-      headers: { 
-        "Content-Type": "application/json", 
-        apikey: secret, 
-        Authorization: `Bearer ${secret}`,
-        Prefer: "return=representation"
-      },
-      body: JSON.stringify({ status: "approved" })
-    });
+    const adminClient = createAdminClient();
+    const { data: updatedRows, error } = await adminClient
+      .from("ai_governance_queue")
+      .update({ status: "approved" })
+      .eq("id", queueId)
+      .select();
 
-    if (res.ok) {
+    if (!error && updatedRows && updatedRows.length > 0) {
       console.log(`[Super CTO] Patch ${queueId} approved by founder! Triggering deployment...`);
       
-      const updatedRows = await res.json();
       const patchData = updatedRows[0];
 
       // Trigger GitHub Action Deployment Engine

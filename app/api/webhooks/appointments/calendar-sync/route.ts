@@ -32,9 +32,10 @@ export async function POST(request: Request) {
       .eq("id", record.id)
       .single();
 
-    const doctorName = appointmentDetails?.resource?.name || "Doctor";
-    const serviceName = appointmentDetails?.service?.name || "Consultation";
-    const clinicName = appointmentDetails?.location?.name || appointmentDetails?.organization?.name || "OmniRelay Clinic";
+    const details = appointmentDetails as any;
+    const doctorName = details?.resource?.name || "Doctor";
+    const serviceName = details?.service?.name || "Consultation";
+    const clinicName = details?.location?.name || details?.organization?.name || "OmniRelay Clinic";
 
     const startTime = new Date(record.starts_at);
     const endTime = record.ends_at ? new Date(record.ends_at) : new Date(startTime.getTime() + 30 * 60000); // default 30m

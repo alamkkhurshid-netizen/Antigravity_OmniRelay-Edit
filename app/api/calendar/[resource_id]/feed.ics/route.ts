@@ -6,10 +6,11 @@ export const revalidate = 0;
 
 export async function GET(
   request: Request,
-  { params }: { params: { resource_id: string } }
+  { params }: { params: Promise<{ resource_id: string }> }
 ) {
   try {
-    const resourceId = params.resource_id;
+    const { resource_id } = await params;
+    const resourceId = resource_id;
     if (!resourceId) return new NextResponse("Not Found", { status: 404 });
 
     const admin = createAdminClient();

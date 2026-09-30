@@ -11,7 +11,7 @@ import { OmniRelayGuide } from "./omni-relay-guide";
 import { ProductTour } from "./product-tour";
 import { WhatsAppCostCalculator } from "./whatsapp-cost-calculator";
 
-type NavItem = readonly [label: string, href: string, icon: React.ComponentType<{ size?: number; strokeWidth?: number }>];
+type NavItem = readonly [label: string, href: string, icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>];
 
 const navGroups: ReadonlyArray<{ label: string; items: readonly NavItem[] }> = [
   { label: "Workspace", items: [["Overview", "/app", House], ["Analytics & Insights", "/app/analytics", LineChart], ["Action centre", "/app/action-centre", CircleAlert]] },
@@ -203,7 +203,7 @@ export function AppShell({
           body: item.body ?? "A clinic action requires review in OmniRelay.",
           tag: `omnirelay-serious-action-${item.id}`,
           renotify: true,
-        });
+        } as any);
         alert.onclick = () => {
           window.focus();
           window.location.assign(notificationHref(item.href));

@@ -47,53 +47,52 @@ export default async function CustomersPage() {
       </header>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-              <tr>
-                <th className="px-6 py-4 font-semibold">Customer</th>
-                <th className="px-6 py-4 font-semibold">WhatsApp Phone</th>
-                <th className="px-6 py-4 font-semibold text-right">Total Orders</th>
-                <th className="px-6 py-4 font-semibold text-right">Lifetime Value</th>
-                <th className="px-6 py-4 font-semibold">Last Order</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {safeCustomers.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center">
-                    <Users className="mx-auto mb-3 size-8 text-slate-300" />
-                    <p className="text-sm font-medium text-slate-900">No customers found</p>
-                    <p className="text-xs text-slate-500">Customers will appear here automatically when orders are created.</p>
-                  </td>
-                </tr>
-              ) : (
-                safeCustomers.map((customer) => (
-                  <tr key={customer.phone} className="transition-colors hover:bg-slate-50">
-                    <td className="whitespace-nowrap px-6 py-4 font-bold text-slate-900">
-                      {customer.name || "Unknown"}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 font-mono text-xs">
-                      {customer.phone}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right font-medium">
-                      <span className="inline-flex min-w-[2rem] items-center justify-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
-                        {customer.total_orders}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right font-bold text-emerald-600">
-                      ₹{customer.total_spent}
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-xs text-slate-500">
-                      {new Intl.DateTimeFormat("en-IN", {
-                        day: 'numeric', month: 'short', year: 'numeric'
-                      }).format(new Date(customer.last_order_date))}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        {/* Desktop Header */}
+        <div className="hidden grid-cols-[2fr_1fr_1fr_1fr_1fr] bg-slate-50 px-6 py-4 text-xs font-semibold uppercase text-slate-500 md:grid">
+          <div>Customer</div>
+          <div>WhatsApp Phone</div>
+          <div className="text-right">Total Orders</div>
+          <div className="text-right">Lifetime Value</div>
+          <div className="text-right">Last Order</div>
+        </div>
+        
+        <div className="divide-y divide-slate-100">
+          {safeCustomers.length === 0 ? (
+            <div className="px-6 py-12 text-center">
+              <Users className="mx-auto mb-3 size-8 text-slate-300" />
+              <p className="text-sm font-medium text-slate-900">No customers found</p>
+              <p className="text-xs text-slate-500">Customers will appear here automatically when orders are created.</p>
+            </div>
+          ) : (
+            safeCustomers.map((customer) => (
+              <div key={customer.phone} className="grid grid-cols-1 gap-3 p-4 transition-colors hover:bg-slate-50 md:grid-cols-[2fr_1fr_1fr_1fr_1fr] md:items-center md:gap-0 md:px-6 md:py-4">
+                <div className="flex flex-col md:block">
+                  <span className="text-xs font-semibold uppercase text-slate-400 md:hidden">Customer</span>
+                  <span className="font-bold text-slate-900">{customer.name || "Unknown"}</span>
+                </div>
+                <div className="flex flex-col md:block">
+                  <span className="text-xs font-semibold uppercase text-slate-400 md:hidden">Phone</span>
+                  <span className="font-mono text-sm text-slate-600">{customer.phone}</span>
+                </div>
+                <div className="flex items-center justify-between md:block md:text-right">
+                  <span className="text-xs font-semibold uppercase text-slate-400 md:hidden">Total Orders</span>
+                  <span className="inline-flex min-w-[2rem] items-center justify-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
+                    {customer.total_orders}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between md:block md:text-right">
+                  <span className="text-xs font-semibold uppercase text-slate-400 md:hidden">Lifetime Value</span>
+                  <span className="font-bold text-emerald-600">₹{customer.total_spent}</span>
+                </div>
+                <div className="flex items-center justify-between md:block md:text-right">
+                  <span className="text-xs font-semibold uppercase text-slate-400 md:hidden">Last Order</span>
+                  <span className="text-sm text-slate-500">
+                    {new Intl.DateTimeFormat("en-IN", { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(customer.last_order_date))}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

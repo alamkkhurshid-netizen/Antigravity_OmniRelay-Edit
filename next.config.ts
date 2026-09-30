@@ -2,12 +2,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  }
+  // TypeScript and ESLint will now run during builds
 };
 
 export default withSentryConfig(nextConfig, {
@@ -18,6 +13,5 @@ export default withSentryConfig(nextConfig, {
   sentryUrl: "https://sentry.io/",
   silent: !process.env.CI,
   widenClientFileUpload: true,
-  hideSourceMaps: true,
   disableLogger: true,
 });

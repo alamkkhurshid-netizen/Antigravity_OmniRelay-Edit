@@ -6,6 +6,7 @@ import { CapiSetupModal } from "./capi-setup-modal";
 
 export default async function MarketingAutopilotPage() {
   const { supabase, organization } = await getWorkspace();
+  if (!organization) return null;
   
   // Fetch campaigns and integration status
   const { data: orgData } = await supabase

@@ -1,14 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { Key, ShieldCheck, CheckCircle2, ChevronRight, X } from "lucide-react";
 
-declare global {
-  interface Window {
-    FB: any;
-  }
-}
+
 
 const FacebookIcon = ({ className, fill }: { className?: string; fill?: string }) => (
   <svg
@@ -28,6 +25,7 @@ const FacebookIcon = ({ className, fill }: { className?: string; fill?: string }
 );
 
 export function CapiSetupModal({ metaAppId }: { metaAppId?: string }) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"choose" | "manual" | "oauth" | "select_pixel">("choose");
   
@@ -54,7 +52,7 @@ export function CapiSetupModal({ metaAppId }: { metaAppId?: string }) {
     setTimeout(() => {
       setIsSubmitting(false);
       setIsOpen(false);
-      // window.location.reload(); 
+      router.refresh(); 
     }, 1500);
   };
 
@@ -64,14 +62,14 @@ export function CapiSetupModal({ metaAppId }: { metaAppId?: string }) {
       return;
     }
     
-    if (typeof window === "undefined" || !window.FB) {
+    if (typeof window === "undefined" || !(window as any).FB) {
       alert("Facebook SDK is loading or blocked. Please try again in a moment.");
       return;
     }
 
     setIsOauthConnecting(true);
     
-    window.FB.login((response: any) => {
+    (window as any).FB.login((response: any) => {
       setIsOauthConnecting(false);
       if (response.authResponse) {
         const token = response.authResponse.accessToken;
@@ -81,7 +79,7 @@ export function CapiSetupModal({ metaAppId }: { metaAppId?: string }) {
         setIsLoadingData(true);
         setActiveTab("select_pixel");
         
-        window.FB.api('/me/adaccounts?fields=name,account_id', 'GET', {}, (accResponse: any) => {
+        (window as any).FB.api('/me/adaccounts?fields=name,account_id', 'GET', {}, (accResponse: any) => {
           setIsLoadingData(false);
           if (accResponse && !accResponse.error) {
             setAdAccounts(accResponse.data || []);
@@ -101,7 +99,7 @@ export function CapiSetupModal({ metaAppId }: { metaAppId?: string }) {
     setSelectedAdAccount(accountId);
     setIsLoadingData(true);
     // Fetch pixels for the selected Ad Account
-    window.FB.api(`/${accountId}/adspixels?fields=name`, 'GET', {}, (pxResponse: any) => {
+    (window as any).FB.api(`/${accountId}/adspixels?fields=name`, 'GET', {}, (pxResponse: any) => {
       setIsLoadingData(false);
       if (pxResponse && !pxResponse.error) {
         setPixels(pxResponse.data || []);
@@ -139,8 +137,8 @@ export function CapiSetupModal({ metaAppId }: { metaAppId?: string }) {
           src="https://connect.facebook.net/en_US/sdk.js" 
           strategy="lazyOnload" 
           onLoad={() => {
-            if (window.FB) {
-              window.FB.init({
+            if ((window as any).FB) {
+              (window as any).FB.init({
                 appId: metaAppId,
                 cookie: true,
                 xfbml: true,

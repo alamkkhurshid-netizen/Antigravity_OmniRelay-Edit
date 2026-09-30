@@ -4,6 +4,7 @@ import { getWorkspace } from "@/lib/workspace";
 
 export default async function AnalyticsPage() {
   const { supabase, organization } = await getWorkspace();
+  if (!organization) return null;
   
   // Fetch basic analytics from retail_orders
   const { data: orders } = await supabase

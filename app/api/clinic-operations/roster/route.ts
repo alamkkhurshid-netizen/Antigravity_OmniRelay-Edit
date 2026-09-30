@@ -156,7 +156,7 @@ export async function GET(request: Request) {
       );
       const count = (status: string) =>
         bookings.filter((item) => item.status === status).length;
-      const profile = rule.resource.provider_profiles;
+      const profile = rule.resource?.provider_profiles;
       const dispatch =
         typedDispatches.find((item) => item.availability_rule_id === rule.id) ??
         null;
@@ -175,7 +175,7 @@ export async function GET(request: Request) {
       return {
         id: rule.id,
         resourceId: rule.resource_id,
-        doctor: rule.resource.name,
+        doctor: rule.resource?.name ?? "Unknown",
         specialization: profile?.specialization ?? "General practice",
         department: department?.name ?? "Unassigned",
         departmentId: department?.id ?? null,

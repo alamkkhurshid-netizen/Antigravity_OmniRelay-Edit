@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createKnowledgeEmbedding, vectorLiteral } from "@/lib/rag-embeddings";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getWorkspace } from "@/lib/workspace";
+import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { ctoBotSchema } from "@/lib/validators";
 
 // Use Gemini SDK for text generation
 const generateCtoResponse = async (question: string, context: string, history: string) => {
@@ -38,18 +41,32 @@ ${history}
 };
 
 export async function POST(request: Request) {
-  const { supabase, organization } = await getWorkspace();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
-  if (!organization) return NextResponse.json({ error: "Workspace not found." }, { status: 409 });
+  try {
+    const { supabase, organization } = await getWorkspace();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+    if (!organization) return NextResponse.json({ error: "Workspace not found." }, { status: 409 });
 
-  const payload = await request.json().catch(() => ({}));
-  const question = typeof payload.question === "string" ? payload.question.trim() : "";
-  const history = typeof payload.history === "string" ? payload.history : "";
-  
-  if (question.length < 3) {
-    return NextResponse.json({ error: "Enter a valid question." }, { status: 400 });
-  }
+    const rateLimit = checkRateLimit(`cto_bot_${user.id}`, 10, 60 * 1000);
+    if (!rateLimit.success) {
+      logger.warn("Rate limit exceeded for CTO bot", { userId: user.id, orgId: organization.id });
+      return NextResponse.json({ error: "Rate limit exceeded. Please try again later." }, { status: 429 });
+    }
+
+    const payload = await request.json().catch(() => ({}));
+    // Note: The validator expects 'prompt' but the route expects 'question'. 
+    // We'll map 'question' -> 'prompt' for the schema.
+    const parseResult = ctoBotSchema.safeParse({ prompt: payload.question || "" });
+    const history = typeof payload.history === "string" ? payload.history : "";
+    
+    if (!parseResult.success) {
+      return NextResponse.json({ 
+        error: "Validation failed", 
+        details: parseResult.error.format() 
+      }, { status: 422 });
+    }
+    
+    const question = parseResult.data.prompt;
 
   let semanticSources: any[] = [];
   try {
@@ -65,11 +82,11 @@ export async function POST(request: Request) {
     });
     
     if (error) {
-        console.error("RPC Error:", error);
+        logger.error("RPC Error in CTO bot", error, { route: "/api/agents/cto-bot" });
     }
     semanticSources = data ?? [];
   } catch (e) {
-    console.error("Embedding Error:", e);
+    logger.error("Embedding Error in CTO bot", e, { route: "/api/agents/cto-bot" });
     return NextResponse.json({ error: "Failed to search architecture knowledge base." }, { status: 500 });
   }
 
@@ -83,7 +100,11 @@ export async function POST(request: Request) {
       sources: semanticSources.map(s => ({ title: s.title, similarity: s.similarity }))
     });
   } catch (e: any) {
-    console.error("Generation Error:", e);
+    logger.error("Generation Error in CTO bot", e, { route: "/api/agents/cto-bot" });
     return NextResponse.json({ error: e.message }, { status: 500 });
+  }
+  } catch (error) {
+    logger.error("CTO bot failed unexpectedly", error, { route: "/api/agents/cto-bot" });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

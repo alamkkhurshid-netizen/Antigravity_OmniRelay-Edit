@@ -1,0 +1,13 @@
+export type CareRun = { id:string; status:string; scheduled_for:string; attempt_count:number; max_attempts:number; failure_reason:string|null; channel:string; patient:{full_name:string;phone:string|null;care_communications_consent:boolean}|null; reminder:{title:string;reminder_type:string;approval_mode:string}|null };
+export type AppointmentRun = { id:string; event_type:string; status:string; scheduled_for:string; attempts:number; max_attempts:number; failure_reason:string|null; appointment:{customer_name:string;customer_phone:string|null;care_communications_consent:boolean}|null };
+export type Task = { id:string;title:string;details:string|null;due_at:string|null;priority:string;status:string;patient:{full_name:string}|null };
+export type Deployment = {id:string;status:string;deployed_count:number;automatic_count:number;exception_count:number;created_at:string};
+export type BookingRequest = {id:string;patient_name:string;starts_at:string;status:string;service:{name:string}|null;location:{name:string}|null;resource:{name:string}|null};
+export type WaitlistItem={id:string;patient_name:string;preferred_date:string;status:string;priority:number;service:{name:string}|null;location:{name:string}|null;resource:{name:string}|null};
+export type Disruption={id:string;starts_at:string;ends_at:string;exception_type:string;reason:string;status:string;resource:{name:string}|null;location:{name:string}|null};
+export type EmergencyRecipient={id:string;status:string;failure_reason:string|null;patient:{full_name:string}|null;campaign:{campaign_type:string;status:string}|null};
+export type Assignment={item_kind:string;subject_id:string;assigned_to:string|null;status:string;updated_at:string};
+export type ReadinessCheck={id:string;check_key:string;status:string;notes:string|null;updated_at:string};
+export type PilotControl={pilot_owner_name:string;rollback_owner_name:string;planned_start_date:string|null;health_status:"go"|"hold";health_note:string|null;reviewed_at:string};
+export type AiDraft={id:string;agent_role:string;proposed_action:string;draft_payload:Record<string, unknown>;created_at:string};
+export type ExceptionItem = {id:string;kind:"care_retry"|"appointment_retry"|"booking_approval"|"waitlist"|"schedule_disruption"|"blocked"|"care_task"|"agent_draft";type:string;name:string;detail:string;priority:string;href:string;status?:string;rank:number;assignment?:Assignment;draft_payload?:Record<string, unknown>};

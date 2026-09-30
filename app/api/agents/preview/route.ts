@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createKnowledgeEmbedding, vectorLiteral } from "@/lib/rag-embeddings";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getWorkspace } from "@/lib/workspace";
+import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { aiPreviewSchema } from "@/lib/validators";
 
 const words = (value: string) =>
   [...new Set(value.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [])];
@@ -10,16 +13,30 @@ const includesPhrase = (value: string, phrases: string[]) =>
   phrases.some((phrase) => value.includes(phrase));
 
 export async function POST(request: Request) {
-  const { supabase, organization } = await getWorkspace();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
-  if (!organization) return NextResponse.json({ error: "Workspace not found." }, { status: 409 });
+  try {
+    const { supabase, organization } = await getWorkspace();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
+    if (!organization) return NextResponse.json({ error: "Workspace not found." }, { status: 409 });
 
-  const payload = (await request.json().catch(() => ({}))) as { question?: unknown };
-  const question = typeof payload.question === "string" ? payload.question.trim() : "";
-  if (question.length < 3 || question.length > 500) {
-    return NextResponse.json({ error: "Enter a question between 3 and 500 characters." }, { status: 400 });
-  }
+    // AI Route Rate Limiting: 10 req / minute per user
+    const rateLimit = checkRateLimit(`ai_preview_${user.id}`, 10, 60 * 1000);
+    if (!rateLimit.success) {
+      logger.warn("Rate limit exceeded for AI preview", { userId: user.id, orgId: organization.id });
+      return NextResponse.json({ error: "Rate limit exceeded. Please try again later." }, { status: 429 });
+    }
+
+    const payload = await request.json().catch(() => ({}));
+    const parseResult = aiPreviewSchema.safeParse(payload);
+    
+    if (!parseResult.success) {
+      return NextResponse.json({ 
+        error: "Validation failed", 
+        details: parseResult.error.format() 
+      }, { status: 422 });
+    }
+    
+    const { question } = parseResult.data;
 
   const [{ data: agent }, { data: knowledge }, { data: services }, { data: locations }] = await Promise.all([
     supabase.from("ai_agent_profiles").select("handoff_message").eq("organization_id", organization.id).eq("role", "booking_concierge").maybeSingle(),
@@ -114,4 +131,8 @@ export async function POST(request: Request) {
       ? "Preview retrieved cited, approved workspace knowledge and live clinic configuration only. It does not call a generative answer model."
       : "Preview uses approved workspace knowledge and live clinic configuration only. Semantic indexing is not available for this answer, so it used the safe lexical fallback. It does not call a generative model.",
   });
+  } catch (error) {
+    logger.error("AI Preview generation failed", error, { route: "/api/agents/preview" });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

@@ -11,9 +11,10 @@ type WaitlistOffer={created_at:string;starts_at:string;status:string};
 type WaitlistEntry={id:string;patient_name:string;service?:{name:string}|null;location?:{name:string}|null;priority:number;status:string;offers?:WaitlistOffer[]|null;offer_expires_at?:string|null};
 
 function latestOffer(item:WaitlistEntry){return [...(item.offers??[])].sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime())[0]}
-function remaining(expiresAt:string|undefined,now:number){if(!expiresAt)return "";const seconds=Math.max(0,Math.floor((new Date(expiresAt).getTime()-now)/1000));return `${Math.floor(seconds/60)}m ${String(seconds%60).padStart(2,"0")}s`}
+function remaining(expiresAt:string|null|undefined,now:number){if(!expiresAt)return "";const seconds=Math.max(0,Math.floor((new Date(expiresAt).getTime()-now)/1000));return `${Math.floor(seconds/60)}m ${String(seconds%60).padStart(2,"0")}s`}
 
 import { useRouter } from "next/navigation";
+import { WorkspaceHero } from "@/components/workspace-hero";
 
 export function BookingConciergeWorkspace({organizationId,initialSettings,requests,sessions,waitlist,locationCount,serviceCount}:{organizationId:string;initialSettings:Partial<Settings>|null;requests:BookingRequest[];sessions:BookingSession[];waitlist:WaitlistEntry[];locationCount:number;serviceCount:number}){
   const router = useRouter();
@@ -24,35 +25,19 @@ export function BookingConciergeWorkspace({organizationId,initialSettings,reques
   async function save(){setSaving(true);setNotice("");const {error}=await createClient().from("whatsapp_booking_settings").upsert({organization_id:organizationId,...form,updated_at:new Date().toISOString()},{onConflict:"organization_id"});setNotice(error?error.message:"Concierge settings saved.");setSaving(false)}
   async function decide(requestId:string,decision:"approve"|"reject"|"waitlist"){setDeciding(requestId);setNotice("");const note=decision==="approve"?"Approved by clinic team":decision==="waitlist"?"Requested time unavailable; patient retained for the next suitable opening":"Requested slot unavailable";const {error}=await createClient().rpc("decide_whatsapp_booking_request",{p_organization_id:organizationId,p_request_id:requestId,p_decision:decision,p_note:note});if(error){setNotice(error.message);setDeciding("");return}setDeciding("");router.refresh()}
   return <div className="mx-auto grid max-w-7xl gap-5 pb-12">
-    <section className="relative flex flex-col gap-6 overflow-hidden rounded-2xl bg-slate-950 px-6 py-8 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between sm:px-8 isolate mb-6">
-      {/* Ambient Orbs & Grain */}
-      <div className="absolute -top-32 -right-32 h-[30rem] w-[30rem] rounded-full bg-teal-500/20 blur-[120px] -z-10 pointer-events-none" />
-      <div className="absolute -bottom-32 -left-32 h-[30rem] w-[30rem] rounded-full bg-blue-600/20 blur-[120px] -z-10 pointer-events-none" />
-      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none -z-10" />
-      
-      <div className="z-10 max-w-2xl">
-        <span className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-bold tracking-widest text-teal-400 ring-1 ring-inset ring-teal-500/20 uppercase">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-500"></span>
-          </span>
-          WHATSAPP BOOKING CONCIERGE
-        </span>
-        <h2 className="mt-4 text-2xl sm:text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-slate-100 to-slate-400 leading-[1.15]">
-          Turn every "Hi" into a safe booking journey.
-        </h2>
-        <p className="mt-4 text-sm sm:text-base text-slate-400 font-medium tracking-wide">
-          Patients choose a service, chamber, doctor and only currently available time slots. Medical history stays behind mobile verification.
-        </p>
-      </div>
-      
-      <div className="flex flex-wrap items-center gap-3 z-10">
-        <div className={`inline-flex items-center gap-2 rounded-xl border ${form.enabled ? 'border-teal-500/30 bg-teal-500/10' : 'border-white/10 bg-white/5'} px-4 py-2 text-[13px] font-bold text-white shadow-sm backdrop-blur-md`}>
-          <div className={`h-2 w-2 rounded-full ${form.enabled ? 'bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.5)]' : 'bg-slate-400'}`} />
-          {form.enabled?"Ready to receive":"Not live"}
+    <WorkspaceHero
+      tag="WHATSAPP BOOKING CONCIERGE"
+      title="Turn every &quot;Hi&quot; into a safe booking journey."
+      subtitle="Patients choose a service, chamber, doctor and only currently available time slots. Medical history stays behind mobile verification."
+      action={
+        <div className="flex flex-wrap items-center gap-3 z-10">
+          <div className={`inline-flex items-center gap-2 rounded-xl border ${form.enabled ? 'border-teal-500/30 bg-teal-500/10' : 'border-white/10 bg-white/5'} px-4 py-2 text-[13px] font-bold text-white shadow-sm backdrop-blur-md`}>
+            <div className={`h-2 w-2 rounded-full ${form.enabled ? 'bg-teal-400 shadow-[0_0_8px_rgba(45,212,191,0.5)]' : 'bg-slate-400'}`} />
+            {form.enabled?"Ready to receive":"Not live"}
+          </div>
         </div>
-      </div>
-    </section>
+      }
+    />
     <section className="concierge-metrics"><article><span>Chambers</span><b>{locationCount}</b><small>Location-specific schedules</small></article><article><span>Bookable services</span><b>{serviceCount}</b><small>Live catalogue</small></article><article><span>Returning patients</span><b>{recognized}</b><small>Recognized in recent sessions</small></article><article><span>Waiting patients</span><b>{waitlist.filter(x=>x.status==="waiting").length}</b><small>Priority then request time</small></article></section>
     <div className="concierge-grid"><section className="foundation-section"><header><div><span className="app-eyebrow">CONTROL</span><h2>Booking policy</h2></div><span className="section-status">RLS protected</span></header><div className="form-grid">
       <label className="wide concierge-toggle"><input type="checkbox" checked={form.enabled} onChange={e=>setForm({...form,enabled:e.target.checked})}/><span><b>Enable WhatsApp concierge</b><small>Incoming WhatsApp greetings start the guided journey.</small></span></label>

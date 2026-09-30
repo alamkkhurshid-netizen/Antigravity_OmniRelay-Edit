@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useDeferredValue, useMemo, useState } from "react";
 import { ArrowUpRight, CalendarClock, CheckCircle2, CircleAlert, ClipboardList, Search, UserRound } from "lucide-react";
+import { WorkspaceHero } from "@/components/workspace-hero";
 
 type PlanStatus = "active" | "paused" | "completed" | "cancelled";
 type Plan = { id:string; patient_id:string; plan_type:string; title:string; goal:string|null; instructions:string|null; status:PlanStatus; starts_on:string; target_date:string|null; next_review_at:string|null; assigned_to:string|null; created_at:string; updated_at:string };
@@ -70,34 +71,18 @@ export function CarePlanOperations({ plans:initialPlans, patients, reminders, ta
 
   const buttonBase="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50";
   return <main className="mx-auto grid max-w-7xl gap-5 pb-12">
-    <section className="relative flex flex-col gap-6 overflow-hidden rounded-2xl bg-slate-950 px-6 py-8 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between sm:px-8 isolate">
-      {/* Ambient Orbs & Grain */}
-      <div className="absolute -top-32 -right-32 h-[30rem] w-[30rem] rounded-full bg-teal-500/20 blur-[120px] -z-10 pointer-events-none" />
-      <div className="absolute -bottom-32 -left-32 h-[30rem] w-[30rem] rounded-full bg-blue-600/20 blur-[120px] -z-10 pointer-events-none" />
-      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none -z-10" />
-
-      <div className="z-10 max-w-2xl">
-        <span className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-bold tracking-widest text-teal-400 ring-1 ring-inset ring-teal-500/20 uppercase">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-500"></span>
-          </span>
-          CONTINUED CARE OPERATIONS
-        </span>
-        <h1 className="mt-4 text-2xl sm:text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-slate-100 to-slate-400 leading-[1.15]">
-          Every follow-up, visible and owned.
-        </h1>
-        <p className="mt-4 text-sm sm:text-base text-slate-400 font-medium tracking-wide">
-          Review active patient plans across the clinic, prioritize overdue work and catch reminder failures before a patient is missed.
-        </p>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3 z-10">
-        <Link className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-teal-400 to-blue-500 px-4 text-[13px] font-bold text-slate-950 shadow-[0_0_20px_rgba(45,212,191,0.25)] transition-all hover:from-teal-300 hover:to-blue-400 hover:scale-[1.02]" href="/app/contacts">
-          Create plan <ArrowUpRight size={16}/>
-        </Link>
-      </div>
-    </section>
+    <WorkspaceHero
+      tag="CONTINUED CARE OPERATIONS"
+      title="Every follow-up, visible and owned."
+      subtitle="Review active patient plans across the clinic, prioritize overdue work and catch reminder failures before a patient is missed."
+      action={
+        <div className="flex flex-wrap items-center gap-3 z-10">
+          <Link className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-teal-400 to-blue-500 px-4 text-[13px] font-bold text-slate-950 shadow-[0_0_20px_rgba(45,212,191,0.25)] transition-all hover:from-teal-300 hover:to-blue-400 hover:scale-[1.02]" href="/app/contacts">
+            Create plan <ArrowUpRight size={16}/>
+          </Link>
+        </div>
+      }
+    />
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Care plan summary">{[{label:"Active plans",value:metrics.active,detail:"Continued-care journeys",icon:ClipboardList,tone:"text-primary bg-sky-50"},{label:"Due in 7 days",value:metrics.dueSoon,detail:"Reviews approaching",icon:CalendarClock,tone:"text-amber-700 bg-amber-50"},{label:"Overdue",value:metrics.overdue,detail:"Requires staff action",icon:CircleAlert,tone:"text-rose-700 bg-rose-50"},{label:"Reminder issues",value:metrics.failed,detail:"Blocked or failed outreach",icon:CircleAlert,tone:"text-rose-700 bg-rose-50"}].map(item=>{const Icon=item.icon;return <article className="rounded-2xl border border-border bg-white p-5 shadow-sm" key={item.label}><span className={`grid size-10 place-items-center rounded-xl ${item.tone}`}><Icon size={20}/></span><b className="mt-4 block text-2xl">{item.value}</b><span className="mt-1 block text-sm font-bold">{item.label}</span><small className="mt-1 block text-xs text-muted-foreground">{item.detail}</small></article>})}</section>
     {message ? <p className="rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-800" role="status">{message}</p> : null}
     <section className="overflow-hidden rounded-2xl border border-border bg-white shadow-[0_12px_36px_rgba(7,19,38,.06)]"><header className="flex flex-col gap-4 border-b border-border p-5 xl:flex-row xl:items-end xl:justify-between"><div><span className="text-xs font-black tracking-[.15em] text-primary">CLINIC QUEUE</span><h2 className="mt-2 text-2xl font-semibold tracking-tight">Care-plan reviews</h2></div><div className="flex flex-col gap-3 lg:flex-row lg:items-center"><label className="flex min-h-10 min-w-64 items-center gap-2 rounded-xl border border-input bg-white px-3"><Search size={16} className="text-muted-foreground"/><span className="sr-only">Search care plans</span><input className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search patient or plan" /></label><div className="flex max-w-full gap-1 overflow-x-auto rounded-xl bg-muted p-1" aria-label="Filter care plans">{(["attention","active","paused","completed","all"] as Filter[]).map((item) => <button className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-bold transition ${filter === item ? "bg-white text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`} key={item} onClick={() => setFilter(item)}>{item === "attention" ? "Needs attention" : item[0].toUpperCase() + item.slice(1)}</button>)}</div></div></header>

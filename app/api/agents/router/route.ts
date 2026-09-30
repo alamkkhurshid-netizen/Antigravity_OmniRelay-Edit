@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function POST(req: Request) {
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
       let ragContext = "No relevant knowledge base documents found.";
       
       if (serviceKey) {
-        const adminSupabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || "", serviceKey);
+        const adminSupabase = createAdminClient();
         const { data: matchedDocs, error: matchError } = await adminSupabase.rpc('match_documents', {
           query_embedding: queryEmbedding,
           match_threshold: 0.5,

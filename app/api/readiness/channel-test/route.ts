@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   const role = String((actor?.extra as Record<string, unknown> | null)?.role ?? "member");
   if (!actor || !["owner", "admin"].includes(role)) return NextResponse.json({ error: "Only a workspace owner or admin can prepare this test." }, { status: 403 });
 
-  if (!await consumeRateLimit(supabase, `acceptance_prepare_${scenario}`, 3, 3600)) {
+  if (!await consumeRateLimit(supabase, `acceptance_prepare_${scenario}` as any, 3, 3600)) {
     return NextResponse.json({ error: "The controlled test preparation limit was reached." }, { status: 429 });
   }
 

@@ -21,7 +21,7 @@ const responseSchema: Schema = {
     },
     risk_level: {
       type: SchemaType.STRING,
-
+      format: "enum",
       enum: ["low", "medium", "high"],
       description: "Assess the risk level of applying this patch."
     }

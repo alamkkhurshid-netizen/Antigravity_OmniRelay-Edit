@@ -3,15 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-declare global {
-  interface Window {
-    FB?: {
-      init: (options: Record<string, unknown>) => void;
-      login: (callback: (response: { authResponse?: { code?: string } }) => void, options: Record<string, unknown>) => void;
-    };
-    fbAsyncInit?: () => void;
-  }
-}
+
 
 type SignupData = {
   phoneNumberId?: string;
@@ -89,12 +81,12 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
 
   useEffect(() => {
     if (!configurationId) return;
-    window.fbAsyncInit = () => {
-      window.FB?.init({ appId, cookie: true, xfbml: false, version: "v25.0" });
+    (window as any).fbAsyncInit = () => {
+      (window as any).FB?.init({ appId, cookie: true, xfbml: false, version: "v25.0" });
       setSdkReady(true);
     };
     if (document.getElementById("facebook-jssdk")) {
-      window.fbAsyncInit();
+      (window as any).fbAsyncInit();
       return;
     }
     const script = document.createElement("script");
@@ -146,7 +138,7 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
   }
 
   function connect() {
-    if (!configurationId || !window.FB) return;
+    if (!configurationId || !(window as any).FB) return;
     metaDialogOpened.current = false;
     clearDialogWatch();
     setState("authorizing");
@@ -154,7 +146,7 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
     // FB.login must run synchronously inside the click handler. Meta also
     // requires this callback itself to be a plain function, not async.
     try {
-      window.FB.login((response) => {
+      (window as any).FB.login((response: any) => {
         clearDialogWatch();
         void completeMetaLogin(response).catch(() => {
           setState("error");

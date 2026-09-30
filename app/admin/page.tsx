@@ -58,52 +58,56 @@ export default async function AdminDashboardPage() {
                 <h2 className="text-lg font-bold text-slate-900">Tenant Organizations</h2>
               </div>
               
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-600">
-                  <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                    <tr>
-                      <th className="px-6 py-4">Organization</th>
-                      <th className="px-6 py-4">Created</th>
-                      <th className="px-6 py-4">Tier</th>
-                      <th className="px-6 py-4">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {organizations?.map((org) => (
-                      <tr key={org.id} className="hover:bg-slate-50/50">
-                        <td className="px-6 py-4 font-medium text-slate-900">{org.name}</td>
-                        <td className="px-6 py-4">{new Date(org.created_at).toLocaleDateString()}</td>
-                        <td className="px-6 py-4">
-                          <form action={async () => { "use server"; await toggleOrganizationTier(org.id, org.subscription_tier); }}>
-                            <button 
-                              type="submit"
-                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
-                                org.subscription_tier === 'premium' 
-                                  ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' 
-                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                              }`}
-                            >
-                              {org.subscription_tier === 'premium' && <Crown className="size-3" />}
-                              {org.subscription_tier.toUpperCase()}
-                            </button>
-                          </form>
-                        </td>
-                        <td className="px-6 py-4">
-                          <form action={async () => { "use server"; await toggleOrganizationDemoStatus(org.id, org.is_demo); }}>
-                            <button 
-                              type="submit"
-                              className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                                org.is_demo ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
-                              }`}
-                            >
-                              {org.is_demo ? 'SANDBOX' : 'PRODUCTION'}
-                            </button>
-                          </form>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="flex flex-col">
+                <div className="hidden grid-cols-[2fr_1fr_1fr_1fr] bg-slate-50 px-6 py-4 text-xs font-semibold uppercase text-slate-500 md:grid">
+                  <div>Organization</div>
+                  <div>Created</div>
+                  <div>Tier</div>
+                  <div>Status</div>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {organizations?.map((org) => (
+                    <div key={org.id} className="grid grid-cols-1 gap-3 p-4 transition-colors hover:bg-slate-50/50 md:grid-cols-[2fr_1fr_1fr_1fr] md:items-center md:gap-0 md:px-6 md:py-4">
+                      <div className="flex flex-col md:block">
+                        <span className="text-xs font-semibold uppercase text-slate-400 md:hidden">Organization</span>
+                        <span className="font-medium text-slate-900">{org.name}</span>
+                      </div>
+                      <div className="flex flex-col md:block">
+                        <span className="text-xs font-semibold uppercase text-slate-400 md:hidden">Created</span>
+                        <span className="text-sm text-slate-600">{new Date(org.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex items-center justify-between md:block">
+                        <span className="text-xs font-semibold uppercase text-slate-400 md:hidden">Tier</span>
+                        <form action={async () => { "use server"; await toggleOrganizationTier(org.id, org.subscription_tier); }}>
+                          <button 
+                            type="submit"
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors ${
+                              org.subscription_tier === 'premium' 
+                                ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' 
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                          >
+                            {org.subscription_tier === 'premium' && <Crown className="size-3" />}
+                            {org.subscription_tier.toUpperCase()}
+                          </button>
+                        </form>
+                      </div>
+                      <div className="flex items-center justify-between md:block">
+                        <span className="text-xs font-semibold uppercase text-slate-400 md:hidden">Status</span>
+                        <form action={async () => { "use server"; await toggleOrganizationDemoStatus(org.id, org.is_demo); }}>
+                          <button 
+                            type="submit"
+                            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                              org.is_demo ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+                            }`}
+                          >
+                            {org.is_demo ? 'SANDBOX' : 'PRODUCTION'}
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

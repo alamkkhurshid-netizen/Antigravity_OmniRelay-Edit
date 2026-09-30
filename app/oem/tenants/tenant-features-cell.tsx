@@ -8,9 +8,11 @@ export function TenantFeaturesCell({
   initialGoogleSync,
   initialSupportAgent,
   initialCtoAgent,
-  initialGrowthAgent
+  initialGrowthAgent,
+  initialAdminAgent
 }: { 
   organizationId: string, 
+  initialGoogleSync: boolean,
   initialSupportAgent: boolean,
   initialCtoAgent: boolean,
   initialGrowthAgent: boolean,

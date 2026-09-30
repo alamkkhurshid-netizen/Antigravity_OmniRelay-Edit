@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { Upload, Download, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2, X, Users, Calendar, Clock, MapPin, FileText } from "lucide-react";
 
@@ -105,6 +106,7 @@ export function DoctorRosterImportModal({
   triggerLabel?: string;
   onSuccess?: () => void;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<ParsedDoctorRow[]>([]);
   const [fileName, setFileName] = useState("");
@@ -306,7 +308,7 @@ export function DoctorRosterImportModal({
           setRows([]);
           setFileName("");
           onSuccess?.();
-          window.location.reload();
+          router.refresh();
         }, 1500);
       }
     } catch (err: any) {

@@ -26,5 +26,5 @@ export default async function ContactsPage() {
     return {...patient,avatar_url:data?.signedUrl??null};
   }));
   const accessRole=String(actor?.extra?.role??"member");
-  return <PatientDirectory patients={patientRows} appointments={appointments??[]} encounters={encounters??[]} prescriptions={prescriptions??[]} documents={documents??[]} consentEvents={consentEvents??[]} tasks={tasks??[]} carePlans={carePlans??[]} carePlanReminders={carePlanReminders??[]} staff={staff??[]} guardianLinks={guardianLinks??[]} canManageFamily={accessRole==="owner"||accessRole==="admin"} nowIso={new Date().toISOString()}/>;
+  return <PatientDirectory patients={patientRows} appointments={appointments as any ?? []} encounters={encounters??[]} prescriptions={prescriptions??[]} documents={documents??[]} consentEvents={consentEvents??[]} tasks={tasks??[]} carePlans={carePlans??[]} carePlanReminders={carePlanReminders??[]} staff={staff??[]} guardianLinks={guardianLinks??[]} canManageFamily={accessRole==="owner"||accessRole==="admin"} nowIso={new Date().toISOString()}/>;
 }

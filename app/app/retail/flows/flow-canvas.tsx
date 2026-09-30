@@ -80,7 +80,7 @@ const initialNodes = [
   { id: "3", type: "action", position: { x: 400, y: 250 }, data: { label: "Notify Staff" } },
 ];
 
-const initialEdges = [
+const initialEdges: Edge[] = [
   { id: "e1-2", source: "1", target: "2", animated: true, style: { stroke: '#a855f7', strokeWidth: 2 } },
   { id: "e1-3", source: "1", target: "3", style: { stroke: '#94a3b8', strokeWidth: 2 } },
 ];

@@ -17,5 +17,5 @@ export default async function BookingConciergePage() {
     supabase.from("business_locations").select("id", { count: "exact", head: true }).eq("organization_id", organization.id).eq("active", true),
     supabase.from("organization_services").select("id", { count: "exact", head: true }).eq("organization_id", organization.id).eq("active", true).eq("booking_enabled", true),
   ]);
-  return <BookingConciergeWorkspace organizationId={organization.id} initialSettings={settings} requests={requests ?? []} sessions={sessions ?? []} waitlist={waitlist??[]} locationCount={locations ?? 0} serviceCount={services ?? 0} />;
+  return <BookingConciergeWorkspace organizationId={organization.id} initialSettings={settings} requests={requests as any ?? []} sessions={sessions ?? []} waitlist={waitlist as any ?? []} locationCount={locations ?? 0} serviceCount={services ?? 0} />;
 }

@@ -88,7 +88,7 @@ export async function GET(request: Request) {
     const rosterData = buildDailyRosterData({
       organizationName: org.name || onboardingProfile?.business_name || "OmniRelay Clinic",
       date: todayIST,
-      appointments: appointments || [],
+      appointments: (appointments as any) || [],
       resources: resources || [],
       locations: locations || [],
       queueEntries: queueEntries || [],

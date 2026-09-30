@@ -6,10 +6,11 @@ export const revalidate = 0;
 
 export async function GET(
   request: Request,
-  { params }: { params: { patient_id: string } }
+  { params }: { params: Promise<{ patient_id: string }> }
 ) {
   try {
-    const patientId = params.patient_id;
+    const { patient_id } = await params;
+    const patientId = patient_id;
     if (!patientId) return new NextResponse("Not Found", { status: 404 });
 
     const admin = createAdminClient();

@@ -122,7 +122,7 @@ async function runScrapeGraphPipeline(recordId: string, orgId: string, searchQue
       .from("trend_intelligence_reports")
       .update({
         status: "failed",
-        error_message: error.message
+        error_message: (error as any).message
       })
       .eq("id", recordId);
   }
