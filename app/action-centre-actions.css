@@ -1,0 +1,59 @@
+.action-exceptions nav {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.action-exceptions nav button {
+  padding: 9px 12px;
+  border: 1px solid #c9dce7;
+  border-radius: 10px;
+  background: #f7fbfd;
+  color: #176989;
+  font-size:13px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.action-exceptions nav button.complete {
+  border-color: #b9e2d2;
+  background: #eaf8f2;
+  color: #126c4c;
+}
+
+.action-exceptions nav button.secondary {
+  background: #fff;
+  color: #5d7181;
+}
+
+.action-exceptions nav button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.action-notice,
+.action-error {
+  margin: 14px 26px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.action-notice {
+  background: #e8f8ef;
+  color: #126d4c;
+}
+
+.action-error {
+  background: #fff0f0;
+  color: #9b3434;
+}
+
+@media (max-width: 560px) {
+  .action-exceptions article nav {
+    grid-column: 2;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}

@@ -1,6 +1,13 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
+import "../appointments-refresh.css";
+import "../clinic-operations-refresh.css";
+import "../conversations-refresh.css";
+import "../conversations-jampack-refresh.css";
+import "../conversations-layout-refactor.css";
+import "../typography-polish.css";
+import "../workspace-ux-system.css";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();

@@ -1,0 +1,18 @@
+.inbox-page { border: 1px solid #d9e5e8; border-radius: 20px; box-shadow: 0 12px 28px rgba(18,44,58,.06); }
+.inbox-grid { background: #fff; }
+.inbox-list { background: linear-gradient(180deg,#fff,#f8fbfb); }
+.inbox-list { border-right-color: #dfe9e9; }
+.new-conversation-button { min-height: 42px; border-radius: 11px; background: linear-gradient(105deg,#43d9c7,#579cf6); color: #062d48; box-shadow: 0 8px 18px rgba(23,104,149,.18); font-size: .75rem; }
+.inbox-search { min-height: 42px; border-radius: 11px; box-shadow: 0 4px 12px rgba(18,44,58,.035); }
+.inbox-search input { font-size: .76rem; }
+.inbox-filter { padding-bottom: 13px; font-size: .72rem; }
+.inbox-filter b { color: #147eaa; }
+.inbox-rows>button { min-height: 72px; padding: 15px 17px; transition: background .15s ease, box-shadow .15s ease; }
+.inbox-rows>button:hover,.inbox-rows>button.active { background: linear-gradient(90deg,#eafaf8,#eff7ff); box-shadow: inset 3px 0 #48d4c1; }
+.inbox-rows>button>i,.thread-person>i,.context-person>i { background: linear-gradient(145deg,#46d7c7,#447fe9); box-shadow: 0 5px 13px rgba(26,110,159,.17); }
+.inbox-rows>button b { color: #15334b; font-size: .78rem; }.inbox-rows>button small{font-size:.7rem}.inbox-rows time{font-size:.66rem}
+.inbox-thread { background: #eff6f5; }.inbox-thread>header{border-bottom-color:#dfe9e9;box-shadow:0 4px 12px rgba(18,44,58,.025)}.thread-person b{font-size:.82rem}.thread-person small{font-size:.7rem}.thread-actions select,.thread-actions button{min-height:35px;border-radius:9px;font-size:.7rem}.thread-actions button:hover{background:#eef8fb;border-color:#a9d9e7}
+.message-stream{background-color:#f1f8f7;background-image:radial-gradient(#d2e5e1 1px,transparent 1px)}.message-bubble{border-radius:6px 15px 15px 15px;box-shadow:0 4px 12px rgba(18,44,58,.06)}.message-bubble.outgoing{border-radius:15px 6px 15px 15px;background:#e4faef}.message-bubble p{font-size:.78rem}.message-bubble footer{font-size:.66rem}.conversation-day{font-size:.67rem}
+.message-composer{border-top-color:#dfe9e9;box-shadow:0 -5px 14px rgba(18,44,58,.025)}.message-composer textarea{font-size:.78rem;border-radius:12px}.message-composer button{min-height:42px;border-radius:11px;background:linear-gradient(105deg,#103852,#0b5b78);font-size:.72rem}.message-composer button:hover{background:linear-gradient(105deg,#0b5671,#0a7790)}.ai-compose-toolbar .ai-suggest-button{font-size:.7rem}
+.inbox-context{background:linear-gradient(180deg,#fff,#f8fbfb);border-left-color:#dfe9e9}.context-person h3{color:#16344c;font-size:1rem}.context-person span,.inbox-context section>div{font-size:.7rem}.inbox-context>a{font-size:.72rem}.provider-failure-summary{border-radius:19px}.provider-failure-summary h3{font-size:1.3rem}
+@media(max-width:780px){.inbox-page{border-radius:16px}.inbox-list{border-right:0}.inbox-rows>button{min-height:70px}} 

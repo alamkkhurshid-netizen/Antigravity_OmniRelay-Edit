@@ -1,7 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { PwaRegistry } from "../components/pwa-registry";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { PwaRegistry } from "../components/pwa-registry";
+import "./globals.css";
+import "./impact.css";
+import "./calendar.css";
+import "./clinical-completion.css";
+import "./booking.css";
+import "./action-centre-actions.css";
+import "./readiness.css";
+import "./whatsapp-calculator.css";
+import "./whatsapp-calculator-layout.css";
+import "./billing-controls.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
