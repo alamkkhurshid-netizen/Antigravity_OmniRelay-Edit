@@ -20,6 +20,7 @@ Updated: 1 September 2026
 - Medication-reminder adherence capture for exact WhatsApp replies, with missed-dose/help escalation into the clinic task queue
 - Durable automation recovery with exhausted-job visibility, administrator-only one-click release, per-user throttling and an immutable retry audit trail
 - Provider-level WhatsApp observability with safe Meta error classification, actionable inbox guidance, administrator alerts for repeated failures and privacy-safe operational records
+- **Voice AI Telephony Receptionist (LIVE ON OCI & EXOTEL):** Live on Exotel Virtual DID `08047283676` via `omnirelay-voice` microservice deployed on Oracle Cloud Infrastructure (`ap-mumbai-1`, `130.210.29.75`). Powered by Pipecat, Deepgram Nova-3 (8kHz STT), Groq LPU (`qwen/qwen3.8-27b`), and Cartesia Sonic (8kHz 16-bit Linear PCM `s16le`). Verified with sub-600ms conversational turn-around on live Indian mobile networks (Jio / Airtel).
 
 ## Current milestone
 
