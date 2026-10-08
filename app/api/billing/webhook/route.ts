@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
+import { creditWallet } from "@/lib/billing/wallet";
 
 export async function POST(request: Request) {
   try {
@@ -8,102 +8,76 @@ export async function POST(request: Request) {
     const signature = request.headers.get("x-razorpay-signature");
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-    if (process.env.NODE_ENV === "production") {
-      if (!signature || !secret) {
-        return NextResponse.json({ error: "Missing signature or secret" }, { status: 400 });
+    if (process.env.NODE_ENV === "production" && secret) {
+      if (!signature) {
+        return NextResponse.json({ error: "Missing webhook signature" }, { status: 400 });
       }
-      const expectedSignature = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+      const expectedSignature = crypto
+        .createHmac("sha256", secret)
+        .update(rawBody)
+        .digest("hex");
+
       if (expectedSignature !== signature) {
-        return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+        return NextResponse.json({ error: "Invalid webhook signature" }, { status: 400 });
       }
     }
 
     const payload = JSON.parse(rawBody);
 
-    if (payload.event !== "payment.captured" && payload.event !== "refund.created") {
-      return NextResponse.json({ received: true });
+    if (payload.event !== "payment.captured") {
+      return NextResponse.json({ received: true, ignored_event: payload.event });
     }
 
-    const payment = payload.payload.payment.entity;
-    
-    // Notes attached to the Razorpay order should contain the target organization_id
+    const payment = payload.payload?.payment?.entity;
+    if (!payment) {
+      return NextResponse.json({ error: "Missing payment entity" }, { status: 400 });
+    }
+
     const organizationId = payment.notes?.organization_id;
-    const amountPaise = payment.amount;
     const paymentId = payment.id;
+    const orderId = payment.order_id;
+    const totalPaise = payment.amount;
 
     if (!organizationId || !paymentId) {
-      console.error("Webhook missing org id or payment id");
-      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+      console.error("[Billing Webhook] Missing organization_id or payment_id in payment notes");
+      return NextResponse.json({ error: "Invalid payment payload" }, { status: 400 });
     }
 
-    // Initialize Supabase Admin client
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    // Amount credited to wallet is base operational amount before 18% GST
+    // Total = Base * 1.18 => Base = Total / 1.18
+    const basePaise = Math.round(totalPaise / 1.18);
+    const gstPaise = totalPaise - basePaise;
+
+    const creditResult = await creditWallet(
+      organizationId,
+      basePaise,
+      paymentId,
+      orderId,
+      gstPaise,
+      {
+        razorpay_payment_id: paymentId,
+        razorpay_order_id: orderId,
+        method: payment.method,
+        email: payment.email,
+        contact: payment.contact,
+        raw_amount_paise: totalPaise,
+      }
     );
 
-    if (payload.event === "refund.created") {
-      // Process refund
-      const refundId = payload.payload.refund.entity.id;
-      const { error: refundError } = await supabaseAdmin.rpc("debit_wallet_for_refund", {
-        p_organization_id: organizationId,
-        p_amount_paise: amountPaise,
-        p_razorpay_payment_id: paymentId,
-        p_razorpay_refund_id: refundId,
-      });
+    console.log(
+      `[Billing Webhook] Wallet credit processed for org ${organizationId}: ` +
+      `credited=₹${basePaise / 100}, new_balance=₹${creditResult.balanceInr}, idempotent=${creditResult.alreadyProcessed}`
+    );
 
-      if (refundError) {
-        console.error("Refund RPC failed:", refundError);
-        return NextResponse.json({ error: "Failed to process refund" }, { status: 500 });
-      }
-
-      console.log(`Wallet ${organizationId} debited for refund ${refundId}`);
-      return NextResponse.json({ success: true, refunded: true });
-    }
-
-    // Process payment capture
-    const { data: credited, error } = await supabaseAdmin.rpc("credit_wallet", {
-      p_organization_id: organizationId,
-      p_amount_paise: amountPaise,
-      p_razorpay_payment_id: paymentId,
+    return NextResponse.json({
+      success: true,
+      credited: !creditResult.alreadyProcessed,
+      balance_inr: creditResult.balanceInr,
+      organization_id: organizationId,
     });
 
-    if (error) {
-      console.error("Wallet credit RPC failed:", error);
-      return NextResponse.json({ error: "Failed to process credit" }, { status: 500 });
-    }
-
-    if (!credited) {
-      console.log(`Payment ${paymentId} already credited. Idempotency respected.`);
-    } else {
-      console.log(`Wallet ${organizationId} credited with ₹${amountPaise / 100}`);
-      
-      // Automated receipt generation mock
-      if (payment.email && process.env.RESEND_API_KEY) {
-        try {
-          await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              from: process.env.NOTIFICATION_FROM_EMAIL || "billing@omnirelay.in",
-              to: payment.email,
-              subject: "Payment Receipt - OmniRelay",
-              html: `<p>Thank you for your payment of ₹${amountPaise / 100}.</p><p>Payment ID: ${paymentId}</p>`
-            })
-          });
-        } catch (e) {
-          console.error("Failed to send receipt:", e);
-        }
-      }
-    }
-
-    return NextResponse.json({ success: true, credited });
-
-  } catch (error) {
-    console.error("Webhook processing error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("[Billing Webhook] Webhook processing exception:", error);
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }
