@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
 import crypto from "crypto";
 
 // Helper to hash user data for Meta CAPI
@@ -8,7 +7,7 @@ const hashData = (data: string) => crypto.createHash("sha256").update(data.trim(
 
 export async function POST(req: Request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = await createClient();
     
     // We expect the client to send the organization_id, event details, and user data
     const body = await req.json();

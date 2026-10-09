@@ -5,13 +5,18 @@ import { createClient } from "@supabase/supabase-js";
 // without needing user authentication. Instead, we use an API token query param or just organization_id.
 // Note: In production, consider adding a feed-specific secret token.
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "";
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return new NextResponse("Server configuration missing", { status: 500 });
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { searchParams } = new URL(req.url);
     const orgId = searchParams.get("org_id");
 
