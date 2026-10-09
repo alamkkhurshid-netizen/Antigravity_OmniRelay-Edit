@@ -42,6 +42,12 @@ interface VoiceConfig {
   whatsapp_confirmation_enabled: boolean;
   is_active: boolean;
   onboarding_completed: boolean;
+  telephony_mode?: "smart_forwarding" | "dedicated_vmn";
+  forwarding_carrier?: string;
+  forwarding_phone_number?: string;
+  vmn_number?: string | null;
+  vmn_status?: string;
+  vmn_plan_active?: boolean;
 }
 
 const VOICE_PERSONAS = [
@@ -121,6 +127,12 @@ export function VoiceSetupWizard({
     whatsapp_confirmation_enabled: initialConfig?.whatsapp_confirmation_enabled !== false,
     is_active: initialConfig?.is_active !== false,
     onboarding_completed: true,
+    telephony_mode: initialConfig?.telephony_mode || "smart_forwarding",
+    forwarding_carrier: initialConfig?.forwarding_carrier || "airtel",
+    forwarding_phone_number: initialConfig?.forwarding_phone_number || "",
+    vmn_number: initialConfig?.vmn_number || "+919845024001",
+    vmn_status: initialConfig?.vmn_status || "active",
+    vmn_plan_active: initialConfig?.vmn_plan_active || false,
   });
 
   const toggleLanguage = (langCode: string) => {
@@ -540,43 +552,165 @@ export function VoiceSetupWizard({
         </Card>
       )}
 
-      {/* STEP 4: TELEPHONY ROUTING & 1-CLICK VERIFICATION */}
+      {/* STEP 4: TELEPHONY PROVISIONING & 1-CLICK VERIFICATION */}
       {step === 4 && (
         <Card className="border-border/80 shadow-md">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <PhoneCall className="h-5 w-5 text-emerald-500" />
-              Step 4: Connect Clinic Number & Test Call
+              Step 4: Telephony Setup & Live Test Call
             </CardTitle>
             <CardDescription>
-              Your AI Receptionist is ready! Forward your clinic calls or test it right now.
+              Choose how your clinic connects to Maya: Keep your existing phone number with 1-step forwarding, or activate a dedicated 10-digit mobile line.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Number routing card */}
-            <div className="p-4 rounded-xl border-2 border-emerald-500/40 bg-emerald-500/5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Badge className="bg-emerald-500 text-white text-[10px] mb-1">Active AI Number</Badge>
-                  <h3 className="text-2xl font-bold font-mono tracking-tight text-foreground">
-                    {formData.virtual_number || "08047283676"}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Direct PSTN Inbound Telephony Line (Exotel Carrier Interconnect)
-                  </p>
+            {/* Dual Provisioning Mode Selector */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Option A: Smart Call Forwarding */}
+              <div 
+                onClick={() => setFormData(prev => ({ ...prev, telephony_mode: "smart_forwarding" }))}
+                className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  formData.telephony_mode !== "dedicated_vmn"
+                    ? "border-emerald-500 bg-emerald-500/5 shadow-sm"
+                    : "border-border hover:border-emerald-500/40 bg-card"
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <PhoneForwarded className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-bold text-foreground">Option A: Smart Call Forwarding</h4>
+                      <p className="text-[11px] text-muted-foreground">Keep your existing clinic phone number</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="border-emerald-500 text-emerald-600 text-[10px] font-semibold">
+                    FREE & INSTANT
+                  </Badge>
                 </div>
-                <div className="text-right">
-                  <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Live on Network
-                  </span>
+
+                <div className="mt-3 text-xs text-muted-foreground">
+                  Your patients continue dialing your existing Google Maps/WhatsApp clinic number. When you don't answer or line is busy, call forwards to Maya silently in &lt;1 sec.
                 </div>
+
+                {formData.telephony_mode !== "dedicated_vmn" && (
+                  <div className="mt-4 pt-3 border-t space-y-3">
+                    <div>
+                      <label className="text-[11px] font-semibold text-foreground uppercase tracking-wider block mb-1">
+                        Select Your Clinic SIM Carrier:
+                      </label>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {["jio", "airtel", "vi", "bsnl"].map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFormData(prev => ({ ...prev, forwarding_carrier: c }));
+                            }}
+                            className={`py-1.5 px-2 rounded text-xs font-semibold uppercase transition-colors ${
+                              formData.forwarding_carrier === c
+                                ? "bg-emerald-600 text-white"
+                                : "bg-muted text-foreground hover:bg-muted/80"
+                            }`}
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-background border font-mono text-xs">
+                      <span className="text-[10px] text-muted-foreground uppercase font-sans font-semibold block mb-0.5">
+                        Dial this on your clinic phone to activate:
+                      </span>
+                      <code className="text-emerald-600 dark:text-emerald-400 font-bold text-sm">
+                        *401*{formData.virtual_number || "08047283676"}#
+                      </code>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-semibold text-foreground uppercase tracking-wider block mb-1">
+                        Your Existing Clinic Mobile / Landline:
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. +91 98450 12345"
+                        value={formData.forwarding_phone_number || ""}
+                        onChange={(e) => setFormData(prev => ({ ...prev, forwarding_phone_number: e.target.value }))}
+                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="mt-4 pt-3 border-t border-emerald-500/20 text-xs">
-                <span className="font-semibold text-foreground">Want to keep your existing clinic phone number?</span>
-                <p className="text-muted-foreground mt-0.5">
-                  Simply dial <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground font-bold">*401*{formData.virtual_number || "08047283676"}#</code> on your Jio, Airtel, or BSNL phone to forward unanswered patient calls to Maya!
-                </p>
+              {/* Option B: Dedicated 10-Digit Mobile Number */}
+              <div 
+                onClick={() => setFormData(prev => ({ ...prev, telephony_mode: "dedicated_vmn" }))}
+                className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  formData.telephony_mode === "dedicated_vmn"
+                    ? "border-emerald-500 bg-emerald-500/5 shadow-sm"
+                    : "border-border hover:border-emerald-500/40 bg-card"
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                      <Smartphone className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-bold text-foreground">Option B: Dedicated Mobile Line</h4>
+                      <p className="text-[11px] text-muted-foreground">+91 9xxxxxxxxx Dedicated VMN</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="border-blue-500 text-blue-600 text-[10px] font-semibold">
+                    ENTERPRISE VMN
+                  </Badge>
+                </div>
+
+                <div className="mt-3 text-xs text-muted-foreground">
+                  Get a dedicated 10-digit Indian mobile number for prescription pads, clinic signboards, and WhatsApp profiles with 30 simultaneous calling channels.
+                </div>
+
+                {formData.telephony_mode === "dedicated_vmn" && (
+                  <div className="mt-4 pt-3 border-t space-y-3">
+                    <div>
+                      <label className="text-[11px] font-semibold text-foreground uppercase tracking-wider block mb-1">
+                        Assigned 10-Digit Enterprise Mobile Line:
+                      </label>
+                      <div className="space-y-1.5">
+                        {[
+                          { num: "+91 98450 24001", tag: "Fast Bangalore Gateway" },
+                          { num: "+91 98450 24002", tag: "High-Capacity Cellular Trunk" },
+                          { num: "+91 98450 24003", tag: "National Priority Line" }
+                        ].map((vmn) => (
+                          <div 
+                            key={vmn.num}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFormData(prev => ({ ...prev, vmn_number: vmn.num, vmn_status: "active" }));
+                            }}
+                            className={`p-2 rounded-lg border flex items-center justify-between text-xs cursor-pointer transition-colors ${
+                              formData.vmn_number === vmn.num
+                                ? "border-emerald-500 bg-emerald-500/10 font-bold text-foreground"
+                                : "hover:bg-muted/30 text-muted-foreground"
+                            }`}
+                          >
+                            <span className="font-mono text-sm">{vmn.num}</span>
+                            <span className="text-[10px] text-muted-foreground">{vmn.tag}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-800 dark:text-emerald-300">
+                      ✅ <strong>Direct Inbound &amp; Outbound Active:</strong> Patients can dial this mobile number directly or receive confirmation calls from it without busy tones.
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

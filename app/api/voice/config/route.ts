@@ -51,6 +51,12 @@ export async function GET() {
       whatsapp_confirmation_enabled: true,
       is_active: true,
       onboarding_completed: false,
+      telephony_mode: "smart_forwarding",
+      forwarding_carrier: "airtel",
+      forwarding_phone_number: "",
+      vmn_number: null,
+      vmn_status: "none",
+      vmn_plan_active: false,
     };
 
     return NextResponse.json({
@@ -112,6 +118,12 @@ export async function POST(request: Request) {
       whatsapp_confirmation_enabled: body.whatsapp_confirmation_enabled !== false,
       is_active: body.is_active !== false,
       onboarding_completed: true,
+      telephony_mode: body.telephony_mode || "smart_forwarding",
+      forwarding_carrier: body.forwarding_carrier || "airtel",
+      forwarding_phone_number: body.forwarding_phone_number?.trim() || "",
+      vmn_number: body.vmn_number?.trim() || null,
+      vmn_status: body.vmn_status || (body.vmn_number ? "active" : "none"),
+      vmn_plan_active: body.vmn_plan_active === true,
       updated_at: new Date().toISOString(),
     };
 

@@ -98,13 +98,17 @@ export function VoiceDashboard({
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
             <div>
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block">
-                Virtual Inbound Line
+                {config?.telephony_mode === "dedicated_vmn" ? "Dedicated Mobile Line (VMN)" : "Active Telephony Line"}
               </span>
               <span className="text-lg font-mono font-bold text-foreground">
-                {config?.virtual_number || "08047283676"}
+                {config?.telephony_mode === "dedicated_vmn" 
+                  ? (config?.vmn_number || "+91 98450 24001") 
+                  : (config?.virtual_number || "08047283676")}
               </span>
               <span className="text-xs text-muted-foreground block mt-0.5">
-                Exotel PSTN Cloud Interconnect
+                {config?.telephony_mode === "dedicated_vmn" 
+                  ? "Enterprise 10-digit Mobile PRI Trunk" 
+                  : (config?.forwarding_phone_number ? `Smart Forwarding from ${config.forwarding_phone_number}` : "Smart Forwarding (*401*)")}
               </span>
             </div>
 
