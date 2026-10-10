@@ -37,10 +37,12 @@ test("CTO Blockers Verification: Google Calendar Signed Nonce & Safe Upsert", as
   assert.match(authRoute, /nonce:\s*crypto\.randomUUID\(\)/, "State must contain single-use nonce");
   assert.match(authRoute, /exp:\s*Date\.now\(\)/, "State must contain expiration timestamp");
 
-  // 3. Callback verification
+  // 3. Callback verification (strictly fail-closed RPC without memory fallback)
+  assert.match(authRoute, /nonceInsertError/, "Auth route must inspect nonce insertion error and fail closed");
   assert.match(callbackRoute, /crypto\.timingSafeEqual/, "Callback must safely compare state HMAC signature");
-  assert.match(callbackRoute, /oauth_nonces/, "Callback must consume nonce from database");
-  assert.match(callbackRoute, /consumeNonce/, "Callback must retain consumeNonce fallback");
+  assert.match(callbackRoute, /consume_oauth_nonce/, "Callback must consume nonce via atomic database RPC");
+  assert.doesNotMatch(callbackRoute, /consumedCalendarNonces/, "Callback must NOT retain process-memory map");
+  assert.doesNotMatch(callbackRoute, /function consumeNonce/, "Callback must NOT retain in-memory fallback function");
   assert.match(callbackRoute, /agents/, "Callback must directly verify user active admin/owner membership");
   assert.doesNotMatch(callbackRoute, /adminClient\.rpc\("is_organization_member"/, "Callback must not use service-role on auth.uid() dependent is_organization_member RPC");
   assert.match(callbackRoute, /refreshTokenToSave/, "Callback must preserve existing refresh token if omitted by Google");

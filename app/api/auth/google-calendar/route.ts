@@ -51,20 +51,21 @@ export async function GET(request: Request) {
   const signature = crypto.createHmac("sha256", clientSecret).update(payloadB64).digest("hex");
   const signedState = `${payloadB64}.${signature}`;
 
-  // Persist nonce record to database to guarantee single-use across serverless instances
-  try {
-    const { createAdminClient } = await import("@/lib/supabase/admin");
-    const adminClient = createAdminClient();
-    await adminClient.from("oauth_nonces").insert({
-      nonce: statePayload.nonce,
-      user_id: user.id,
-      organization_id: organizationId,
-      resource_id: resourceId || null,
-      provider: "google_calendar",
-      expires_at: new Date(statePayload.exp).toISOString(),
-    });
-  } catch (dbErr) {
-    console.warn("[Google Calendar OAuth] Could not persist state nonce to database:", dbErr);
+  // 4. Persist nonce record to database (strictly fail-closed)
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const adminClient = createAdminClient();
+  const { error: nonceInsertError } = await adminClient.from("oauth_nonces").insert({
+    nonce: statePayload.nonce,
+    user_id: user.id,
+    organization_id: organizationId,
+    resource_id: resourceId || null,
+    provider: "google_calendar",
+    expires_at: new Date(statePayload.exp).toISOString(),
+  });
+
+  if (nonceInsertError) {
+    console.error("[Google Calendar OAuth] Failed to persist OAuth state nonce:", nonceInsertError);
+    return NextResponse.json({ error: "Failed to initialize secure authorization session" }, { status: 500 });
   }
 
   const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");

@@ -100,4 +100,13 @@ test("Billing Concurrency & Idempotency: 20 simultaneous callbacks for one call"
   const retries = results.filter(r => r.already_processed);
   assert.equal(initial.length, 1, "Exactly one callback is marked initial");
   assert.equal(retries.length, 19, "Exactly 19 callbacks are marked already_processed");
+
+  // 4. Live PostgreSQL Integration Test Execution (if DATABASE_URL is provided)
+  const { runPostgresConcurrencyTest } = await import("../scripts/verify-postgres-concurrency.mjs");
+  const pgResult = await runPostgresConcurrencyTest();
+  if (!pgResult.skipped) {
+    assert.equal(pgResult.success, true, "Live PostgreSQL concurrency run must succeed");
+    assert.equal(pgResult.ledgerCount, 1, "Live database must contain exactly 1 ledger row");
+    assert.equal(pgResult.responsesCount, 20, "Live database must return 20 responses");
+  }
 });

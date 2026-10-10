@@ -2,19 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// Single-use nonce cache to prevent OAuth replay attacks
-const consumedCalendarNonces = new Map<string, number>();
 
-function consumeNonce(nonce: string, now: number): boolean {
-  for (const [n, ts] of consumedCalendarNonces.entries()) {
-    if (now - ts > 900) consumedCalendarNonces.delete(n);
-  }
-  if (consumedCalendarNonces.has(nonce)) {
-    return false;
-  }
-  consumedCalendarNonces.set(nonce, now);
-  return true;
-}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -70,33 +58,19 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${baseUrl}/app/settings?error=state_expired`);
   }
 
-  // 2. Single-use database nonce enforcement
+  // 2. Atomic database nonce consumption (strictly fail-closed via RPC)
   const adminClient = createAdminClient();
-  let nonceValid = false;
-  try {
-    const { data: consumedNonce, error: nonceErr } = await adminClient
-      .from("oauth_nonces")
-      .update({ consumed_at: new Date().toISOString() })
-      .eq("nonce", state.nonce)
-      .eq("user_id", state.userId)
-      .eq("organization_id", state.organizationId)
-      .is("consumed_at", null)
-      .gt("expires_at", new Date().toISOString())
-      .select("nonce")
-      .maybeSingle();
+  const { data: consumedSuccessfully, error: nonceRpcError } = await adminClient.rpc("consume_oauth_nonce", {
+    p_nonce: state.nonce,
+    p_user_id: state.userId,
+    p_org_id: state.organizationId,
+  });
 
-    if (!nonceErr && consumedNonce) {
-      nonceValid = true;
-    } else if (nonceErr) {
-      // Fallback to process memory guard if table is not yet available in testing mock
-      nonceValid = consumeNonce(state.nonce, Math.floor(now / 1000));
-    }
-  } catch {
-    nonceValid = consumeNonce(state.nonce, Math.floor(now / 1000));
-  }
-
-  if (!state.nonce || !nonceValid) {
-    console.error("[Google Calendar OAuth] Replay attack or invalid nonce:", state.nonce);
+  if (nonceRpcError || !consumedSuccessfully) {
+    console.error(
+      `[Google Calendar OAuth] Replay attack or invalid nonce: ${state.nonce}. Detail:`,
+      nonceRpcError?.message || "Nonce already consumed, expired or non-existent"
+    );
     return NextResponse.redirect(`${baseUrl}/app/settings?error=replay_detected`);
   }
 

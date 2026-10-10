@@ -6,10 +6,10 @@
       "id": "2026-10-10-cto-remediation-voice-billing-reliability",
       "record": "docs/knowledge/releases/2026-10-10-cto-remediation-voice-billing-reliability.md",
       "guide_reviewed_on": "2026-09-13",
-      "product_areas": ["Voice AI", "Billing & Metering", "Tenant Routing", "Runtime Reliability"],
+      "product_areas": ["Voice AI", "Billing & Metering", "Tenant Routing", "Runtime Reliability", "OAuth Nonce Hardening", "Postgres Concurrency"],
       "guide_articles": ["billing"],
       "rag_impact": "guide_only",
-      "verified_by": ["CTO Remediation Audit", "Automated test suite", "Erlang-B model verification"]
+      "verified_by": ["CTO Remediation Audit", "Automated test suite", "Erlang-B model verification", "Advisory lock verification"]
     },
     {
       "id": "2026-09-13-sales-rag-commercial-source",

@@ -25,3 +25,20 @@
    - Production environment requires configured engine URL.
    - Evidence-based dashboard status checks for DPDP disclosure and guardrails.
    - Strict CI pipeline with zero bypassed test suites.
+
+5. **Google OAuth Database Nonce & Direct Admin Check:**
+   - Persistent `oauth_nonces` table with expiration and single-use guarantee.
+   - Atomic `consume_oauth_nonce` RPC with zero in-memory fallback.
+   - Direct active admin/owner verification on `agents` table.
+
+6. **Razorpay Financial Hardening:**
+   - Top-up fails closed on ledger registration error.
+   - Webhook enforces exact amount matching and INR currency validation.
+   - Mock payments strictly restricted behind `ALLOW_MOCK_PAYMENTS`.
+
+7. **PostgreSQL Concurrency Advisory Locking:**
+   - `pg_advisory_xact_lock` on `billing.record_and_deduct` serializes concurrent transactions.
+
+8. **WhatsApp Inbound Lifecycle & Atomic Retry Leasing:**
+   - Missing Hermes runtime marked `failed` rather than completed.
+   - Atomic conditional lease prevents worker collision.
