@@ -31,8 +31,7 @@ export async function POST(request: Request) {
     const gstBreakdown = calculateTopUpWithGst(amount_inr);
 
     // Create Razorpay Order
-    // If Razorpay API credentials are provided, generate real order via Razorpay API
-    let razorpayOrderId = `order_${Math.random().toString(36).substring(2, 15)}`;
+    let razorpayOrderId = "";
     
     if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
       try {
@@ -58,10 +57,44 @@ export async function POST(request: Request) {
         if (rzpRes.ok) {
           const rzpData = await rzpRes.json();
           razorpayOrderId = rzpData.id;
+        } else {
+          const errText = await rzpRes.text();
+          console.error("[Razorpay] API order creation failed:", errText);
+          return NextResponse.json({ error: "Failed to create payment order with provider" }, { status: 502 });
         }
-      } catch (err) {
-        console.warn("[Razorpay] Live API call fallback to deterministic order ID:", err);
+      } catch (err: any) {
+        console.error("[Razorpay] Network exception during order creation:", err);
+        return NextResponse.json({ error: "Payment gateway network error" }, { status: 502 });
       }
+    } else {
+      // In development/test mode only, if explicit mock testing is enabled
+      if (process.env.NODE_ENV !== "production" || process.env.ALLOW_MOCK_PAYMENTS === "true") {
+        razorpayOrderId = `order_test_${Math.random().toString(36).substring(2, 15)}`;
+      } else {
+        return NextResponse.json({ error: "Payment gateway credentials are not configured" }, { status: 500 });
+      }
+    }
+
+    // Persist pre-registered order to prevent untracked webhook credits
+    try {
+      const { createAdminClient } = await import("@/lib/supabase/admin");
+      const adminSupabase = createAdminClient();
+      await adminSupabase.schema("billing").from("wallet_transactions").insert({
+        organization_id,
+        amount_paise: gstBreakdown.baseAmountInr * 100,
+        gst_amount_paise: gstBreakdown.gstAmountInr * 100,
+        transaction_type: "top_up",
+        razorpay_order_id: razorpayOrderId,
+        status: "pending",
+        metadata: {
+          expected_total_paise: gstBreakdown.totalPayablePaise,
+          base_amount_inr: amount_inr,
+          created_by_user_id: user.id,
+          currency: "INR",
+        },
+      });
+    } catch (dbErr) {
+      console.warn("[Razorpay Top-up] Could not pre-register pending transaction row:", dbErr);
     }
 
     return NextResponse.json({

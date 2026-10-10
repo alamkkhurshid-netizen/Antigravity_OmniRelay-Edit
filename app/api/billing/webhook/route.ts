@@ -8,18 +8,26 @@ export async function POST(request: Request) {
     const signature = request.headers.get("x-razorpay-signature");
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-    if (process.env.NODE_ENV === "production" && secret) {
-      if (!signature) {
-        return NextResponse.json({ error: "Missing webhook signature" }, { status: 400 });
-      }
-      const expectedSignature = crypto
-        .createHmac("sha256", secret)
-        .update(rawBody)
-        .digest("hex");
+    // Fail closed: Webhook verification required in all environments
+    if (!secret) {
+      console.error("[Billing Webhook] RAZORPAY_WEBHOOK_SECRET is not configured on server. Rejecting.");
+      return NextResponse.json({ error: "Webhook verification not configured" }, { status: 500 });
+    }
+    if (!signature) {
+      return NextResponse.json({ error: "Missing webhook signature" }, { status: 400 });
+    }
 
-      if (expectedSignature !== signature) {
-        return NextResponse.json({ error: "Invalid webhook signature" }, { status: 400 });
-      }
+    const expectedSignature = crypto
+      .createHmac("sha256", secret)
+      .update(rawBody)
+      .digest("hex");
+
+    const sigBuf = Buffer.from(signature);
+    const expBuf = Buffer.from(expectedSignature);
+
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+      console.warn("[Billing Webhook] Invalid webhook signature detected.");
+      return NextResponse.json({ error: "Invalid webhook signature" }, { status: 400 });
     }
 
     const payload = JSON.parse(rawBody);
@@ -33,14 +41,64 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing payment entity" }, { status: 400 });
     }
 
-    const organizationId = payment.notes?.organization_id;
     const paymentId = payment.id;
     const orderId = payment.order_id;
     const totalPaise = payment.amount;
+    const notesOrgId = payment.notes?.organization_id;
 
-    if (!organizationId || !paymentId) {
-      console.error("[Billing Webhook] Missing organization_id or payment_id in payment notes");
+    if (!paymentId) {
+      console.error("[Billing Webhook] Missing payment_id in payment payload");
       return NextResponse.json({ error: "Invalid payment payload" }, { status: 400 });
+    }
+
+    // Verify order exists in database and bind tenant securely from verified order record
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    const adminSupabase = createAdminClient();
+
+    let organizationId = notesOrgId;
+    let expectedTotalPaise = totalPaise;
+
+    if (orderId) {
+      const { data: pendingOrder, error: orderErr } = await adminSupabase
+        .schema("billing")
+        .from("wallet_transactions")
+        .select("id, organization_id, amount_paise, gst_amount_paise, status, metadata")
+        .eq("razorpay_order_id", orderId)
+        .maybeSingle();
+
+      if (pendingOrder) {
+        // Derive authoritative tenant from verified order record
+        organizationId = pendingOrder.organization_id;
+        expectedTotalPaise = pendingOrder.metadata?.expected_total_paise || (pendingOrder.amount_paise + (pendingOrder.gst_amount_paise || 0));
+
+        if (totalPaise < expectedTotalPaise) {
+          console.error(`[Billing Webhook] Amount tampering alert: Received ${totalPaise} paise, expected ${expectedTotalPaise}`);
+          await adminSupabase.from("operational_events").insert({
+            organization_id: organizationId,
+            event_source: "billing_webhook",
+            severity: "critical",
+            error_code: "PAYMENT_AMOUNT_MISMATCH",
+            safe_message: `Captured payment (${totalPaise} paise) is less than order (${expectedTotalPaise} paise)`,
+            metadata: { payment_id: paymentId, order_id: orderId, total_paise: totalPaise, expected: expectedTotalPaise }
+          });
+          return NextResponse.json({ error: "Payment amount does not match order" }, { status: 400 });
+        }
+      } else if (process.env.NODE_ENV === "production") {
+        console.error(`[Billing Webhook] Received webhook for unverified order ID: ${orderId}`);
+        await adminSupabase.from("operational_events").insert({
+          event_source: "billing_webhook",
+          severity: "critical",
+          error_code: "UNKNOWN_PAYMENT_ORDER",
+          safe_message: `Attempted wallet credit for unknown order ${orderId}`,
+          metadata: { payment_id: paymentId, order_id: orderId, amount: totalPaise, notes_org_id: notesOrgId }
+        });
+        return NextResponse.json({ error: "Order not registered or unverified" }, { status: 400 });
+      }
+    }
+
+    if (!organizationId) {
+      console.error("[Billing Webhook] Could not determine tenant organization for payment:", paymentId);
+      return NextResponse.json({ error: "Unmapped tenant organization" }, { status: 400 });
     }
 
     // Amount credited to wallet is base operational amount before 18% GST
