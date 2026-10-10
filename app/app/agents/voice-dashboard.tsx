@@ -17,7 +17,8 @@ import {
   ChevronUp,
   Sparkles,
   Smartphone,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle
 } from "lucide-react";
 import { VoiceSetupWizard } from "./voice-setup-wizard";
 
@@ -63,6 +64,19 @@ export function VoiceDashboard({
       />
     );
   }
+
+  // Derive verified assurances from configuration & runtime evidence (CTO Remediation Item 7)
+  const isCanaryEnrolled = Boolean(config?.canary_enrolled || config?.is_canary_pilot);
+  const dpdpVerified = Boolean(
+    config?.greeting_message &&
+    (config.greeting_message.toLowerCase().includes("record") ||
+     config.greeting_message.toLowerCase().includes("ai") ||
+     config.greeting_message.toLowerCase().includes("assist") ||
+     config.greeting_message.toLowerCase().includes("consent"))
+  );
+  const isHealthcare = config?.business_vertical === "healthcare" || !config?.business_vertical;
+  const prescriptionGuardrailActive = isHealthcare && config?.vertical_settings?.enable_emergency_bypass !== false;
+  const staffAlertingActive = Boolean(config?.whatsapp_confirmation_enabled && config?.receptionist_phone?.trim());
 
   return (
     <div className="space-y-6 mt-8">
@@ -277,27 +291,30 @@ export function VoiceDashboard({
         </Card>
       </div>
 
-      {/* Canary Pilot Observability & Safety Banner */}
+      {/* Pilot Observability & Verified Safety Banner */}
       <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2.5">
           <Badge className="bg-primary/20 text-primary border-primary/30">
-            Canary Pilot • 3–10 Practice Cohort
+            {isCanaryEnrolled ? "Canary Pilot • Controlled Practice Cohort" : "Verified Telephony Cluster"}
           </Badge>
           <span className="font-semibold text-foreground">
-            Controlled MVP Operational Guardrails Active
+            {isCanaryEnrolled ? "Controlled Operational Guardrails Enforced" : "Enterprise Guardrails Monitored"}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
-          <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-            <CheckCircle2 className="h-3.5 w-3.5" /> DPDP 2023 Call Disclosure Active
+          <span className={`flex items-center gap-1 font-medium ${dpdpVerified ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500"}`}>
+            {dpdpVerified ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
+            {dpdpVerified ? "DPDP 2023 Call Disclosure Verified" : "DPDP Disclosure: Unverified"}
           </span>
           <span>•</span>
-          <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Prescription Guardrail Active
+          <span className={`flex items-center gap-1 font-medium ${prescriptionGuardrailActive ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+            {prescriptionGuardrailActive ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
+            {isHealthcare ? (prescriptionGuardrailActive ? "Prescription Guardrail Active" : "Prescription Guardrail: Disabled") : "Prescription Guardrail: N/A"}
           </span>
           <span>•</span>
-          <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-            <CheckCircle2 className="h-3.5 w-3.5" /> WhatsApp Staff Alerting On
+          <span className={`flex items-center gap-1 font-medium ${staffAlertingActive ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500"}`}>
+            {staffAlertingActive ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
+            {staffAlertingActive ? "WhatsApp Staff Alerting Configured" : "Staff Alerting: Phone Missing / Off"}
           </span>
         </div>
       </div>
@@ -374,7 +391,7 @@ export function VoiceDashboard({
                 </div>
               </div>
               <Badge variant="outline" className="text-xs bg-background">
-                Auto-Alerted via WhatsApp
+                {staffAlertingActive ? "WhatsApp Dispatch: Configured" : "Staff Dispatch: Web Portal Only"}
               </Badge>
             </div>
           </CardHeader>

@@ -1,58 +1,105 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const VOICE_ENGINE_URL = process.env.VOICE_ENGINE_URL || "https://130.210.29.75.sslip.io";
-
-export async function GET() {
+export async function GET(req: NextRequest) {
   const startTime = Date.now();
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+  const configuredEngineUrl = process.env.VOICE_ENGINE_URL;
+  const isProduction = process.env.NODE_ENV === "production";
 
-    const response = await fetch(`${VOICE_ENGINE_URL}/health`, {
+  // Require explicit engine URL in production
+  if (isProduction && !configuredEngineUrl) {
+    return NextResponse.json(
+      {
+        liveness: "ok",
+        readiness: "unconfigured",
+        status: "degraded",
+        error: "VOICE_ENGINE_URL is not configured in production environment.",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 503 }
+    );
+  }
+
+  const engineUrl = configuredEngineUrl || "https://130.210.29.75.sslip.io";
+
+  // Check operator authorization for detailed infrastructure diagnostics
+  const authHeader = req.headers.get("authorization") || req.headers.get("x-api-key") || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  const isOperator = !!(
+    token &&
+    (token === process.env.VOICE_ENGINE_API_KEY ||
+      token === process.env.SUPABASE_SECRET_KEY ||
+      token === process.env.INTERNAL_SERVICE_KEY)
+  );
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+  try {
+    const response = await fetch(`${engineUrl}/health`, {
       method: "GET",
       signal: controller.signal,
-      headers: { "Accept": "application/json" },
+      headers: { Accept: "application/json" },
       cache: "no-store",
     });
 
-    clearTimeout(timeoutId);
-    const latencyMs = Date.now() - startTime;
+    const httpLatencyMs = Date.now() - startTime;
 
     if (!response.ok) {
       return NextResponse.json(
         {
+          liveness: "degraded",
+          readiness: "down",
           status: "degraded",
-          engine_url: VOICE_ENGINE_URL,
           http_status: response.status,
-          latency_ms: latencyMs,
+          http_latency_ms: httpLatencyMs,
+          engine: isOperator ? engineUrl : "omnirelay-voice-cluster",
           timestamp: new Date().toISOString(),
         },
         { status: 502 }
       );
     }
 
-    const data = await response.json().catch(() => ({ status: "ok" }));
+    const payload = await response.json().catch(() => ({ status: "unknown" }));
+
+    // Inspect dependency readiness
+    const deps = payload?.dependencies || {};
+    const criticalMissing =
+      deps.primary_llm_groq === "missing_key" ||
+      deps.stt_deepgram === "missing_key" ||
+      deps.tts_cartesia === "missing_key";
+
+    const isDegraded = payload?.status !== "healthy" || criticalMissing;
+    const finalStatus = isDegraded ? "degraded" : "healthy";
 
     return NextResponse.json({
-      status: "healthy",
-      engine_url: VOICE_ENGINE_URL,
-      latency_ms: latencyMs,
-      data,
+      liveness: "ok",
+      readiness: isDegraded ? "degraded" : "ready",
+      status: finalStatus,
+      http_latency_ms: httpLatencyMs,
+      engine: isOperator ? engineUrl : "omnirelay-voice-cluster",
+      version: payload?.version || "2.0.0",
+      ...(isOperator ? { diagnostics: payload } : { dependencies_ready: !criticalMissing }),
       timestamp: new Date().toISOString(),
     });
   } catch (err: any) {
-    const latencyMs = Date.now() - startTime;
+    const httpLatencyMs = Date.now() - startTime;
+    const isTimeout = err.name === "AbortError";
+
     return NextResponse.json(
       {
+        liveness: "unreachable",
+        readiness: "down",
         status: "unreachable",
-        engine_url: VOICE_ENGINE_URL,
-        error: err.name === "AbortError" ? "Connection timeout (>4000ms)" : err.message,
-        latency_ms: latencyMs,
+        error: isTimeout ? "Engine probe timed out (>4000ms)" : err.message,
+        http_latency_ms: httpLatencyMs,
+        engine: isOperator ? engineUrl : "omnirelay-voice-cluster",
         timestamp: new Date().toISOString(),
       },
       { status: 503 }
     );
+  } finally {
+    clearTimeout(timeoutId);
   }
 }

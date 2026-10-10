@@ -27,6 +27,8 @@ export interface DeductionResult {
   newBalanceInr: number;
   warningTriggered: boolean;
   criticalTriggered: boolean;
+  unitsBilled?: number;
+  unitRatePaise?: number;
 }
 
 export interface GstBreakdown {
@@ -176,6 +178,8 @@ export async function recordAndDeduct(
 
   const res = typeof data === "string" ? JSON.parse(data) : data;
 
+  const newBalPaise = res?.new_balance_paise ?? res?.balance_paise ?? 0;
+
   return {
     success: !!res?.success,
     alreadyDeducted: !!res?.already_deducted,
@@ -184,9 +188,11 @@ export async function recordAndDeduct(
     ledgerId: res?.ledger_id,
     deductedPaise: res?.deducted_paise ?? 0,
     deductedInr: (res?.deducted_paise ?? 0) / 100,
-    newBalancePaise: res?.new_balance_paise ?? 0,
-    newBalanceInr: (res?.new_balance_paise ?? 0) / 100,
+    newBalancePaise: newBalPaise,
+    newBalanceInr: newBalPaise / 100,
     warningTriggered: !!res?.warning_triggered,
     criticalTriggered: !!res?.critical_triggered,
+    unitsBilled: res?.units_billed ?? quantity,
+    unitRatePaise: res?.unit_rate_paise,
   };
 }

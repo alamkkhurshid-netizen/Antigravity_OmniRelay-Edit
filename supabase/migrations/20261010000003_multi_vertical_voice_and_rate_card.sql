@@ -1,15 +1,19 @@
 -- Migration: Update Voice Rate Card to ₹3.99/min and add Multi-Vertical Support (Healthcare, Retail, Hospitality)
 
--- 1. Update Voice Rate Card in Billing Schema to 399 paise (₹3.99/min Standard)
+-- 1. Ensure updated_at exists on billing.meta_rate_card
+ALTER TABLE billing.meta_rate_card 
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Update Voice Rate Card in Billing Schema to 399 paise (₹3.99/min Standard)
 UPDATE billing.meta_rate_card
 SET base_rate_paise = 399,
     updated_at = NOW()
-WHERE channel = 'voice' AND category = 'voice' AND country_code = 'IN';
+WHERE channel = 'voice' AND category = 'voice' AND country_code = 'IN' AND active = TRUE;
 
--- Insert if not present
-INSERT INTO billing.meta_rate_card (channel, category, country_code, base_rate_paise, currency, active)
-VALUES ('voice', 'voice', 'IN', 399, 'INR', true)
-ON CONFLICT (channel, category, country_code) 
+-- Insert if not present, aligning with partial unique index idx_active_meta_rate (channel, country_code, category) WHERE active = TRUE
+INSERT INTO billing.meta_rate_card (channel, country_code, category, base_rate_paise, currency, active)
+VALUES ('voice', 'IN', 'voice', 399, 'INR', true)
+ON CONFLICT (channel, country_code, category) WHERE active = TRUE
 DO UPDATE SET base_rate_paise = 399, updated_at = NOW();
 
 -- 2. Add Multi-Vertical fields to public.voice_agent_configs
