@@ -56,18 +56,25 @@ CREATE INDEX IF NOT EXISTS idx_voice_sessions_call_sid ON voice_sessions(call_si
 -- Allows voice agent to query availability safely without direct table mutation access
 CREATE OR REPLACE VIEW voice_appointments_readonly AS
 SELECT 
-    id,
-    organization_id,
-    patient_name,
-    patient_phone,
-    appointment_date,
-    start_time,
-    end_time,
-    status,
-    doctor_id,
-    service_id
-FROM appointments
-WHERE status IN ('confirmed', 'pending', 'scheduled');
+    a.id,
+    a.organization_id,
+    a.customer_name AS patient_name,
+    a.customer_phone AS patient_phone,
+    (a.starts_at AT TIME ZONE 'Asia/Kolkata')::date AS appointment_date,
+    to_char(a.starts_at AT TIME ZONE 'Asia/Kolkata', 'HH12:MI AM') AS start_time,
+    to_char(a.ends_at AT TIME ZONE 'Asia/Kolkata', 'HH12:MI AM') AS end_time,
+    a.starts_at,
+    a.ends_at,
+    a.status,
+    a.resource_id AS doctor_id,
+    r.name AS doctor_name,
+    a.service_id,
+    s.name AS service_name,
+    a.location_id
+FROM appointments a
+LEFT JOIN booking_resources r ON a.resource_id = r.id
+LEFT JOIN organization_services s ON a.service_id = s.id
+WHERE a.status IN ('confirmed', 'pending', 'arrived');
 
 CREATE OR REPLACE VIEW voice_org_config_readonly AS
 SELECT 
