@@ -22,24 +22,21 @@ OmniRelay maintains two complementary database artifacts:
 
 ## 2. Deployment Paths
 
-### Path A: Fresh Database Provisioning (Clean Staging / Local Docker)
-To provision a brand-new staging or local PostgreSQL database from scratch:
+### Path A: Fresh Database Provisioning (Clean Staging / Local PostgreSQL)
+To provision a brand-new staging or local PostgreSQL database from scratch in exact chronological order without duplicate passes:
 ```bash
-# 1. Apply baseline initial schema
-supabase db push --include-all
-# OR via psql:
-psql -d $DATABASE_URL -f supabase/migrations/00000000000000_initial_schema.sql
-
-# 2. Apply active post-consolidation feature migrations
-for file in supabase/migrations/202610*.sql; do
-  psql -d $DATABASE_URL -f "$file"
-done
+# Executable single fresh-install runner:
+node scripts/db-migration-runner.mjs --mode=fresh
+# OR via Supabase CLI:
+supabase db reset
 ```
 
 ### Path B: Production Upgrade Path
-For upgrading existing production or staging databases:
+To upgrade an existing production or staging database with only unapplied migrations:
 ```bash
-# Apply only pending unapplied migrations
+# Executable incremental upgrade runner:
+node scripts/db-migration-runner.mjs --mode=upgrade
+# OR via Supabase CLI:
 supabase db push
 ```
 
@@ -47,8 +44,21 @@ Key recent migrations:
 - `20261010000003_multi_vertical_voice_and_rate_card.sql`: Rate card schema and ₹3.99/min voice pricing.
 - `20261010000004_billing_security_and_rate_card_repair.sql`: `updated_at` column fix, dropped 5-arg overload, row locking, revoked `PUBLIC` execution from `billing.record_and_deduct`.
 - `20261010000005_durable_whatsapp_inbound_lifecycle.sql`: `whatsapp_inbound_messages` table with unique constraint on `provider_message_id` and durable status lifecycle (`received` → `processing` → `completed` / `failed`).
+- `20261010000006_billing_concurrency_and_oauth_nonces.sql`: `pg_advisory_xact_lock` on `billing.record_and_deduct`, persistent `oauth_nonces` table with atomic consumption, and atomic WhatsApp retry leasing.
 
 ---
+
+## 2.1 Fresh vs. Upgrade Schema Parity Guarantee
+
+To guarantee that a fresh installation produces an identical schema to a sequentially upgraded database:
+1. Every migration must be strictly idempotent (`CREATE TABLE IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, `CREATE OR REPLACE FUNCTION`).
+2. Migration files must never be manually re-applied out of order.
+3. Schema parity can be verified using:
+```bash
+pg_dump -s -d $FRESH_DB_URL > /tmp/schema_fresh.sql
+pg_dump -s -d $UPGRADED_DB_URL > /tmp/schema_upgraded.sql
+diff -u /tmp/schema_fresh.sql /tmp/schema_upgraded.sql
+```
 
 ## 3. RLS & Security Verification Checklist
 

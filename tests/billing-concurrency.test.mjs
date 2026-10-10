@@ -3,10 +3,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 test("Billing Concurrency & Idempotency: 20 simultaneous callbacks for one call", async () => {
-  const migration = readFileSync(new URL("../supabase/migrations/20261010000004_billing_security_and_rate_card_repair.sql", import.meta.url), "utf8");
+  const migration = readFileSync(new URL("../supabase/migrations/20261010000006_billing_concurrency_and_oauth_nonces.sql", import.meta.url), "utf8");
   const deductionEngine = readFileSync(new URL("../lib/billing/deduction-engine.ts", import.meta.url), "utf8");
 
   // 1. Verify RPC concurrency locking and idempotency return in SQL
+  assert.match(migration, /pg_advisory_xact_lock/, "Must use pg_advisory_xact_lock to serialize concurrent requests for same message");
+  assert.match(migration, /ON CONFLICT \(meta_message_id\) DO NOTHING/, "Must safely handle concurrent insert conflicts");
+  assert.match(migration, /FOR UPDATE/, "Must lock wallet row with FOR UPDATE");
   assert.match(migration, /'already_deducted', TRUE/, "Concurrent duplicates must return already_deducted TRUE");
   assert.match(migration, /units_billed/, "RPC must record units_billed snapshot");
   assert.match(migration, /unit_rate_paise/, "RPC must record unit_rate_paise snapshot");
@@ -21,7 +24,7 @@ test("Billing Concurrency & Idempotency: 20 simultaneous callbacks for one call"
   const expectedTotalPaise = units * unitRatePaise;
   assert.equal(expectedTotalPaise, 1995, "5 minutes at ₹3.99/min must equal 1995 paise (₹19.95)");
 
-  // 3. Behavioral Simulation: 20 simultaneous callbacks hitting deduction engine idempotency
+  // 3. Behavioral Simulation: 20 simultaneous callbacks with realistic lock serialization
   let ledgerEntryCount = 0;
   let walletDeductionsCount = 0;
   const ledgerMap = new Map();

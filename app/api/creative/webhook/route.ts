@@ -11,18 +11,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing record_id parameter" }, { status: 400 });
   }
 
-  // 1. Authenticate callback authenticity
+  // 1. Authenticate callback authenticity (strictly fail-closed)
   const secret = process.env.CREATIVE_WEBHOOK_SECRET;
+  if (!secret) {
+    console.error("[Creative Webhook] CREATIVE_WEBHOOK_SECRET is not configured. Rejecting callback.");
+    return NextResponse.json({ error: "Webhook authentication unconfigured" }, { status: 500 });
+  }
+
   const authHeader = req.headers.get("x-creative-secret") || req.headers.get("authorization") || "";
   const token = authHeader.replace(/^Bearer\s+/i, "").trim();
 
-  if (secret) {
-    const tokenBuf = Buffer.from(token);
-    const secretBuf = Buffer.from(secret);
-    if (tokenBuf.length !== secretBuf.length || !crypto.timingSafeEqual(tokenBuf, secretBuf)) {
-      console.warn("[Creative Webhook] Unauthorized callback attempt for record:", recordId);
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!token) {
+    console.warn("[Creative Webhook] Missing authentication token for record:", recordId);
+    return NextResponse.json({ error: "Unauthorized: Missing authentication" }, { status: 401 });
+  }
+
+  const tokenBuf = Buffer.from(token);
+  const secretBuf = Buffer.from(secret);
+  if (tokenBuf.length !== secretBuf.length || !crypto.timingSafeEqual(tokenBuf, secretBuf)) {
+    console.warn("[Creative Webhook] Unauthorized callback attempt for record:", recordId);
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {

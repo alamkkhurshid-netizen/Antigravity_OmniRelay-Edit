@@ -11,13 +11,17 @@ test("CTO Blockers Verification: Razorpay Webhook Fail-Closed & Amount Binding",
   assert.match(webhookCode, /RAZORPAY_WEBHOOK_SECRET/, "Must require RAZORPAY_WEBHOOK_SECRET");
   assert.match(webhookCode, /crypto\.timingSafeEqual/, "Must use timingSafeEqual for signature check");
 
-  // 2. Pre-registered order binding & amount tampering check
+  // 2. Pre-registered order binding, currency match & amount tampering check
   assert.match(webhookCode, /pendingOrder/, "Must look up pre-registered order from database");
   assert.match(webhookCode, /PAYMENT_AMOUNT_MISMATCH/, "Must detect and record amount tampering attempts");
+  assert.match(webhookCode, /totalPaise !== expectedTotalPaise/, "Must enforce exact amount matching");
+  assert.match(webhookCode, /currency !== "INR"/, "Must enforce INR currency validation");
 
   // 3. Razorpay top-up fail closed without synthetic order fallback in production
   assert.match(topupCode, /Payment gateway network error|Failed to create payment order/, "Must fail closed on gateway errors");
   assert.match(topupCode, /wallet_transactions/, "Must persist pending transaction row on order creation");
+  assert.match(topupCode, /insertError/, "Must check database insertion error on order registration");
+  assert.match(topupCode, /ALLOW_MOCK_PAYMENTS/, "Mock payments must require explicit flag");
 });
 
 test("CTO Blockers Verification: Google Calendar Signed Nonce & Safe Upsert", async () => {
@@ -35,7 +39,10 @@ test("CTO Blockers Verification: Google Calendar Signed Nonce & Safe Upsert", as
 
   // 3. Callback verification
   assert.match(callbackRoute, /crypto\.timingSafeEqual/, "Callback must safely compare state HMAC signature");
-  assert.match(callbackRoute, /consumeNonce/, "Callback must consume nonce to prevent replay attacks");
+  assert.match(callbackRoute, /oauth_nonces/, "Callback must consume nonce from database");
+  assert.match(callbackRoute, /consumeNonce/, "Callback must retain consumeNonce fallback");
+  assert.match(callbackRoute, /agents/, "Callback must directly verify user active admin/owner membership");
+  assert.doesNotMatch(callbackRoute, /adminClient\.rpc\("is_organization_member"/, "Callback must not use service-role on auth.uid() dependent is_organization_member RPC");
   assert.match(callbackRoute, /refreshTokenToSave/, "Callback must preserve existing refresh token if omitted by Google");
   assert.match(callbackRoute, /resource_id/, "Callback must handle nullable resource_id without conflict errors");
 });
@@ -52,6 +59,8 @@ test("CTO Blockers Verification: Voice Metering & Creative Webhook Authenticity"
 
   // 2. Creative webhook: authentication and persistence error check
   assert.match(creativeWebhook, /CREATIVE_WEBHOOK_SECRET/, "Creative webhook must check shared secret");
+  assert.match(creativeWebhook, /if\s*\(!secret\)/, "Creative webhook must fail closed when secret is unconfigured");
+  assert.doesNotMatch(creativeWebhook, /if\s*\(secret\)\s*\{/, "Creative webhook must not fail-open when secret is missing");
   assert.match(creativeWebhook, /crypto\.timingSafeEqual/, "Creative webhook must use timing-safe comparison");
   assert.match(creativeWebhook, /updateError/, "Creative webhook must check database update errors before acknowledging");
 });

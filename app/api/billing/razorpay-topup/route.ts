@@ -68,33 +68,34 @@ export async function POST(request: Request) {
       }
     } else {
       // In development/test mode only, if explicit mock testing is enabled
-      if (process.env.NODE_ENV !== "production" || process.env.ALLOW_MOCK_PAYMENTS === "true") {
+      if (process.env.ALLOW_MOCK_PAYMENTS === "true" && process.env.NODE_ENV !== "production") {
         razorpayOrderId = `order_test_${Math.random().toString(36).substring(2, 15)}`;
       } else {
         return NextResponse.json({ error: "Payment gateway credentials are not configured" }, { status: 500 });
       }
     }
 
-    // Persist pre-registered order to prevent untracked webhook credits
-    try {
-      const { createAdminClient } = await import("@/lib/supabase/admin");
-      const adminSupabase = createAdminClient();
-      await adminSupabase.schema("billing").from("wallet_transactions").insert({
-        organization_id,
-        amount_paise: gstBreakdown.baseAmountInr * 100,
-        gst_amount_paise: gstBreakdown.gstAmountInr * 100,
-        transaction_type: "top_up",
-        razorpay_order_id: razorpayOrderId,
-        status: "pending",
-        metadata: {
-          expected_total_paise: gstBreakdown.totalPayablePaise,
-          base_amount_inr: amount_inr,
-          created_by_user_id: user.id,
-          currency: "INR",
-        },
-      });
-    } catch (dbErr) {
-      console.warn("[Razorpay Top-up] Could not pre-register pending transaction row:", dbErr);
+    // Persist pre-registered order to prevent untracked webhook credits (fail closed on failure)
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    const adminSupabase = createAdminClient();
+    const { error: insertError } = await adminSupabase.schema("billing").from("wallet_transactions").insert({
+      organization_id,
+      amount_paise: gstBreakdown.baseAmountInr * 100,
+      gst_amount_paise: gstBreakdown.gstAmountInr * 100,
+      transaction_type: "top_up",
+      razorpay_order_id: razorpayOrderId,
+      status: "pending",
+      metadata: {
+        expected_total_paise: gstBreakdown.totalPayablePaise,
+        base_amount_inr: amount_inr,
+        created_by_user_id: user.id,
+        currency: "INR",
+      },
+    });
+
+    if (insertError) {
+      console.error("[Razorpay Top-up] Failed to pre-register pending transaction row:", insertError);
+      return NextResponse.json({ error: "Failed to initialize payment order in ledger" }, { status: 500 });
     }
 
     return NextResponse.json({

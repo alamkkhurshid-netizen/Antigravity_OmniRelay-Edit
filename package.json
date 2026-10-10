@@ -15,6 +15,8 @@
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
+    "db:fresh": "node scripts/db-migration-runner.mjs --mode=fresh",
+    "db:upgrade": "node scripts/db-migration-runner.mjs --mode=upgrade",
     "ci:test": "npm run test",
     "ci:deploy": "npx vercel --prod --token $VERCEL_TOKEN"
   },

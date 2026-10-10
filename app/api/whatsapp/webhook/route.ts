@@ -243,16 +243,24 @@ async function forwardInboundMessage(
           return;
         }
 
-        // Status is 'failed' or stalled: allow safe retry
-        console.log(`[WhatsApp Webhook] Retrying previously ${existingRow.status} message ${messageId}. Attempt ${existingRow.retry_count + 1}`);
-        await adminClient
+        // Status is 'failed' or stalled: acquire atomic lease for retry to prevent multi-worker race
+        console.log(`[WhatsApp Webhook] Attempting atomic retry lease for previously ${existingRow.status} message ${messageId}. Attempt ${existingRow.retry_count + 1}`);
+        const { data: leasedRow, error: leaseErr } = await adminClient
           .from("whatsapp_inbound_messages")
           .update({
             status: "processing",
             retry_count: (existingRow.retry_count || 0) + 1,
             updated_at: new Date().toISOString()
           })
-          .eq("provider_message_id", messageId);
+          .eq("provider_message_id", messageId)
+          .eq("status", existingRow.status)
+          .select("id")
+          .maybeSingle();
+
+        if (leaseErr || !leasedRow) {
+          console.log(`[WhatsApp Webhook] Lost atomic lease race for message ${messageId}. Skipping duplicate concurrent retry.`);
+          return;
+        }
       }
     }
   }
@@ -260,11 +268,15 @@ async function forwardInboundMessage(
   // 3. Forward to Hermes Agent
   const hermesUrl = process.env.HERMES_AGENT_URL || (process.env.NODE_ENV === "production" ? null : "http://localhost:8000/api/v1/agent/invoke");
   if (!hermesUrl) {
-    console.warn("[Webhook] HERMES_AGENT_URL is not configured. Skipping AI agent invocation.");
+    console.warn("[Webhook] HERMES_AGENT_URL is not configured. Marking message failed to preserve retry/audit trail.");
     if (messageId) {
       await adminClient
         .from("whatsapp_inbound_messages")
-        .update({ status: "completed", updated_at: new Date().toISOString() })
+        .update({
+          status: "failed",
+          error_message: "Runtime unconfigured: HERMES_AGENT_URL missing",
+          updated_at: new Date().toISOString()
+        })
         .eq("provider_message_id", messageId);
     }
     return;

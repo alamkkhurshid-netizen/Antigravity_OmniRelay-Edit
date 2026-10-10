@@ -51,6 +51,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid payment payload" }, { status: 400 });
     }
 
+    const currency = (payment.currency || "INR").toUpperCase();
+    if (currency !== "INR") {
+      console.error(`[Billing Webhook] Currency mismatch: Received ${currency}, expected INR`);
+      return NextResponse.json({ error: "Unsupported currency" }, { status: 400 });
+    }
+
     // Verify order exists in database and bind tenant securely from verified order record
     const { createAdminClient } = await import("@/lib/supabase/admin");
     const adminSupabase = createAdminClient();
@@ -71,28 +77,32 @@ export async function POST(request: Request) {
         organizationId = pendingOrder.organization_id;
         expectedTotalPaise = pendingOrder.metadata?.expected_total_paise || (pendingOrder.amount_paise + (pendingOrder.gst_amount_paise || 0));
 
-        if (totalPaise < expectedTotalPaise) {
-          console.error(`[Billing Webhook] Amount tampering alert: Received ${totalPaise} paise, expected ${expectedTotalPaise}`);
+        // Exact amount matching required: reject any divergence
+        if (totalPaise !== expectedTotalPaise) {
+          console.error(`[Billing Webhook] Amount tampering alert: Received ${totalPaise} paise, expected exact ${expectedTotalPaise} paise`);
           await adminSupabase.from("operational_events").insert({
             organization_id: organizationId,
             event_source: "billing_webhook",
             severity: "critical",
             error_code: "PAYMENT_AMOUNT_MISMATCH",
-            safe_message: `Captured payment (${totalPaise} paise) is less than order (${expectedTotalPaise} paise)`,
+            safe_message: `Captured payment (${totalPaise} paise) does not match order (${expectedTotalPaise} paise)`,
             metadata: { payment_id: paymentId, order_id: orderId, total_paise: totalPaise, expected: expectedTotalPaise }
           });
           return NextResponse.json({ error: "Payment amount does not match order" }, { status: 400 });
         }
-      } else if (process.env.NODE_ENV === "production") {
-        console.error(`[Billing Webhook] Received webhook for unverified order ID: ${orderId}`);
-        await adminSupabase.from("operational_events").insert({
-          event_source: "billing_webhook",
-          severity: "critical",
-          error_code: "UNKNOWN_PAYMENT_ORDER",
-          safe_message: `Attempted wallet credit for unknown order ${orderId}`,
-          metadata: { payment_id: paymentId, order_id: orderId, amount: totalPaise, notes_org_id: notesOrgId }
-        });
-        return NextResponse.json({ error: "Order not registered or unverified" }, { status: 400 });
+      } else {
+        const isMockAllowed = process.env.ALLOW_MOCK_PAYMENTS === "true" && process.env.NODE_ENV !== "production";
+        if (!isMockAllowed) {
+          console.error(`[Billing Webhook] Received webhook for unverified order ID: ${orderId}`);
+          await adminSupabase.from("operational_events").insert({
+            event_source: "billing_webhook",
+            severity: "critical",
+            error_code: "UNKNOWN_PAYMENT_ORDER",
+            safe_message: `Attempted wallet credit for unknown order ${orderId}`,
+            metadata: { payment_id: paymentId, order_id: orderId, amount: totalPaise, notes_org_id: notesOrgId }
+          });
+          return NextResponse.json({ error: "Order not registered or unverified" }, { status: 400 });
+        }
       }
     }
 
