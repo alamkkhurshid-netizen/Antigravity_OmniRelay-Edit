@@ -144,7 +144,7 @@ async function processSuperCtoApproval(from: string, messageBody: string) {
   return true; // We handled it, don't forward to Hermes
 }
 
-// Forward inbound customer messages to the Hermes Agent via the internal router
+// Forward inbound customer messages to the Hermes Agent via strict tenant routing
 async function forwardInboundMessage(
   from: string, 
   messageBody: string, 
@@ -152,57 +152,121 @@ async function forwardInboundMessage(
   waId: string,
   profileName: string | undefined,
   ref: string | undefined,
-  recipientPhoneId?: string
+  recipientPhoneId?: string,
+  messageId?: string
 ) {
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (!secret) return;
 
   const adminClient = createAdminClient();
-  let orgId: string | null = null;
 
-  // 1. Strict Multi-Tenant Match: Look up clinic by Meta's recipient phone_number_id
-  if (recipientPhoneId) {
-    const { data: conn } = await adminClient
-      .from("whatsapp_connections")
-      .select("organization_id")
-      .eq("phone_number_id", recipientPhoneId)
-      .maybeSingle();
-    if (conn?.organization_id) {
-      orgId = conn.organization_id;
-    }
-  }
-
-  // 2. Fallback: match by patient phone number against existing contacts
-  if (!orgId) {
-    const { data: contact } = await adminClient
-      .from("contacts")
-      .select("organization_id")
-      .eq("phone", from)
-      .maybeSingle();
-    if (contact?.organization_id) {
-      orgId = contact.organization_id;
-    }
-  }
-
-  // 3. Fallback for single-tenant / initial configuration
-  if (!orgId) {
-    const { data: fallbackConn } = await adminClient
-      .from("whatsapp_connections")
-      .select("organization_id")
-      .limit(1)
-      .maybeSingle();
-    orgId = fallbackConn?.organization_id ?? null;
-  }
-  
-  if (!orgId) {
-    console.error("[Webhook] No organization found for inbound WhatsApp message from:", from, "to phone_number_id:", recipientPhoneId);
+  // 1. Strict Multi-Tenant Match: Look up clinic EXCLUSIVELY by Meta's recipient phone_number_id
+  if (!recipientPhoneId) {
+    console.error(`[WhatsApp Routing] Missing receiving phone_number_id from Meta webhook. Quarantining message from ${from}.`);
+    await adminClient.from("operational_events").insert({
+      event_source: "whatsapp_routing",
+      severity: "warning",
+      error_code: "ROUTING_MISSING_RECIPIENT_ID",
+      safe_message: `Inbound WhatsApp message quarantined: missing receiving phone_number_id.`,
+      metadata: { from, message_type: messageType, message_id: messageId }
+    });
     return;
   }
 
-  // 2. Forward to Hermes Agent
+  const { data: conns, error: connError } = await adminClient
+    .from("whatsapp_connections")
+    .select("organization_id")
+    .eq("phone_number_id", recipientPhoneId);
+
+  if (connError || !conns || conns.length === 0) {
+    console.warn(`[WhatsApp Routing] Unmapped recipient phone_number_id ${recipientPhoneId}. Quarantining message from ${from}.`);
+    await adminClient.from("operational_events").insert({
+      event_source: "whatsapp_routing",
+      severity: "warning",
+      error_code: "ROUTING_UNMAPPED_RECIPIENT",
+      safe_message: `Unmapped WhatsApp recipient phone_number_id (${recipientPhoneId}). Message quarantined.`,
+      metadata: { from, recipient_phone_id: recipientPhoneId, message_type: messageType, message_id: messageId }
+    });
+    return;
+  }
+
+  if (conns.length > 1) {
+    console.error(`[WhatsApp Routing] Ambiguous configuration: multiple tenants share phone_number_id ${recipientPhoneId}. Quarantining.`);
+    await adminClient.from("operational_events").insert({
+      event_source: "whatsapp_routing",
+      severity: "critical",
+      error_code: "ROUTING_AMBIGUOUS_RECIPIENT",
+      safe_message: `Ambiguous WhatsApp recipient mapping: ${conns.length} tenants share phone_number_id (${recipientPhoneId}).`,
+      metadata: { from, recipient_phone_id: recipientPhoneId, matched_orgs: conns.map(c => c.organization_id), message_id: messageId }
+    });
+    return;
+  }
+
+  const orgId = conns[0].organization_id;
+
+  // 2. Durable Inbound Message Lifecycle & Atomic Deduplication
+  // Lifecycle: received -> queued -> processing -> completed / failed
+  let shouldProcess = true;
+  if (messageId) {
+    // Attempt atomic insert
+    const { error: insertErr } = await adminClient
+      .from("whatsapp_inbound_messages")
+      .insert({
+        organization_id: orgId,
+        provider_message_id: messageId,
+        recipient_phone_id: recipientPhoneId,
+        sender_phone: from,
+        status: "processing",
+        message_type: messageType,
+        payload: { message_body: messageBody, profile_name: profileName, ref }
+      });
+
+    if (insertErr) {
+      // Row already exists (duplicate delivery or retry from Meta)
+      const { data: existingRow } = await adminClient
+        .from("whatsapp_inbound_messages")
+        .select("id, status, retry_count, updated_at")
+        .eq("provider_message_id", messageId)
+        .maybeSingle();
+
+      if (existingRow) {
+        if (existingRow.status === "completed") {
+          console.log(`[WhatsApp Webhook] Message ${messageId} already completed. Idempotent skip.`);
+          return;
+        }
+
+        const updatedAt = new Date(existingRow.updated_at || 0).getTime();
+        const now = Date.now();
+        // If actively processing within the last 60 seconds, avoid concurrent double-dispatch
+        if (existingRow.status === "processing" && (now - updatedAt) < 60000) {
+          console.log(`[WhatsApp Webhook] Message ${messageId} is currently in flight. Skipping duplicate concurrent callback.`);
+          return;
+        }
+
+        // Status is 'failed' or stalled: allow safe retry
+        console.log(`[WhatsApp Webhook] Retrying previously ${existingRow.status} message ${messageId}. Attempt ${existingRow.retry_count + 1}`);
+        await adminClient
+          .from("whatsapp_inbound_messages")
+          .update({
+            status: "processing",
+            retry_count: (existingRow.retry_count || 0) + 1,
+            updated_at: new Date().toISOString()
+          })
+          .eq("provider_message_id", messageId);
+      }
+    }
+  }
+
+  // 3. Forward to Hermes Agent
   const hermesUrl = process.env.HERMES_AGENT_URL || (process.env.NODE_ENV === "production" ? null : "http://localhost:8000/api/v1/agent/invoke");
   if (!hermesUrl) {
     console.warn("[Webhook] HERMES_AGENT_URL is not configured. Skipping AI agent invocation.");
+    if (messageId) {
+      await adminClient
+        .from("whatsapp_inbound_messages")
+        .update({ status: "completed", updated_at: new Date().toISOString() })
+        .eq("provider_message_id", messageId);
+    }
     return;
   }
 
@@ -216,19 +280,41 @@ async function forwardInboundMessage(
       customer_phone: from,
       customer_name: profileName || "Unknown",
       message_type: messageType,
-      // Deep link ref from Meta Ad click-throughs
       referral_ref: ref || null
     }
   };
 
   try {
-    await fetch(hermesUrl, {
+    const res = await fetch(hermesUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(hermesPayload)
     });
-  } catch (err) {
+
+    if (!res.ok) {
+      throw new Error(`Hermes agent invocation HTTP error ${res.status}`);
+    }
+
+    // Downstream processing succeeded: mark completed
+    if (messageId) {
+      await adminClient
+        .from("whatsapp_inbound_messages")
+        .update({ status: "completed", updated_at: new Date().toISOString() })
+        .eq("provider_message_id", messageId);
+    }
+  } catch (err: any) {
     console.error("[Webhook → Hermes] Failed to forward inbound message:", err);
+    // Mark failed so subsequent Meta retries can recover processing
+    if (messageId) {
+      await adminClient
+        .from("whatsapp_inbound_messages")
+        .update({
+          status: "failed",
+          error_message: err.message || "Failed to forward to agent",
+          updated_at: new Date().toISOString()
+        })
+        .eq("provider_message_id", messageId);
+    }
   }
 }
 
@@ -313,8 +399,8 @@ export async function POST(request:Request) {
         const isCtoCommand = await processSuperCtoApproval(msg.from, messageBody);
         if (isCtoCommand) continue;
 
-        // Forward to Hermes Agent with strict recipient phone_number_id tenant routing
-        await forwardInboundMessage(msg.from, messageBody, msg.type, msg.from, profileName, ref, recipientPhoneId);
+        // Forward to Hermes Agent with strict recipient phone_number_id tenant routing & deduplication
+        await forwardInboundMessage(msg.from, messageBody, msg.type, msg.from, profileName, ref, recipientPhoneId, msg.id);
       }
     }
   }
