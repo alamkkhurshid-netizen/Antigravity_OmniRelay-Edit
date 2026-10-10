@@ -152,7 +152,8 @@ export async function recordAndDeduct(
   metaMessageId: string,
   category: MessageCategory,
   channel: MessageChannel = "whatsapp",
-  countryCode: string = "IN"
+  countryCode: string = "IN",
+  quantity: number = 1
 ): Promise<DeductionResult> {
   if (!organizationId) throw new Error("organizationId required");
   if (!metaMessageId) throw new Error("metaMessageId required for idempotency");
@@ -165,6 +166,7 @@ export async function recordAndDeduct(
     p_category: category,
     p_channel: channel,
     p_country_code: countryCode,
+    p_quantity: Math.max(1, Math.round(quantity)),
   });
 
   if (error) {

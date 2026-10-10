@@ -151,23 +151,51 @@ async function forwardInboundMessage(
   messageType: string,
   waId: string,
   profileName: string | undefined,
-  ref: string | undefined
+  ref: string | undefined,
+  recipientPhoneId?: string
 ) {
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (!secret) return;
 
-  // 1. Look up which organization owns this WhatsApp number by checking connected accounts
-  //    We match on the customer's phone number against existing patient/customer records.
-  //    For now, we use the first org that has WhatsApp configured.
-  const orgLookup = await fetch(
-    `${supabaseUrl}/rest/v1/whatsapp_connections?select=organization_id&limit=1`,
-    { headers: { apikey: secret, Authorization: `Bearer ${secret}` } }
-  );
-  const connections = await orgLookup.json();
-  const orgId = connections?.[0]?.organization_id;
+  const adminClient = createAdminClient();
+  let orgId: string | null = null;
+
+  // 1. Strict Multi-Tenant Match: Look up clinic by Meta's recipient phone_number_id
+  if (recipientPhoneId) {
+    const { data: conn } = await adminClient
+      .from("whatsapp_connections")
+      .select("organization_id")
+      .eq("phone_number_id", recipientPhoneId)
+      .maybeSingle();
+    if (conn?.organization_id) {
+      orgId = conn.organization_id;
+    }
+  }
+
+  // 2. Fallback: match by patient phone number against existing contacts
+  if (!orgId) {
+    const { data: contact } = await adminClient
+      .from("contacts")
+      .select("organization_id")
+      .eq("phone", from)
+      .maybeSingle();
+    if (contact?.organization_id) {
+      orgId = contact.organization_id;
+    }
+  }
+
+  // 3. Fallback for single-tenant / initial configuration
+  if (!orgId) {
+    const { data: fallbackConn } = await adminClient
+      .from("whatsapp_connections")
+      .select("organization_id")
+      .limit(1)
+      .maybeSingle();
+    orgId = fallbackConn?.organization_id ?? null;
+  }
   
   if (!orgId) {
-    console.error("[Webhook] No organization found for inbound WhatsApp message from:", from);
+    console.error("[Webhook] No organization found for inbound WhatsApp message from:", from, "to phone_number_id:", recipientPhoneId);
     return;
   }
 
@@ -223,6 +251,7 @@ export async function POST(request:Request) {
     entry?: Array<{
       changes?: Array<{
         value?: {
+          metadata?: {display_phone_number?: string; phone_number_id?: string};
           statuses?: Array<{id?: string; status?: string; timestamp?: string}>;
           messages?: Array<{
             from?: string;
@@ -256,6 +285,7 @@ export async function POST(request:Request) {
       if (!value?.messages) continue;
 
       const contacts = value.contacts ?? [];
+      const recipientPhoneId = value.metadata?.phone_number_id;
 
       for (const msg of value.messages) {
         if (!msg.from || !msg.type) continue;
@@ -283,8 +313,8 @@ export async function POST(request:Request) {
         const isCtoCommand = await processSuperCtoApproval(msg.from, messageBody);
         if (isCtoCommand) continue;
 
-        // Forward to Hermes Agent for intent classification and response
-        await forwardInboundMessage(msg.from, messageBody, msg.type, msg.from, profileName, ref);
+        // Forward to Hermes Agent with strict recipient phone_number_id tenant routing
+        await forwardInboundMessage(msg.from, messageBody, msg.type, msg.from, profileName, ref, recipientPhoneId);
       }
     }
   }

@@ -18,13 +18,14 @@ export async function POST(req: NextRequest) {
     // Billable duration calculated in 60-second standard pulses
     const billableMinutes = Math.max(1, Math.ceil(callLog.duration_seconds / 60));
     
-    // Perform atomic deduction for voice call
+    // Perform atomic deduction for voice call with accurate minute quantity
     const deduction = await recordAndDeduct(
       callLog.org_id,
       `call_${callLog.id}`,
       "voice",
       "voice",
-      "IN"
+      "IN",
+      billableMinutes
     );
 
     // Update voice call log with calculated cost and deduction status

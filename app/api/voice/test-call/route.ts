@@ -4,10 +4,18 @@ import { getWorkspace } from "@/lib/workspace";
 export const dynamic = "force-dynamic";
 
 const VOICE_ENGINE_URL = process.env.VOICE_ENGINE_URL || "https://130.210.29.75.sslip.io";
-const VOICE_ENGINE_API_KEY = process.env.OMNIRELAY_VOICE_API_KEY || process.env.OMNIRELAY_API_KEY || "omnirelay_prod_secret_2026_key";
+const VOICE_ENGINE_API_KEY = process.env.OMNIRELAY_VOICE_API_KEY || process.env.OMNIRELAY_API_KEY;
 
 export async function POST(request: Request) {
   try {
+    if (!VOICE_ENGINE_API_KEY) {
+      console.error("[VOICE_TEST_CALL] Missing OMNIRELAY_VOICE_API_KEY configuration.");
+      return NextResponse.json(
+        { error: "Voice Engine API key is not configured on the server." },
+        { status: 500 }
+      );
+    }
+
     const { supabase, organization } = await getWorkspace();
     const {
       data: { user },
