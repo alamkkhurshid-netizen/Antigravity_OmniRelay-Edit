@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
 import { getWorkspace } from "@/lib/workspace";
-import { KnowledgeWorkspace } from "./knowledge-workspace";
-import { VoiceDashboard } from "./voice-dashboard";
-import { PremiumUpsell } from "./premium-upsell";
+import { AgentsClientView } from "./agents-client-view";
 
 export const dynamic = "force-dynamic";
 
@@ -25,19 +23,13 @@ export default async function AgentsPage() {
   ]);
 
   return (
-    <div className="space-y-6">
-      <PremiumUpsell 
-        supportActive={!!orgInfo?.premium_support_agent_active}
-        ctoActive={!!orgInfo?.premium_cto_agent_active}
-        growthActive={!!orgInfo?.premium_growth_agent_active}
-        adminActive={!!orgInfo?.premium_admin_agent_active}
-      />
-      <KnowledgeWorkspace organizationId={organization.id} documents={documents ?? []} agents={agents ?? []} />
-      <VoiceDashboard 
-        organizationId={organization.id} 
-        callLogs={voiceLogs ?? []} 
-        initialConfig={voiceConfig}
-      />
-    </div>
+    <AgentsClientView
+      organizationId={organization.id}
+      documents={documents ?? []}
+      agents={agents ?? []}
+      orgInfo={orgInfo}
+      voiceLogs={voiceLogs ?? []}
+      voiceConfig={voiceConfig}
+    />
   );
 }
