@@ -6,7 +6,11 @@
  * 1. Fresh database installations: Applies all migrations strictly once in timestamp order.
  * 2. Production upgrades: Applies only pending, unapplied migrations against target PostgreSQL.
  * 
- * Records execution into canonical `supabase_migrations.schema_migrations` ledger.
+ * Safety & Compatibility Features:
+ * - Compatible with Supabase CLI `supabase_migrations.schema_migrations` ledger schema.
+ * - Production database safety guard (blocks accidental prod runs without ALLOW_PROD_MIGRATIONS=true).
+ * - Non-empty database guard on --mode=fresh (blocks running fresh against populated DB without --force).
+ * - Per-migration transactional execution (BEGIN ... COMMIT/ROLLBACK).
  */
 
 import { readdirSync, readFileSync } from "fs";
@@ -54,6 +58,12 @@ export async function runMigrations({ mode = "upgrade", connectionString = proce
     return { success: true, executedCount: 0, validatedCount: files.length, dryRun: true };
   }
 
+  // 1. Safety Guard: Guard against accidental production execution
+  const isProduction = /prod|production/i.test(connectionString) && process.env.ALLOW_PROD_MIGRATIONS !== "true";
+  if (isProduction) {
+    throw new Error("[DB Migration Runner] BLOCKED: Detected production database string. Set ALLOW_PROD_MIGRATIONS=true to execute migrations against production.");
+  }
+
   const client = new pg.Client({
     connectionString,
     ssl: connectionString.includes("localhost") || connectionString.includes("127.0.0.1") ? false : { rejectUnauthorized: false }
@@ -63,7 +73,7 @@ export async function runMigrations({ mode = "upgrade", connectionString = proce
     await client.connect();
     console.log("[DB Migration Runner] Connected to PostgreSQL successfully.");
 
-    // Ensure migration schema and ledger table exist
+    // Ensure migration schema and ledger table exist (Supabase CLI compatible)
     await client.query(`
       CREATE SCHEMA IF NOT EXISTS supabase_migrations;
       CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations (
@@ -76,6 +86,21 @@ export async function runMigrations({ mode = "upgrade", connectionString = proce
     const { rows } = await client.query(`SELECT version FROM supabase_migrations.schema_migrations;`);
     const appliedVersions = new Set(rows.map((r) => r.version));
     console.log(`[DB Migration Runner] Previously applied migrations: ${appliedVersions.size}`);
+
+    // 2. Safety Guard: Non-empty database guard on --mode=fresh
+    if (mode === "fresh") {
+      const { rows: tableRows } = await client.query(
+        `SELECT count(*)::int as count FROM information_schema.tables WHERE table_schema = 'public';`
+      );
+      const existingTableCount = tableRows[0]?.count || 0;
+      const forceFlag = process.argv.includes("--force") || process.env.FORCE_FRESH_INSTALL === "true";
+      if (existingTableCount > 0 && !forceFlag) {
+        throw new Error(
+          `[DB Migration Runner] BLOCKED: --mode=fresh cannot run against a non-empty database (${existingTableCount} existing tables in public schema). ` +
+          `Pass --force or FORCE_FRESH_INSTALL=true if this is disposable, or run with --mode=upgrade.`
+        );
+      }
+    }
 
     let pendingFiles = [];
     if (mode === "fresh") {

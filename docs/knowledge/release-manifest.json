@@ -9,7 +9,7 @@
       "product_areas": ["Voice AI", "Billing & Metering", "Tenant Routing", "Runtime Reliability", "OAuth Nonce Hardening", "Postgres Concurrency"],
       "guide_articles": ["billing"],
       "rag_impact": "guide_only",
-      "verified_by": ["CTO Remediation Audit", "Automated test suite", "Erlang-B model verification", "Advisory lock verification"]
+      "verified_by": ["CTO Remediation Audit", "Automated test suite", "Erlang-B model verification", "Advisory lock verification", "TypeScript CI Gate", "Database Safety Guards"]
     },
     {
       "id": "2026-09-13-sales-rag-commercial-source",

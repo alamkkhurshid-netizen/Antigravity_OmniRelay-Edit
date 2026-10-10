@@ -42,3 +42,7 @@
 8. **WhatsApp Inbound Lifecycle & Atomic Retry Leasing:**
    - Missing Hermes runtime marked `failed` rather than completed.
    - Atomic conditional lease prevents worker collision.
+
+9. **Meta Embedded Signup Type Safety & Database Test Guards:**
+   - Full TypeScript declarations for Meta FB SDK on Window and contextually typed login callback.
+   - Non-empty database guard on migration runner and guaranteed cleanup in outer finally block for PostgreSQL concurrency test.
