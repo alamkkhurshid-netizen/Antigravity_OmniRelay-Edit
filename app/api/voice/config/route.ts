@@ -56,8 +56,15 @@ export async function GET() {
       forwarding_phone_number: "",
       vmn_number: null,
       vmn_status: "none",
-      vmn_plan_active: false,
+      business_vertical: "healthcare",
       business_category: "dental",
+      vertical_settings: {
+        vertical: "healthcare",
+        enable_booking: true,
+        enable_emergency_bypass: true,
+        order_tracking_enabled: false,
+        room_reservation_enabled: false
+      },
       receptionist_eq_tone: "empathetic",
       sales_agent_name: "Rohan",
       sales_agent_active: true,
@@ -97,27 +104,36 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    // Validation
-    if (!body.clinic_name?.trim()) {
-      return NextResponse.json({ error: "Clinic name is required." }, { status: 400 });
+    const businessName = (body.clinic_name || body.business_name || "").trim();
+    if (!businessName) {
+      return NextResponse.json({ error: "Business / Clinic name is required." }, { status: 400 });
     }
 
     if (!body.receptionist_phone?.trim()) {
       return NextResponse.json(
-        { error: "Human receptionist phone number is required for patient safety & call transfer." },
+        { error: "Phone number for escalation / human transfer is required." },
         { status: 400 }
       );
     }
 
+    const businessVertical = body.business_vertical || "healthcare";
+    const verticalSettings = body.vertical_settings || {
+      vertical: businessVertical,
+      enable_booking: true,
+      enable_emergency_bypass: businessVertical === "healthcare",
+      order_tracking_enabled: businessVertical === "retail",
+      room_reservation_enabled: businessVertical === "hospitality"
+    };
+
     const payload = {
       org_id: organization.id,
-      clinic_name: body.clinic_name.trim(),
-      bot_name: body.bot_name?.trim() || "Maya",
+      clinic_name: businessName,
+      bot_name: body.bot_name?.trim() || (businessVertical === "retail" ? "Priya" : businessVertical === "hospitality" ? "Aria" : "Maya"),
       agent_persona: body.agent_persona || "receptionist",
       voice_id: body.voice_id || "sonic-english-indian-1",
       virtual_number: body.virtual_number || "08047283676",
       receptionist_phone: body.receptionist_phone.trim(),
-      greeting_message: body.greeting_message?.trim() || `Hello! Thank you for calling ${body.clinic_name}. How can I help you today?`,
+      greeting_message: body.greeting_message?.trim() || `Hello! Thank you for calling ${businessName}. How can I help you today?`,
       primary_language: body.primary_language || "en-IN",
       auto_language_switch: body.auto_language_switch !== false,
       enabled_languages: Array.isArray(body.enabled_languages) && body.enabled_languages.length > 0
@@ -135,9 +151,11 @@ export async function POST(request: Request) {
       vmn_number: body.vmn_number?.trim() || null,
       vmn_status: body.vmn_status || (body.vmn_number ? "active" : "none"),
       vmn_plan_active: body.vmn_plan_active === true,
-      business_category: body.business_category || "dental",
+      business_vertical: businessVertical,
+      business_category: body.business_category || (businessVertical === "retail" ? "fashion" : businessVertical === "hospitality" ? "luxury_hotel" : "dental"),
+      vertical_settings: verticalSettings,
       receptionist_eq_tone: body.receptionist_eq_tone || "empathetic",
-      sales_agent_name: body.sales_agent_name?.trim() || "Rohan",
+      sales_agent_name: body.sales_agent_name?.trim() || (businessVertical === "retail" ? "Kabir" : businessVertical === "hospitality" ? "Neil" : "Rohan"),
       sales_agent_active: body.sales_agent_active !== false,
       sales_eq_style: body.sales_eq_style || "consultative",
       sales_packages: Array.isArray(body.sales_packages) && body.sales_packages.length > 0

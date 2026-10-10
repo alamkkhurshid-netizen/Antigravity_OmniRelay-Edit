@@ -5,9 +5,11 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true, // CI pipeline handles type checking
   },
-  eslint: {
-    ignoreDuringBuilds: true, // CI pipeline handles linting
-  }
+  ...({
+    eslint: {
+      ignoreDuringBuilds: true, // CI pipeline handles linting
+    }
+  } as any)
 };
 
 export default withSentryConfig(nextConfig, {

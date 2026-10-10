@@ -23,8 +23,12 @@ import {
   TrendingUp,
   Stethoscope,
   Tag,
-  UserCheck
+  UserCheck,
+  ShoppingBag,
+  Building2
 } from "lucide-react";
+
+export type BusinessVertical = "healthcare" | "retail" | "hospitality";
 
 interface VoiceConfig {
   org_id: string;
@@ -53,7 +57,15 @@ interface VoiceConfig {
   vmn_number?: string | null;
   vmn_status?: string;
   vmn_plan_active?: boolean;
+  business_vertical?: BusinessVertical;
   business_category?: string;
+  vertical_settings?: {
+    vertical: string;
+    enable_booking?: boolean;
+    enable_emergency_bypass?: boolean;
+    order_tracking_enabled?: boolean;
+    room_reservation_enabled?: boolean;
+  };
   receptionist_eq_tone?: "empathetic" | "reassuring" | "crisp";
   sales_agent_name?: string;
   sales_agent_active?: boolean;
@@ -62,6 +74,102 @@ interface VoiceConfig {
   sales_campaign_type?: string;
   outbound_calling_window?: { start: string; end: string };
 }
+
+export const VERTICALS = [
+  {
+    id: "healthcare" as BusinessVertical,
+    name: "Healthcare & Clinics",
+    badge: "OPD & Patients",
+    tagline: "Doctor appointments, patient triage, bedside empathy & emergency safeguards",
+    defaultBotName: "Maya",
+    defaultSalesName: "Rohan",
+    greeting: (name: string) => `Hello! Thank you for calling ${name}. How can I assist you with your appointment today?`,
+    businessLabel: "Clinic / Hospital Name",
+    businessPlaceholder: "e.g. Apollo Dental Center or City Care Clinic",
+    categoryLabel: "Select Healthcare Specialty",
+    inboundTitle: "AI Medical Receptionist",
+    inboundSubtitle: "Inbound Patient Care, Bookings, Rescheduling & Triage",
+    outboundTitle: "AI Healthcare Sales & Growth Agent",
+    outboundSubtitle: "Promotional Calls, Package Sales, No-Show Reactivations & Follow-ups",
+    featuredOfferLabel: "Featured Health Checkup / Treatment Package Offer:",
+    categories: [
+      { id: "dental", name: "Dental Practice", description: "Cleanings, implants, braces, root canals", defaultPackage: "Comprehensive Dental Scaling & Cleaning", defaultPrice: 999 },
+      { id: "dermatology", name: "Dermatology & Aesthetics", description: "Acne therapy, laser treatments, chemical peels", defaultPackage: "HydraFacial & Deep Skin Assessment", defaultPrice: 2499 },
+      { id: "ophthalmology", name: "Eye Care & Ophthalmology", description: "Vision checks, LASIK evaluation, cataract screens", defaultPackage: "Comprehensive Eye Exam & Scan", defaultPrice: 699 },
+      { id: "general_practice", name: "General Practice / Multispecialty", description: "General OPD, blood work, chronic care", defaultPackage: "Executive Full Body Checkup", defaultPrice: 2999 },
+      { id: "orthopedics", name: "Physiotherapy & Orthopedics", description: "Joint rehab, spine therapy, sports injuries", defaultPackage: "Physiotherapy Pain Relief Session", defaultPrice: 899 },
+      { id: "wellness", name: "Mental Health & Wellness", description: "Therapy, nutrition, lifestyle consultation", defaultPackage: "Initial Wellness Assessment", defaultPrice: 1499 },
+    ],
+    transferLabel: "Human Front-Desk / Emergency Transfer Phone (Required)",
+    transferHelp: "If a caller demands a human or reports a severe medical emergency, Maya will warmly transfer them to this number.",
+    protocolBox: {
+      title: "🏥 Emergency Protocol (108 Bypass Built-in):",
+      text: "If a patient speaks emergency keywords (e.g. severe chest pain, heavy bleeding, difficulty breathing), the voice engine deterministically bypasses LLM conversation in <10ms, provides emergency first-aid guidance, and immediately dials your front-desk transfer number."
+    }
+  },
+  {
+    id: "retail" as BusinessVertical,
+    name: "Retail & E-Commerce",
+    badge: "D2C & Orders",
+    tagline: "Live order tracking, return authorization, product inquiries & promotional bundles",
+    defaultBotName: "Priya",
+    defaultSalesName: "Kabir",
+    greeting: (name: string) => `Hello! Thank you for calling ${name} Customer Care. How can I assist you with your order or product inquiries today?`,
+    businessLabel: "Store / Brand / Company Name",
+    businessPlaceholder: "e.g. Urban Threads Apparel or BoltTech Store",
+    categoryLabel: "Select Retail & E-Commerce Segment",
+    inboundTitle: "AI Customer Care Specialist",
+    inboundSubtitle: "Live Order Tracking, Delivery Status, Return Requests & FAQs",
+    outboundTitle: "AI Retail Sales & Conversions Agent",
+    outboundSubtitle: "Abandoned Cart Recovery, VIP Offers & Promotional Campaigns",
+    featuredOfferLabel: "Featured Promotional Bundle / Discount Offer:",
+    categories: [
+      { id: "fashion", name: "Fashion & Apparel", description: "Order status, returns/exchanges, sizing guidance", defaultPackage: "VIP Festive Wardrobe Bundle (Flat 20% Off)", defaultPrice: 1499 },
+      { id: "electronics", name: "Electronics & Gadgets", description: "Shipment tracking, warranty checks, accessories", defaultPackage: "Premium Device Protection & Accessory Kit", defaultPrice: 799 },
+      { id: "beauty", name: "Beauty & Cosmetics", description: "Product inquiries, skin routine picks, refills", defaultPackage: "Glow Skincare Replenishment Hamper", defaultPrice: 1299 },
+      { id: "grocery", name: "Grocery & Essentials", description: "Delivery ETA, item replacement, refunds", defaultPackage: "Weekly Farm-Fresh Essentials Subscription", defaultPrice: 899 },
+      { id: "home_decor", name: "Home & Furniture", description: "Delivery window, assembly bookings, adjustments", defaultPackage: "Living Room Styling Consultation Pack", defaultPrice: 1999 },
+      { id: "d2c_brand", name: "D2C Direct Brand", description: "Direct order lookup, exchange support, coupons", defaultPackage: "Best-Seller Discovery Hamper", defaultPrice: 1199 },
+    ],
+    transferLabel: "Customer Care Escalation Phone (Required)",
+    transferHelp: "If an order issue requires tier-2 human supervisor intervention or custom billing approval, Priya connects to this number.",
+    protocolBox: {
+      title: "📦 Automated Order Tracking & Return Capture:",
+      text: "When callers ask for order status or returns, the AI verifies their registered phone or order number, fetches live courier tracking, and initiates return authorizations without customer support hold times."
+    }
+  },
+  {
+    id: "hospitality" as BusinessVertical,
+    name: "Hotel & Hospitality",
+    badge: "Rooms & Dining",
+    tagline: "Room reservations, table bookings, front desk concierge & guest services",
+    defaultBotName: "Aria",
+    defaultSalesName: "Neil",
+    greeting: (name: string) => `Welcome to ${name}! How may I assist you with your room booking or dining reservation today?`,
+    businessLabel: "Hotel / Resort / Restaurant Name",
+    businessPlaceholder: "e.g. The Grand Heritage Hotel or Olive Bistro",
+    categoryLabel: "Select Hospitality & Dining Category",
+    inboundTitle: "AI Front Desk & Concierge Host",
+    inboundSubtitle: "Room Inquiries, Table Reservations, Amenities & Local Guidance",
+    outboundTitle: "AI Guest Relations & Upgrade Agent",
+    outboundSubtitle: "Booking Confirmations, Stay Upgrades & Dining Reservations",
+    featuredOfferLabel: "Featured Stay Package / Dining Experience:",
+    categories: [
+      { id: "luxury_hotel", name: "Luxury Hotel & Resort", description: "Room suites, infinity pool, spa, airport transfers", defaultPackage: "Weekend Luxury Retreat with Breakfast", defaultPrice: 5999 },
+      { id: "boutique_hotel", name: "Boutique Hotel & Stays", description: "Heritage rooms, check-in/out, local tour guides", defaultPackage: "Deluxe Boutique Suite Stay (2 Nights)", defaultPrice: 3499 },
+      { id: "fine_dining", name: "Fine Dining & Bistro", description: "Chef's table, dietary preferences, private dining", defaultPackage: "Chef's 5-Course Tasting Experience for Two", defaultPrice: 2199 },
+      { id: "cafe_dining", name: "Cafe & Casual Dining", description: "Table reservations, birthday parties, takeaway", defaultPackage: "Weekend Celebration Brunch Table", defaultPrice: 999 },
+      { id: "event_venue", name: "Banquet & Event Venue", description: "Wedding halls, corporate conferences, catering", defaultPackage: "Corporate Executive Conference Half-Day", defaultPrice: 14999 },
+      { id: "wellness_resort", name: "Wellness & Ayurvedic Retreat", description: "Rejuvenation therapies, yoga sessions, detox", defaultPackage: "Full-Day Ayurvedic Rejuvenation Pass", defaultPrice: 2999 },
+    ],
+    transferLabel: "Front Desk Manager Phone (Required)",
+    transferHelp: "If guests require custom billing, special concierge accommodations, or direct manager assistance, Aria transfers immediately.",
+    protocolBox: {
+      title: "🏨 Instant Reservation & Concierge Routing:",
+      text: "The AI checks room/table availability in real time, records special guest preferences (e.g. late check-in, dietary restrictions), and provides instant SMS confirmations."
+    }
+  }
+];
 
 const VOICE_PERSONAS = [
   {
@@ -104,24 +212,15 @@ const AVAILABLE_LANGUAGES = [
   { code: "ur-IN", name: "Urdu", native: "اردو" }
 ];
 
-const BUSINESS_CATEGORIES = [
-  { id: "dental", name: "Dental Practice", description: "Cleanings, implants, braces, root canals", defaultPackage: "Comprehensive Dental Scaling & Cleaning", defaultPrice: 999 },
-  { id: "dermatology", name: "Dermatology & Aesthetics", description: "Acne therapy, laser treatments, chemical peels", defaultPackage: "HydraFacial & Deep Skin Assessment", defaultPrice: 2499 },
-  { id: "ophthalmology", name: "Eye Care & Ophthalmology", description: "Vision checks, LASIK evaluation, cataract screens", defaultPackage: "Comprehensive Eye Exam & Scan", defaultPrice: 699 },
-  { id: "general_practice", name: "General Practice / Multispecialty", description: "General OPD, blood work, chronic disease care", defaultPackage: "Executive Full Body Checkup", defaultPrice: 2999 },
-  { id: "orthopedics", name: "Physiotherapy & Orthopedics", description: "Joint rehab, spine therapy, sports injuries", defaultPackage: "Physiotherapy Pain Relief Session", defaultPrice: 899 },
-  { id: "wellness", name: "Mental Health & Wellness", description: "Therapy, nutrition, lifestyle consultation", defaultPackage: "Initial Wellness Assessment", defaultPrice: 1499 },
-];
-
 const RECEPTIONIST_EQ_TONES = [
-  { id: "empathetic", title: "Empathetic & Bedside Care", desc: "Warm, gentle, speaks softly to soothe unwell or nervous patients." },
-  { id: "reassuring", title: "Calm & Reassuring", desc: "Validates caller concerns, explains steps clearly, reduces anxiety." },
-  { id: "crisp", title: "Crisp & Efficient", desc: "Direct, professional, optimal for high-volume quick booking queues." }
+  { id: "empathetic", title: "Empathetic & Bedside Care", desc: "Warm, gentle, speaks softly to soothe unwell or nervous callers." },
+  { id: "reassuring", title: "Calm & Reassuring", desc: "Validates caller concerns, explains steps clearly, builds trust." },
+  { id: "crisp", title: "Crisp & Efficient", desc: "Direct, professional, optimal for high-volume quick support queues." }
 ];
 
 const SALES_EQ_STYLES = [
-  { id: "consultative", title: "Consultative Health Advisor", desc: "Focuses on patient wellness outcomes, asks guiding questions, zero pressure." },
-  { id: "educational", title: "Educational & Informative", desc: "Explains procedure safety, doctor qualifications, and preventative health value." },
+  { id: "consultative", title: "Consultative Advisor", desc: "Focuses on customer outcomes, asks guiding questions, zero pressure." },
+  { id: "educational", title: "Educational & Informative", desc: "Explains features, credentials, benefits, and value transparently." },
   { id: "value_driven", title: "Value-Driven & Confident", desc: "Clearly highlights package cost savings, bundled inclusions, and limited slots." }
 ];
 
@@ -144,15 +243,18 @@ export function VoiceSetupWizard({
   const [testCallStatus, setTestCallStatus] = useState<string | null>(null);
   const [activeAudioPreview, setActiveAudioPreview] = useState<string | null>(null);
 
+  const initialVertical: BusinessVertical = (initialConfig?.business_vertical as BusinessVertical) || "healthcare";
+  const initialDef = VERTICALS.find(v => v.id === initialVertical) || VERTICALS[0];
+
   const [formData, setFormData] = useState<VoiceConfig>({
     org_id: organizationId,
-    clinic_name: initialConfig?.clinic_name || "My Clinic",
-    bot_name: initialConfig?.bot_name || "Maya",
+    clinic_name: initialConfig?.clinic_name || "My Business",
+    bot_name: initialConfig?.bot_name || initialDef.defaultBotName,
     agent_persona: initialConfig?.agent_persona || "receptionist",
     voice_id: initialConfig?.voice_id || "sonic-english-indian-1",
     virtual_number: initialConfig?.virtual_number || "08047283676",
     receptionist_phone: initialConfig?.receptionist_phone || "",
-    greeting_message: initialConfig?.greeting_message || `Hello! Thank you for calling ${initialConfig?.clinic_name || "our clinic"}. How can I help you today?`,
+    greeting_message: initialConfig?.greeting_message || initialDef.greeting(initialConfig?.clinic_name || "our company"),
     primary_language: initialConfig?.primary_language || "en-IN",
     auto_language_switch: initialConfig?.auto_language_switch !== false,
     enabled_languages: initialConfig?.enabled_languages || ["en-IN", "hi-IN", "kn-IN"],
@@ -168,18 +270,50 @@ export function VoiceSetupWizard({
     vmn_number: initialConfig?.vmn_number || "+919845024001",
     vmn_status: initialConfig?.vmn_status || "active",
     vmn_plan_active: initialConfig?.vmn_plan_active || false,
-    business_category: initialConfig?.business_category || "dental",
+    business_vertical: initialVertical,
+    business_category: initialConfig?.business_category || initialDef.categories[0].id,
+    vertical_settings: initialConfig?.vertical_settings || {
+      vertical: initialVertical,
+      enable_booking: true,
+      enable_emergency_bypass: initialVertical === "healthcare",
+      order_tracking_enabled: initialVertical === "retail",
+      room_reservation_enabled: initialVertical === "hospitality"
+    },
     receptionist_eq_tone: initialConfig?.receptionist_eq_tone || "empathetic",
-    sales_agent_name: initialConfig?.sales_agent_name || "Rohan",
+    sales_agent_name: initialConfig?.sales_agent_name || initialDef.defaultSalesName,
     sales_agent_active: initialConfig?.sales_agent_active !== false,
     sales_eq_style: initialConfig?.sales_eq_style || "consultative",
     sales_packages: initialConfig?.sales_packages || [
-      { name: "Comprehensive Dental Scaling & Cleaning", price_inr: 999, description: "Ultrasonic scaling, intraoral checkup & polish" },
-      { name: "Laser Teeth Whitening Package", price_inr: 4999, description: "Laser whitening with protective enamel seal" }
+      { name: initialDef.categories[0].defaultPackage, price_inr: initialDef.categories[0].defaultPrice, description: `Specialized ${initialDef.categories[0].name} package.` }
     ],
     sales_campaign_type: initialConfig?.sales_campaign_type || "promotional_leads",
     outbound_calling_window: initialConfig?.outbound_calling_window || { start: "09:30", end: "19:30" },
   });
+
+  const activeVerticalDef = VERTICALS.find(v => v.id === formData.business_vertical) || VERTICALS[0];
+
+  const handleVerticalChange = (newVerticalId: BusinessVertical) => {
+    const def = VERTICALS.find(v => v.id === newVerticalId) || VERTICALS[0];
+    const bName = formData.clinic_name || "our company";
+    setFormData(prev => ({
+      ...prev,
+      business_vertical: newVerticalId,
+      bot_name: def.defaultBotName,
+      sales_agent_name: def.defaultSalesName,
+      greeting_message: def.greeting(bName),
+      business_category: def.categories[0].id,
+      sales_packages: [
+        { name: def.categories[0].defaultPackage, price_inr: def.categories[0].defaultPrice, description: `Specialized ${def.categories[0].name} package.` }
+      ],
+      vertical_settings: {
+        vertical: newVerticalId,
+        enable_booking: true,
+        enable_emergency_bypass: newVerticalId === "healthcare",
+        order_tracking_enabled: newVerticalId === "retail",
+        room_reservation_enabled: newVerticalId === "hospitality"
+      }
+    }));
+  };
 
   const toggleLanguage = (langCode: string) => {
     setFormData(prev => {
@@ -300,47 +434,91 @@ export function VoiceSetupWizard({
         </div>
       </div>
 
-      {/* STEP 1: BUSINESS CATEGORY & DUAL AI AGENT CONFIGURATION */}
+      {/* STEP 1: BUSINESS VERTICAL & DUAL AI AGENT CONFIGURATION */}
       {step === 1 && (
         <Card className="border-border/80 shadow-md">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Bot className="h-5 w-5 text-emerald-500" />
-              Step 1: Healthcare Category & Dual AI Agent Roles
-            </CardTitle>
-            <CardDescription>
-              Configure your Inbound AI Receptionist (patient care & appointments) and your Outbound AI Sales Agent (promotions, no-show follow-ups & package sales).
-            </CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Bot className="h-5 w-5 text-emerald-500" />
+                  Step 1: Choose Business Vertical & Dual AI Agents
+                </CardTitle>
+                <CardDescription>
+                  Select your industry vertical to instantly tailor speech terminology, tool capabilities, and conversational EQ.
+                </CardDescription>
+              </div>
+              <Badge variant="outline" className="border-emerald-500 text-emerald-600 self-start sm:self-auto font-semibold">
+                {activeVerticalDef.badge}
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Clinic Name & Healthcare Category */}
-            <div className="space-y-4">
+            {/* 3-WAY BUSINESS VERTICAL SELECTOR */}
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
+                Select Your Industry Vertical
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {VERTICALS.map((vert) => {
+                  const isSelected = formData.business_vertical === vert.id;
+                  const Icon = vert.id === "healthcare" ? Stethoscope : vert.id === "retail" ? ShoppingBag : Building2;
+                  return (
+                    <div
+                      key={vert.id}
+                      onClick={() => handleVerticalChange(vert.id)}
+                      className={`relative p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                        isSelected
+                          ? "border-emerald-500 bg-emerald-500/10 shadow-sm"
+                          : "border-border hover:border-emerald-500/40 bg-card hover:bg-muted/20"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className={`p-1.5 rounded-lg ${isSelected ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"}`}>
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <span className="font-bold text-sm text-foreground">{vert.name}</span>
+                        </div>
+                        {isSelected && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                        {vert.tagline}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Business Name & Category / Specialty */}
+            <div className="space-y-4 pt-2 border-t">
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
-                  Clinic / Hospital Name
+                  {activeVerticalDef.businessLabel}
                 </label>
                 <input
                   type="text"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                   value={formData.clinic_name}
                   onChange={(e) => {
                     const name = e.target.value;
                     setFormData(prev => ({
                       ...prev,
                       clinic_name: name,
-                      greeting_message: `Hello! Thank you for calling ${name}. How can I assist you with your appointment today?`
+                      greeting_message: activeVerticalDef.greeting(name || "our company")
                     }));
                   }}
-                  placeholder="e.g. Apollo Dental Center"
+                  placeholder={activeVerticalDef.businessPlaceholder}
                 />
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
-                  Select Healthcare Category / Specialty
+                  {activeVerticalDef.categoryLabel}
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
-                  {BUSINESS_CATEGORIES.map((cat) => {
+                  {activeVerticalDef.categories.map((cat) => {
                     const isSelected = formData.business_category === cat.id;
                     return (
                       <div
@@ -350,7 +528,7 @@ export function VoiceSetupWizard({
                             ...prev,
                             business_category: cat.id,
                             sales_packages: [
-                              { name: cat.defaultPackage, price_inr: cat.defaultPrice, description: `Specialized ${cat.name} package & consultation.` }
+                              { name: cat.defaultPackage, price_inr: cat.defaultPrice, description: `Specialized ${cat.name} package.` }
                             ]
                           }));
                         }}
@@ -372,7 +550,7 @@ export function VoiceSetupWizard({
               </div>
             </div>
 
-            {/* AGENT 1: AI MEDICAL RECEPTIONIST */}
+            {/* AGENT 1: INBOUND AI SPECIALIST */}
             <div className="p-4 rounded-xl border bg-muted/10 space-y-4">
               <div className="flex items-center justify-between border-b pb-2">
                 <div className="flex items-center gap-2">
@@ -380,8 +558,8 @@ export function VoiceSetupWizard({
                     <HeartHandshake className="h-4 w-4" />
                   </span>
                   <div>
-                    <h4 className="text-sm font-bold text-foreground">Agent 1: AI Medical Receptionist</h4>
-                    <p className="text-[11px] text-muted-foreground">Inbound Patient Care, Bookings, Rescheduling & Triage</p>
+                    <h4 className="text-sm font-bold text-foreground">Agent 1: {activeVerticalDef.inboundTitle}</h4>
+                    <p className="text-[11px] text-muted-foreground">{activeVerticalDef.inboundSubtitle}</p>
                   </div>
                 </div>
                 <Badge variant="outline" className="border-emerald-500 text-emerald-600 text-[10px]">
@@ -392,20 +570,20 @@ export function VoiceSetupWizard({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
-                    Receptionist Name
+                    Agent Representative Name
                   </label>
                   <input
                     type="text"
                     className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     value={formData.bot_name}
                     onChange={(e) => setFormData(prev => ({ ...prev, bot_name: e.target.value }))}
-                    placeholder="e.g. Maya"
+                    placeholder={`e.g. ${activeVerticalDef.defaultBotName}`}
                   />
                 </div>
 
                 <div>
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
-                    Emotional Intelligence & Bedside Manner
+                    Emotional Intelligence & Conversational Tone
                   </label>
                   <select
                     className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -422,7 +600,7 @@ export function VoiceSetupWizard({
               {/* Persona Voice Cards */}
               <div>
                 <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
-                  Reception Voice Sound
+                  Voice Model
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                   {VOICE_PERSONAS.map((persona) => {
@@ -471,7 +649,7 @@ export function VoiceSetupWizard({
               </div>
             </div>
 
-            {/* AGENT 2: AI HEALTHCARE SALES & OUTBOUND GROWTH AGENT */}
+            {/* AGENT 2: OUTBOUND AI GROWTH & SALES AGENT */}
             <div className="p-4 rounded-xl border bg-muted/10 space-y-4">
               <div className="flex items-center justify-between border-b pb-2">
                 <div className="flex items-center gap-2">
@@ -479,8 +657,8 @@ export function VoiceSetupWizard({
                     <TrendingUp className="h-4 w-4" />
                   </span>
                   <div>
-                    <h4 className="text-sm font-bold text-foreground">Agent 2: AI Healthcare Sales & Outbound Growth Agent</h4>
-                    <p className="text-[11px] text-muted-foreground">Promotional Calls, Package Sales, No-Show Reactivations & Treatment Follow-ups</p>
+                    <h4 className="text-sm font-bold text-foreground">Agent 2: {activeVerticalDef.outboundTitle}</h4>
+                    <p className="text-[11px] text-muted-foreground">{activeVerticalDef.outboundSubtitle}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -506,9 +684,9 @@ export function VoiceSetupWizard({
                       <input
                         type="text"
                         className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        value={formData.sales_agent_name || "Rohan"}
+                        value={formData.sales_agent_name || activeVerticalDef.defaultSalesName}
                         onChange={(e) => setFormData(prev => ({ ...prev, sales_agent_name: e.target.value }))}
-                        placeholder="e.g. Rohan"
+                        placeholder={`e.g. ${activeVerticalDef.defaultSalesName}`}
                       />
                     </div>
 
@@ -528,18 +706,18 @@ export function VoiceSetupWizard({
                     </div>
                   </div>
 
-                  {/* Featured Healthcare Package with Pricing */}
+                  {/* Featured Vertical Package / Promotion Offer */}
                   <div className="p-3 rounded-lg border bg-background space-y-2">
                     <span className="text-[11px] font-bold text-foreground block">
-                      Featured Health Checkup / Treatment Package Offer:
+                      {activeVerticalDef.featuredOfferLabel}
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <div className="sm:col-span-2">
-                        <label className="text-[10px] text-muted-foreground uppercase font-semibold block mb-0.5">Package Name</label>
+                        <label className="text-[10px] text-muted-foreground uppercase font-semibold block mb-0.5">Package / Offer Name</label>
                         <input
                           type="text"
                           className="w-full rounded border px-2.5 py-1 text-xs font-medium"
-                          value={formData.sales_packages?.[0]?.name || "Comprehensive Dental & Scaling Package"}
+                          value={formData.sales_packages?.[0]?.name || activeVerticalDef.categories[0].defaultPackage}
                           onChange={(e) => {
                             const val = e.target.value;
                             setFormData(prev => {
@@ -555,7 +733,7 @@ export function VoiceSetupWizard({
                         <input
                           type="number"
                           className="w-full rounded border px-2.5 py-1 text-xs font-mono font-bold text-emerald-600"
-                          value={formData.sales_packages?.[0]?.price_inr || 999}
+                          value={formData.sales_packages?.[0]?.price_inr || activeVerticalDef.categories[0].defaultPrice}
                           onChange={(e) => {
                             const val = parseInt(e.target.value) || 0;
                             setFormData(prev => {
@@ -585,15 +763,15 @@ export function VoiceSetupWizard({
                       <div className="p-2 rounded border bg-background flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-blue-500 flex-shrink-0" />
                         <div>
-                          <div className="font-semibold text-foreground text-[11px]">No-Show Recovery</div>
-                          <div className="text-[10px] text-muted-foreground">Calls back missed visits in 2h</div>
+                          <div className="font-semibold text-foreground text-[11px]">Reactivation Dials</div>
+                          <div className="text-[10px] text-muted-foreground">Calls back inactive or missed leads</div>
                         </div>
                       </div>
                       <div className="p-2 rounded border bg-background flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4 text-blue-500 flex-shrink-0" />
                         <div>
-                          <div className="font-semibold text-foreground text-[11px]">Treatment Follow-up</div>
-                          <div className="text-[10px] text-muted-foreground">Post-consultation conversion</div>
+                          <div className="font-semibold text-foreground text-[11px]">Post-Service Upgrades</div>
+                          <div className="text-[10px] text-muted-foreground">Follow-up reorders & renewals</div>
                         </div>
                       </div>
                     </div>
@@ -617,17 +795,17 @@ export function VoiceSetupWizard({
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-emerald-500" />
-              Step 2: Operating Hours & Human Transfer Safety
+              Step 2: Operating Hours & Human Escalation Safety
             </CardTitle>
             <CardDescription>
-              Specify clinic timings and where to transfer calls when a patient asks for a human.
+              Specify business operating hours and where to route calls when a customer requests a human agent.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5" /> Clinic Operating Hours
+                  <Clock className="h-3.5 w-3.5" /> Business Operating Hours
                 </label>
                 <input
                   type="text"
@@ -643,7 +821,7 @@ export function VoiceSetupWizard({
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wider text-rose-500 flex items-center gap-1">
-                  <PhoneForwarded className="h-3.5 w-3.5" /> Human Front-Desk Transfer Phone (Required)
+                  <PhoneForwarded className="h-3.5 w-3.5" /> {activeVerticalDef.transferLabel}
                 </label>
                 <input
                   type="text"
@@ -653,14 +831,14 @@ export function VoiceSetupWizard({
                   placeholder="e.g. +91 98450 12345 or 08047283676"
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  If a caller demands a human or reports a severe medical emergency, Maya will warmly transfer them to this number.
+                  {activeVerticalDef.transferHelp}
                 </p>
               </div>
             </div>
 
             <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300">
-              <span className="font-semibold block mb-1">🏥 Emergency Protocol Built-in:</span>
-              If a patient speaks emergency keywords (e.g. <em>"severe chest pain", "heavy bleeding", "difficulty breathing"</em>), the voice engine deterministically bypasses LLM conversation in &lt;10ms, provides emergency first-aid guidance, and immediately dials your front-desk transfer number.
+              <span className="font-semibold block mb-1">{activeVerticalDef.protocolBox.title}</span>
+              {activeVerticalDef.protocolBox.text}
             </div>
           </CardContent>
           <CardFooter className="flex justify-between border-t p-4">
@@ -670,7 +848,7 @@ export function VoiceSetupWizard({
             <Button 
               onClick={() => {
                 if (!formData.receptionist_phone.trim()) {
-                  alert("Please enter a front-desk transfer phone number before proceeding.");
+                  alert("Please enter an escalation/transfer phone number before proceeding.");
                   return;
                 }
                 setStep(3);

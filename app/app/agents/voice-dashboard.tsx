@@ -72,14 +72,14 @@ export function VoiceDashboard({
           <div className="flex items-center gap-2.5">
             <h2 className="text-2xl font-bold tracking-tight">OmniRelay Dual Voice AI Cluster</h2>
             <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
-              2 Active Agents
+              {config?.business_vertical === "retail" ? "🛍️ Retail & E-Commerce" : config?.business_vertical === "hospitality" ? "🏨 Hospitality" : "🏥 Healthcare"}
             </Badge>
             <Badge variant="outline" className="text-xs">
               {config?.telephony_mode === "dedicated_vmn" ? "Dedicated VMN Trunk" : "Smart Forwarding (*401*)"}
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Enterprise Indian telephony cluster combining empathetic patient reception and high-EQ consultative sales.
+            Enterprise Indian telephony cluster with dual AI agents tailored for {config?.business_vertical === "retail" ? "retail order tracking & sales" : config?.business_vertical === "hospitality" ? "guest reservations & concierge" : "patient reception & consultative care"}.
           </p>
         </div>
 
@@ -277,6 +277,31 @@ export function VoiceDashboard({
         </Card>
       </div>
 
+      {/* Canary Pilot Observability & Safety Banner */}
+      <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <Badge className="bg-primary/20 text-primary border-primary/30">
+            Canary Pilot • 3–10 Practice Cohort
+          </Badge>
+          <span className="font-semibold text-foreground">
+            Controlled MVP Operational Guardrails Active
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
+          <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+            <CheckCircle2 className="h-3.5 w-3.5" /> DPDP 2023 Call Disclosure Active
+          </span>
+          <span>•</span>
+          <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Prescription Guardrail Active
+          </span>
+          <span>•</span>
+          <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+            <CheckCircle2 className="h-3.5 w-3.5" /> WhatsApp Staff Alerting On
+          </span>
+        </div>
+      </div>
+
       {/* Metrics Row */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
@@ -292,39 +317,102 @@ export function VoiceDashboard({
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Spoken Duration</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Booked / Resolved</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalMinutes.toFixed(1)}m</div>
-            <p className="text-xs text-muted-foreground mt-1">Patient voice talk-time</p>
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+              {callLogs.filter(l => l.outcome === 'appointment_booked' || l.outcome === 'inquiry_resolved').length}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {callLogs.filter(l => l.outcome === 'appointment_booked').length} appointments booked
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Telecom Cost</CardTitle>
-            <IndianRupee className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Staff Handovers</CardTitle>
+            <PhoneForwarded className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{totalCost.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Metered billing rate</p>
+            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+              {callLogs.filter(l => l.outcome === 'transferred_to_human' || l.outcome === 'transferred').length}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Transferred with WhatsApp alert</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Engine Cluster</CardTitle>
-            <Activity className="h-4 w-4 text-emerald-500" />
+            <CardTitle className="text-sm font-medium">Safety & Emergency</CardTitle>
+            <Activity className="h-4 w-4 text-rose-500" />
           </CardHeader>
           <CardContent>
-            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              OCI Cluster (4 Workers)
-            </Badge>
-            <p className="text-xs text-muted-foreground mt-1">Redis shared memory active</p>
+            <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">
+              {callLogs.filter(l => l.emergency_flag || l.outcome === 'emergency_escalated').length}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">108 emergency interventions</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Staff Escalations & Priority Handover Box (Only shown if escalations exist) */}
+      {callLogs.some(l => l.emergency_flag || l.outcome === 'emergency_escalated' || l.outcome === 'transferred_to_human' || l.outcome === 'transferred') && (
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                  <PhoneForwarded className="h-4 w-4" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-bold">Front-Desk Staff Escalation Queue</CardTitle>
+                  <CardDescription className="text-xs">
+                    Calls requiring receptionist review or doctor follow-up during controlled pilot.
+                  </CardDescription>
+                </div>
+              </div>
+              <Badge variant="outline" className="text-xs bg-background">
+                Auto-Alerted via WhatsApp
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="divide-y divide-border/60">
+              {callLogs
+                .filter(l => l.emergency_flag || l.outcome === 'emergency_escalated' || l.outcome === 'transferred_to_human' || l.outcome === 'transferred')
+                .slice(0, 5)
+                .map((log) => (
+                  <div key={`escalation-${log.id}`} className="py-2.5 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-semibold text-foreground mr-2">{log.contact_phone}</span>
+                      <span className="text-muted-foreground">
+                        {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Duration: {log.duration_seconds}s
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge 
+                        variant="outline" 
+                        className={log.emergency_flag ? "bg-rose-500/10 text-rose-600 border-rose-500/20" : "bg-amber-500/10 text-amber-600 border-amber-500/20"}
+                      >
+                        {log.emergency_flag ? "Emergency Escalated" : "Transferred to Receptionist"}
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[11px]"
+                        onClick={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}
+                      >
+                        View Notes
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Live Call Logs & Transcripts */}
       <Card>

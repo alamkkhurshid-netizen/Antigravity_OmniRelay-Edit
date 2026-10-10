@@ -83,7 +83,7 @@ export async function getMessageRate(
       authentication: 12,
       marketing: 78,
       service: 29,
-      voice: 250,
+      voice: 399, // ₹3.99 per connected minute (Standard verified margin)
     };
     const baseRatePaise = fallbacks[category] ?? 12;
     return {
