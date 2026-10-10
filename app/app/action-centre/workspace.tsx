@@ -36,7 +36,7 @@ export function ActionCentreWorkspace({
   const buttonBase = "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
-    <main className="sandbox-step-intro mx-auto grid max-w-7xl gap-5 pb-12">
+    <main className="or-type-page sandbox-step-intro mx-auto grid max-w-7xl gap-5 pb-12">
       {/* @ts-ignore */}
       <Joyride steps={tourSteps} run={state.runTour} continuous />
       
@@ -47,7 +47,7 @@ export function ActionCentreWorkspace({
         action={
           <aside className="flex min-w-48 flex-col justify-center rounded-xl border border-white/10 bg-white/5 p-4 shadow-sm backdrop-blur-md z-10">
             <div className="flex items-baseline gap-2">
-              <b className="text-2xl font-bold tracking-tight text-white">{state.deployable + state.automaticCare.length + state.automaticAppointments.length}</b>
+              <b className="or-type-stat text-2xl font-bold tracking-tight text-white">{state.deployable + state.automaticCare.length + state.automaticAppointments.length}</b>
               <span className="text-sm font-medium text-slate-400">routine actions due</span>
             </div>
             <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-amber-400">

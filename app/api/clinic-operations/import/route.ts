@@ -26,6 +26,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Workspace not found." }, { status: 409 });
     }
 
+    const { data: allowed, error: limitError } = await supabase.rpc("consume_api_rate_limit", {
+      p_bucket: "doctor_bulk_import",
+      p_limit: 10,
+      p_window_seconds: 3600,
+    });
+    if (limitError || allowed === false) {
+      return NextResponse.json({ error: "Too many doctor import attempts. Please try again later." }, { status: 429 });
+    }
+
     const body = (await request.json().catch(() => ({}))) as {
       rows?: unknown[];
       commit?: boolean;

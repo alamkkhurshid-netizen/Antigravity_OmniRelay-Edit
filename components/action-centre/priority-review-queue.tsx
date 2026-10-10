@@ -26,7 +26,7 @@ export function PriorityReviewQueue({
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
         <div>
           <span className="text-xs font-black tracking-[.1em] text-slate-500">PRIORITIZED CLINIC QUEUE</span>
-          <h2 className="text-lg font-bold text-slate-900 mt-1">Approvals, waitlists and exceptions</h2>
+          <h2 className="or-type-section mt-2">Approvals, waitlists and exceptions</h2>
         </div>
         <span className="rounded-full bg-rose-50 px-3 py-1 text-sm font-bold text-rose-700">{exceptions.length} items</span>
       </header>
@@ -84,11 +84,9 @@ export function PriorityReviewQueue({
                           Start follow-up
                         </button>
                       )}
-                      {claimedByYou && (
-                        <button className={`${buttonBase} bg-emerald-600 text-white`} type="button" onClick={() => updateTask(item,"completed")} disabled={working === item.id}>
+                      {claimedByYou&&<button className={`${buttonBase} bg-emerald-600 text-white`} type="button" onClick={() => updateTask(item,"completed")} disabled={working === item.id}>
                           {working === item.id ? "Saving…" : "Complete"}
-                        </button>
-                      )}
+                        </button>}
                       {claimedByYou && (
                         <button className={`${buttonBase} border border-border bg-white text-foreground`} type="button" onClick={() => coordinate(item,"release")} disabled={working === item.id}>
                           Release

@@ -5,7 +5,9 @@ import { readFile } from "node:fs/promises";
 const root = new URL("../", import.meta.url);
 
 test("medication reminder operations surface prescription context and exceptions", async () => {
-  const workspace = await readFile(new URL("app/app/automations/care-reminder-workspace.tsx", root), "utf8");
+  const workspaceFile = await readFile(new URL("app/app/automations/care-reminder-workspace.tsx", root), "utf8");
+  const panelFile = await readFile(new URL("components/automations/care-reminder-panel.tsx", root), "utf8");
+  const workspace = workspaceFile + "\n" + panelFile;
   const shell = await readFile(new URL("components/app-shell.tsx", root), "utf8");
   assert.match(shell, /Care reminders/);
   assert.match(workspace, /MEDICATION & FOLLOW-UP OPERATIONS/);

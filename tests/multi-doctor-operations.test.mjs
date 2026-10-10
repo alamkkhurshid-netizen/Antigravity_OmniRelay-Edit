@@ -4,7 +4,10 @@ import {readFileSync} from "node:fs";
 const migration=readFileSync(new URL("../supabase/migrations/20260816003000_multi_doctor_bulk_roster.sql",import.meta.url),"utf8");
 const importRoute=readFileSync(new URL("../app/api/clinic-operations/import/route.ts",import.meta.url),"utf8");
 const rosterRoute=readFileSync(new URL("../app/api/clinic-operations/roster/route.ts",import.meta.url),"utf8");
-const workspace=readFileSync(new URL("../app/app/clinic-operations/workspace.tsx",import.meta.url),"utf8");
+const workspaceFile=readFileSync(new URL("../app/app/clinic-operations/workspace.tsx",import.meta.url),"utf8");
+const hookFile=readFileSync(new URL("../app/app/clinic-operations/use-clinic-operations.ts",import.meta.url),"utf8");
+const rosterFile=readFileSync(new URL("../components/clinic-operations/live-roster.tsx",import.meta.url),"utf8");
+const workspace = workspaceFile + "\n" + hookFile + "\n" + rosterFile;
 
 test("bulk doctor import is preview-first, bounded and atomic",()=>{
   assert.match(migration,/p_commit boolean default false/);

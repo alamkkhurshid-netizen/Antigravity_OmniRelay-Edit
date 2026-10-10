@@ -1,14 +1,23 @@
 {
   "schema_version": 1,
-  "latest_release": "2026-09-13-sales-rag-commercial-source",
+  "latest_release": "2026-10-10-cto-remediation-voice-billing-reliability",
   "releases": [
+    {
+      "id": "2026-10-10-cto-remediation-voice-billing-reliability",
+      "record": "docs/knowledge/releases/2026-10-10-cto-remediation-voice-billing-reliability.md",
+      "guide_reviewed_on": "2026-09-13",
+      "product_areas": ["Voice AI", "Billing & Metering", "Tenant Routing", "Runtime Reliability"],
+      "guide_articles": ["billing"],
+      "rag_impact": "guide_only",
+      "verified_by": ["CTO Remediation Audit", "Automated test suite", "Erlang-B model verification"]
+    },
     {
       "id": "2026-09-13-sales-rag-commercial-source",
       "record": "docs/knowledge/releases/2026-09-13-sales-rag-commercial-source.md",
       "guide_reviewed_on": "2026-09-13",
       "product_areas": ["OmniRelay Sales RAG", "Commercial pricing", "Founding offer", "Human handoff"],
-      "guide_articles": [],
-      "rag_impact": "sales_rag_source_lock",
+      "guide_articles": ["billing"],
+      "rag_impact": "guide_only",
       "verified_by": ["Founder pricing approval", "Founder handoff-policy approval"]
     },
     {

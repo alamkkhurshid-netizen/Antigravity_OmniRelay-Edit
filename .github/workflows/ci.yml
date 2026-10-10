@@ -35,8 +35,11 @@ jobs:
       - name: Lint application source
         run: npm run lint
 
+      - name: Verify Knowledge Release Gate
+        run: npm run knowledge:release-gate
+
       - name: Run Tests
-        run: npm test || echo "No tests configured yet"
+        run: npm test
 
       - name: Build Next.js Application
         run: npm run build

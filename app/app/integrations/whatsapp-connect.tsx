@@ -146,7 +146,8 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
     // FB.login must run synchronously inside the click handler. Meta also
     // requires this callback itself to be a plain function, not async.
     try {
-      (window as any).FB.login((response: any) => {
+      (window as any).FB?.login((response: any) => {});
+      window.FB.login((response) => {
         clearDialogWatch();
         void completeMetaLogin(response).catch(() => {
           setState("error");

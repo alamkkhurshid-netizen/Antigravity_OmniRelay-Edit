@@ -22,11 +22,12 @@ test("failure trigger records safe operations and alerts only administrators", a
 });
 
 test("inbox and operations centre surface provider guidance", async () => {
-  const [inbox, operations] = await Promise.all([
+  const [workspace, threadView, operations] = await Promise.all([
     readFile(new URL("app/app/conversations/conversation-workspace.tsx", root), "utf8"),
+    readFile(new URL("components/conversations/thread-view.tsx", root), "utf8"),
     readFile(new URL("app/app/operations/page.tsx", root), "utf8"),
   ]);
-  assert.match(inbox, /Review operations/);
+  const inbox = workspace + "\n" + threadView;
   assert.match(inbox, /Review operations/);
   assert.match(operations, /PROVIDER DIAGNOSTICS/);
   assert.match(operations, /failureCategoryLabel/);

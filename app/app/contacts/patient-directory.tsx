@@ -493,7 +493,7 @@ export function PatientDirectory({patients,appointments,encounters,prescriptions
     <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 p-5 sm:p-6 shadow-sm border border-teal-100">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="max-w-xl">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-100/80 px-2 py-0.5 text-[10px] font-bold tracking-widest text-teal-800 uppercase">Clinic Pilot Readiness</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-100/80 px-2 py-0.5 text-[10px] font-bold tracking-widest text-teal-800 uppercase">CLINIC PILOT READINESS</span>
           <h3 className="mt-3 text-xl font-bold text-teal-950 sm:text-2xl">{readyPatients} of {patientRows.length} patient journeys ready</h3>
           <p className="mt-2 text-sm font-medium leading-relaxed text-teal-800/80">Checks profile data, the clinical visit, a prescription or document, the next care action and communication consent.</p>
         </div>

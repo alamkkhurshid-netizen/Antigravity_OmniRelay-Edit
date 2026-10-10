@@ -14,7 +14,9 @@ test("manual outbound messaging only accepts approved workspace templates", asyn
 });
 
 test("inbox renders approved template choices and their ordered variables", async () => {
-  const workspace = await readFile(new URL("app/app/conversations/conversation-workspace.tsx", root), "utf8");
+  const workspaceFile = await readFile(new URL("app/app/conversations/conversation-workspace.tsx", root), "utf8");
+  const modalFile = await readFile(new URL("components/conversations/new-conversation-modal.tsx", root), "utf8");
+  const workspace = workspaceFile + "\n" + modalFile;
   const page = await readFile(new URL("app/app/conversations/page.tsx", root), "utf8");
   assert.match(page, /channel_message_templates/);
   assert.match(workspace, /Select an approved template/);
