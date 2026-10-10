@@ -16,7 +16,8 @@ import {
   ChevronDown, 
   ChevronUp,
   Sparkles,
-  Smartphone
+  Smartphone,
+  CheckCircle2
 } from "lucide-react";
 import { VoiceSetupWizard } from "./voice-setup-wizard";
 
@@ -68,14 +69,17 @@ export function VoiceDashboard({
       {/* Header with Quick Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-bold tracking-tight">AI Voice Receptionist</h2>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-2xl font-bold tracking-tight">OmniRelay Dual Voice AI Cluster</h2>
             <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
-              Active on PSTN
+              2 Active Agents
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              {config?.telephony_mode === "dedicated_vmn" ? "Dedicated VMN Trunk" : "Smart Forwarding (*401*)"}
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Automating patient appointments, triage, and human front-desk escalation.
+            Enterprise Indian telephony cluster combining empathetic patient reception and high-EQ consultative sales.
           </p>
         </div>
 
@@ -84,74 +88,194 @@ export function VoiceDashboard({
             variant="outline" 
             size="sm"
             onClick={() => setIsWizardOpen(true)}
-            className="border-emerald-500/40 hover:bg-emerald-500/10"
+            className="border-primary/40 hover:bg-primary/10"
           >
-            <Settings className="h-4 w-4 mr-1.5 text-emerald-500" />
-            Configure Bot Settings
+            <Settings className="h-4 w-4 mr-1.5 text-primary" />
+            Configure Agents &amp; Phone Lines
           </Button>
         </div>
       </div>
 
-      {/* Active Voice Line Summary Banner */}
-      <Card className="border-emerald-500/30 bg-emerald-500/5">
-        <CardContent className="p-4 sm:p-5">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-            <div>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block">
-                {config?.telephony_mode === "dedicated_vmn" ? "Dedicated Mobile Line (VMN)" : "Active Telephony Line"}
-              </span>
-              <span className="text-lg font-mono font-bold text-foreground">
-                {config?.telephony_mode === "dedicated_vmn" 
-                  ? (config?.vmn_number || "+91 98450 24001") 
-                  : (config?.virtual_number || "08047283676")}
-              </span>
-              <span className="text-xs text-muted-foreground block mt-0.5">
-                {config?.telephony_mode === "dedicated_vmn" 
-                  ? "Enterprise 10-digit Mobile PRI Trunk" 
-                  : (config?.forwarding_phone_number ? `Smart Forwarding from ${config.forwarding_phone_number}` : "Smart Forwarding (*401*)")}
-              </span>
+      {/* Dual Voice AI Agent Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Agent 1: AI Medical Receptionist */}
+        <Card className="border-emerald-500/30 bg-card shadow-xs relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500" />
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-lg">
+                  👩‍⚕️
+                </div>
+                <div>
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    {config?.bot_name || "Maya"}
+                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] py-0">
+                      Inbound Receptionist
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Patient Triage, Appointments &amp; Reception Desk
+                  </CardDescription>
+                </div>
+              </div>
+              <Badge variant="outline" className="text-[10px] bg-background">
+                {config?.telephony_mode === "dedicated_vmn" ? "Dedicated VMN" : "*401* Forwarded"}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3.5 text-xs">
+            <div className="grid grid-cols-2 gap-2 bg-muted/20 p-2.5 rounded-lg border">
+              <div>
+                <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Telephony Line</span>
+                <span className="font-mono font-bold text-foreground">
+                  {config?.telephony_mode === "dedicated_vmn"
+                    ? (config?.vmn_number || "+91 98450 24001")
+                    : (config?.virtual_number || "08047283676")}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Front Desk Transfer</span>
+                <span className="font-mono text-rose-500 font-medium">
+                  {config?.receptionist_phone || "Not set"}
+                </span>
+              </div>
             </div>
 
-            <div>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block">
-                Active Bot Persona
-              </span>
-              <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
-                {config?.bot_name || "Maya"} ({config?.agent_persona || "Receptionist"})
-              </span>
-              <span className="text-xs text-muted-foreground block mt-0.5">
-                Sub-500ms conversational turnaround
-              </span>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
+                  Emotional Intelligence (EQ):
+                </span>
+                <span className="font-medium text-foreground capitalize">
+                  {config?.receptionist_eq_tone || "Empathetic & Calm"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Languages className="h-3.5 w-3.5 text-blue-500" />
+                  Languages:
+                </span>
+                <span className="font-medium text-foreground truncate max-w-[180px]">
+                  {config?.enabled_languages?.join(", ") || "English, Hindi, Kannada"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Activity className="h-3.5 w-3.5 text-rose-500" />
+                  Safety Protocol:
+                </span>
+                <span className="font-medium text-foreground">
+                  &lt;10ms 108 Emergency Bypass
+                </span>
+              </div>
             </div>
 
-            <div>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block">
-                Human Desk Fallback
+            <div className="pt-2 border-t flex items-center justify-between">
+              <span className="text-[11px] text-muted-foreground">
+                Turnaround: <span className="font-semibold text-foreground">Sub-500ms</span>
               </span>
-              <span className="text-sm font-medium text-foreground flex items-center gap-1">
-                <PhoneForwarded className="h-3.5 w-3.5 text-rose-500" />
-                {config?.receptionist_phone || "08047283676"}
-              </span>
-              <span className="text-xs text-muted-foreground block mt-0.5">
-                Instant warm transfer destination
-              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs h-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                onClick={() => setIsWizardOpen(true)}
+              >
+                Edit Receptionist →
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Agent 2: AI Healthcare Sales & Revenue Agent */}
+        <Card className="border-blue-500/30 bg-card shadow-xs relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-blue-500" />
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center text-lg">
+                  💼
+                </div>
+                <div>
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    {config?.sales_agent_name || "Rohan"}
+                    <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 text-[10px] py-0">
+                      Sales &amp; Growth Advisor
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Promotional Leads, Treatment Follow-ups &amp; No-Show Recovery
+                  </CardDescription>
+                </div>
+              </div>
+              <Badge variant="outline" className={`text-[10px] ${config?.sales_agent_active !== false ? "text-blue-600 border-blue-500/30" : "text-muted-foreground"}`}>
+                {config?.sales_agent_active !== false ? "Active" : "Paused"}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3.5 text-xs">
+            <div className="grid grid-cols-2 gap-2 bg-muted/20 p-2.5 rounded-lg border">
+              <div>
+                <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Calling Window</span>
+                <span className="font-mono font-bold text-foreground">
+                  {config?.outbound_calling_window?.start || "09:30"} - {config?.outbound_calling_window?.end || "19:30"}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-semibold text-muted-foreground block">Category</span>
+                <span className="font-semibold text-foreground capitalize">
+                  {config?.business_category || "Dental Clinic"}
+                </span>
+              </div>
             </div>
 
-            <div>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block">
-                Multi-Language Support
-              </span>
-              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 block truncate">
-                {config?.enabled_languages?.join(", ") || "English, Hindi, Kannada"}
-              </span>
-              <span className="text-[11px] text-muted-foreground block mt-0.5">
-                Dynamic mid-call auto-detection
-              </span>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-blue-500" />
+                  Emotional Intelligence (EQ):
+                </span>
+                <span className="font-medium text-foreground capitalize">
+                  {config?.sales_eq_style || "Consultative & Ethical"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <IndianRupee className="h-3.5 w-3.5 text-emerald-500" />
+                  Featured Package:
+                </span>
+                <span className="font-medium text-emerald-600 dark:text-emerald-400 font-mono">
+                  ₹{config?.sales_packages?.[0]?.price_inr || 999} ({config?.sales_packages?.[0]?.name || "Featured Offer"})
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-blue-500" />
+                  Automated Triggers:
+                </span>
+                <span className="font-medium text-foreground">
+                  No-Show Recovery (2h) + Offers
+                </span>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+
+            <div className="pt-2 border-t flex items-center justify-between">
+              <span className="text-[11px] text-muted-foreground">
+                Ethical Safeguard: <span className="font-semibold text-foreground">TRAI DND Scrubbed</span>
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs h-7 text-blue-600 hover:text-blue-700 hover:bg-blue-500/10"
+                onClick={() => setIsWizardOpen(true)}
+              >
+                Edit Sales Agent →
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Metrics Row */}
       <div className="grid gap-4 md:grid-cols-4">

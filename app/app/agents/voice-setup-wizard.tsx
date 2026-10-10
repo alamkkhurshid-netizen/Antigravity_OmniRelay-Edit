@@ -18,7 +18,12 @@ import {
   Sparkles,
   Play,
   RotateCcw,
-  Smartphone
+  Smartphone,
+  HeartHandshake,
+  TrendingUp,
+  Stethoscope,
+  Tag,
+  UserCheck
 } from "lucide-react";
 
 interface VoiceConfig {
@@ -48,6 +53,14 @@ interface VoiceConfig {
   vmn_number?: string | null;
   vmn_status?: string;
   vmn_plan_active?: boolean;
+  business_category?: string;
+  receptionist_eq_tone?: "empathetic" | "reassuring" | "crisp";
+  sales_agent_name?: string;
+  sales_agent_active?: boolean;
+  sales_eq_style?: "consultative" | "educational" | "value_driven";
+  sales_packages?: Array<{ name: string; price_inr: number; description: string }>;
+  sales_campaign_type?: string;
+  outbound_calling_window?: { start: string; end: string };
 }
 
 const VOICE_PERSONAS = [
@@ -91,6 +104,27 @@ const AVAILABLE_LANGUAGES = [
   { code: "ur-IN", name: "Urdu", native: "اردو" }
 ];
 
+const BUSINESS_CATEGORIES = [
+  { id: "dental", name: "Dental Practice", description: "Cleanings, implants, braces, root canals", defaultPackage: "Comprehensive Dental Scaling & Cleaning", defaultPrice: 999 },
+  { id: "dermatology", name: "Dermatology & Aesthetics", description: "Acne therapy, laser treatments, chemical peels", defaultPackage: "HydraFacial & Deep Skin Assessment", defaultPrice: 2499 },
+  { id: "ophthalmology", name: "Eye Care & Ophthalmology", description: "Vision checks, LASIK evaluation, cataract screens", defaultPackage: "Comprehensive Eye Exam & Scan", defaultPrice: 699 },
+  { id: "general_practice", name: "General Practice / Multispecialty", description: "General OPD, blood work, chronic disease care", defaultPackage: "Executive Full Body Checkup", defaultPrice: 2999 },
+  { id: "orthopedics", name: "Physiotherapy & Orthopedics", description: "Joint rehab, spine therapy, sports injuries", defaultPackage: "Physiotherapy Pain Relief Session", defaultPrice: 899 },
+  { id: "wellness", name: "Mental Health & Wellness", description: "Therapy, nutrition, lifestyle consultation", defaultPackage: "Initial Wellness Assessment", defaultPrice: 1499 },
+];
+
+const RECEPTIONIST_EQ_TONES = [
+  { id: "empathetic", title: "Empathetic & Bedside Care", desc: "Warm, gentle, speaks softly to soothe unwell or nervous patients." },
+  { id: "reassuring", title: "Calm & Reassuring", desc: "Validates caller concerns, explains steps clearly, reduces anxiety." },
+  { id: "crisp", title: "Crisp & Efficient", desc: "Direct, professional, optimal for high-volume quick booking queues." }
+];
+
+const SALES_EQ_STYLES = [
+  { id: "consultative", title: "Consultative Health Advisor", desc: "Focuses on patient wellness outcomes, asks guiding questions, zero pressure." },
+  { id: "educational", title: "Educational & Informative", desc: "Explains procedure safety, doctor qualifications, and preventative health value." },
+  { id: "value_driven", title: "Value-Driven & Confident", desc: "Clearly highlights package cost savings, bundled inclusions, and limited slots." }
+];
+
 export function VoiceSetupWizard({
   initialConfig,
   organizationId,
@@ -106,6 +140,7 @@ export function VoiceSetupWizard({
   const [saving, setSaving] = useState(false);
   const [testCalling, setTestCalling] = useState(false);
   const [testCallPhone, setTestCallPhone] = useState("");
+  const [testCallRole, setTestCallRole] = useState<"receptionist" | "sales">("receptionist");
   const [testCallStatus, setTestCallStatus] = useState<string | null>(null);
   const [activeAudioPreview, setActiveAudioPreview] = useState<string | null>(null);
 
@@ -133,6 +168,17 @@ export function VoiceSetupWizard({
     vmn_number: initialConfig?.vmn_number || "+919845024001",
     vmn_status: initialConfig?.vmn_status || "active",
     vmn_plan_active: initialConfig?.vmn_plan_active || false,
+    business_category: initialConfig?.business_category || "dental",
+    receptionist_eq_tone: initialConfig?.receptionist_eq_tone || "empathetic",
+    sales_agent_name: initialConfig?.sales_agent_name || "Rohan",
+    sales_agent_active: initialConfig?.sales_agent_active !== false,
+    sales_eq_style: initialConfig?.sales_eq_style || "consultative",
+    sales_packages: initialConfig?.sales_packages || [
+      { name: "Comprehensive Dental Scaling & Cleaning", price_inr: 999, description: "Ultrasonic scaling, intraoral checkup & polish" },
+      { name: "Laser Teeth Whitening Package", price_inr: 4999, description: "Laser whitening with protective enamel seal" }
+    ],
+    sales_campaign_type: initialConfig?.sales_campaign_type || "promotional_leads",
+    outbound_calling_window: initialConfig?.outbound_calling_window || { start: "09:30", end: "19:30" },
   });
 
   const toggleLanguage = (langCode: string) => {
@@ -174,20 +220,23 @@ export function VoiceSetupWizard({
     setTestCalling(true);
     setTestCallStatus("Connecting call via Exotel carrier network...");
     try {
+      const activeBotName = testCallRole === "sales" ? (formData.sales_agent_name || "Rohan") : (formData.bot_name || "Maya");
       const res = await fetch("/api/voice/test-call", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: testCallPhone,
-          bot_name: formData.bot_name,
-          tester_name: formData.clinic_name
+          bot_name: activeBotName,
+          tester_name: formData.clinic_name,
+          agent_role: testCallRole,
+          campaign_type: testCallRole === "sales" ? "sales_package" : "demo_test"
         })
       });
       const data = await res.json();
       if (!res.ok) {
         setTestCallStatus("Failed: " + (data.error || "Could not dial"));
       } else {
-        setTestCallStatus("Success! Your phone is ringing right now. Answer to talk to " + formData.bot_name + ".");
+        setTestCallStatus(`Success! Your phone is ringing right now. Answer to talk to ${activeBotName} (${testCallRole === "sales" ? "Sales & Growth Advisor" : "Medical Receptionist"}).`);
       }
     } catch (err: any) {
       setTestCallStatus("Error connecting to voice cluster: " + err.message);
@@ -251,34 +300,35 @@ export function VoiceSetupWizard({
         </div>
       </div>
 
-      {/* STEP 1: IDENTITY & VOICE */}
+      {/* STEP 1: BUSINESS CATEGORY & DUAL AI AGENT CONFIGURATION */}
       {step === 1 && (
         <Card className="border-border/80 shadow-md">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Bot className="h-5 w-5 text-emerald-500" />
-              Step 1: Bot Identity & Voice Persona
+              Step 1: Healthcare Category & Dual AI Agent Roles
             </CardTitle>
             <CardDescription>
-              Choose how your AI receptionist introduces herself and sounds to patients.
+              Configure your Inbound AI Receptionist (patient care & appointments) and your Outbound AI Sales Agent (promotions, no-show follow-ups & package sales).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Clinic Name & Healthcare Category */}
+            <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
                   Clinic / Hospital Name
                 </label>
                 <input
                   type="text"
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   value={formData.clinic_name}
                   onChange={(e) => {
                     const name = e.target.value;
                     setFormData(prev => ({
                       ...prev,
                       clinic_name: name,
-                      greeting_message: `Hello! Thank you for calling ${name}. How can I help you today?`
+                      greeting_message: `Hello! Thank you for calling ${name}. How can I assist you with your appointment today?`
                     }));
                   }}
                   placeholder="e.g. Apollo Dental Center"
@@ -286,103 +336,275 @@ export function VoiceSetupWizard({
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  AI Receptionist Name
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
+                  Select Healthcare Category / Specialty
                 </label>
-                <input
-                  type="text"
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  value={formData.bot_name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, bot_name: e.target.value }))}
-                  placeholder="e.g. Maya"
-                />
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {BUSINESS_CATEGORIES.map((cat) => {
+                    const isSelected = formData.business_category === cat.id;
+                    return (
+                      <div
+                        key={cat.id}
+                        onClick={() => {
+                          setFormData(prev => ({
+                            ...prev,
+                            business_category: cat.id,
+                            sales_packages: [
+                              { name: cat.defaultPackage, price_inr: cat.defaultPrice, description: `Specialized ${cat.name} package & consultation.` }
+                            ]
+                          }));
+                        }}
+                        className={`p-3 rounded-lg border text-left cursor-pointer transition-all ${
+                          isSelected
+                            ? "border-emerald-500 bg-emerald-500/10 font-medium text-foreground shadow-sm"
+                            : "border-border hover:bg-muted/30 text-muted-foreground"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-bold text-foreground">{cat.name}</span>
+                          {isSelected && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground line-clamp-1">{cat.description}</p>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            {/* Voice Persona Selector Cards */}
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 block">
-                Choose Voice Sound & Persona
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {VOICE_PERSONAS.map((persona) => {
-                  const isSelected = formData.voice_id === persona.id;
-                  return (
-                    <div
-                      key={persona.id}
-                      onClick={() => setFormData(prev => ({ ...prev, voice_id: persona.id }))}
-                      className={`relative p-4 rounded-xl border-2 transition-all cursor-pointer ${
-                        isSelected 
-                          ? "border-emerald-500 bg-emerald-500/5 shadow-sm" 
-                          : "border-border hover:border-border/80 hover:bg-muted/30"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-semibold text-sm flex items-center gap-1.5">
-                            {persona.name}
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                              {persona.gender}
-                            </Badge>
-                          </h4>
-                          <p className="text-xs text-muted-foreground mt-1">{persona.style}</p>
-                          <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 mt-0.5">
-                            {persona.accent}
-                          </p>
-                        </div>
-                        {isSelected && (
-                          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                        )}
-                      </div>
+            {/* AGENT 1: AI MEDICAL RECEPTIONIST */}
+            <div className="p-4 rounded-xl border bg-muted/10 space-y-4">
+              <div className="flex items-center justify-between border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <HeartHandshake className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h4 className="text-sm font-bold text-foreground">Agent 1: AI Medical Receptionist</h4>
+                    <p className="text-[11px] text-muted-foreground">Inbound Patient Care, Bookings, Rescheduling & Triage</p>
+                  </div>
+                </div>
+                <Badge variant="outline" className="border-emerald-500 text-emerald-600 text-[10px]">
+                  INBOUND ACTIVE
+                </Badge>
+              </div>
 
-                      <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between">
-                        <Button
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Receptionist Name
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    value={formData.bot_name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, bot_name: e.target.value }))}
+                    placeholder="e.g. Maya"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                    Emotional Intelligence & Bedside Manner
+                  </label>
+                  <select
+                    className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    value={formData.receptionist_eq_tone || "empathetic"}
+                    onChange={(e: any) => setFormData(prev => ({ ...prev, receptionist_eq_tone: e.target.value }))}
+                  >
+                    {RECEPTIONIST_EQ_TONES.map(t => (
+                      <option key={t.id} value={t.id}>{t.title} — {t.desc.split(",")[0]}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Persona Voice Cards */}
+              <div>
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
+                  Reception Voice Sound
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                  {VOICE_PERSONAS.map((persona) => {
+                    const isSelected = formData.voice_id === persona.id;
+                    return (
+                      <div
+                        key={persona.id}
+                        onClick={() => setFormData(prev => ({ ...prev, voice_id: persona.id }))}
+                        className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                          isSelected 
+                            ? "border-emerald-500 bg-emerald-500/5 shadow-sm" 
+                            : "border-border hover:bg-muted/30"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-xs text-foreground">{persona.name} ({persona.gender})</span>
+                          {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{persona.style}</p>
+                        <button
                           type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-xs h-7 px-2"
+                          className="mt-2 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 hover:underline"
                           onClick={(e) => {
                             e.stopPropagation();
                             playVoicePreview(persona.id);
                           }}
                         >
-                          {activeAudioPreview === persona.id ? (
-                            <span className="flex items-center gap-1 text-emerald-500">
-                              <Volume2 className="h-3.5 w-3.5 animate-pulse" /> Playing...
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1">
-                              <Play className="h-3 w-3" /> Preview Voice
-                            </span>
-                          )}
-                        </Button>
+                          <Volume2 className="h-3 w-3" /> Preview Voice
+                        </button>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                  Inbound Welcome Greeting
+                </label>
+                <textarea
+                  rows={2}
+                  className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  value={formData.greeting_message}
+                  onChange={(e) => setFormData(prev => ({ ...prev, greeting_message: e.target.value }))}
+                />
               </div>
             </div>
 
-            {/* Custom Welcome Greeting */}
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Phone Welcome Greeting (Plays when patient calls)
-              </label>
-              <textarea
-                rows={2}
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                value={formData.greeting_message}
-                onChange={(e) => setFormData(prev => ({ ...prev, greeting_message: e.target.value }))}
-                placeholder="Hello! Thank you for calling our clinic. How can I assist you with your appointment?"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Tip: Keep it short (1 sentence) so the patient can speak without waiting.
-              </p>
+            {/* AGENT 2: AI HEALTHCARE SALES & OUTBOUND GROWTH AGENT */}
+            <div className="p-4 rounded-xl border bg-muted/10 space-y-4">
+              <div className="flex items-center justify-between border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <TrendingUp className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h4 className="text-sm font-bold text-foreground">Agent 2: AI Healthcare Sales & Outbound Growth Agent</h4>
+                    <p className="text-[11px] text-muted-foreground">Promotional Calls, Package Sales, No-Show Reactivations & Treatment Follow-ups</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="border-blue-500 text-blue-600 text-[10px]">
+                    OUTBOUND REVENUE
+                  </Badge>
+                  <input
+                    type="checkbox"
+                    checked={formData.sales_agent_active !== false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, sales_agent_active: e.target.checked }))}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {formData.sales_agent_active !== false && (
+                <div className="space-y-4 pt-1">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                        Sales Advisor Name
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        value={formData.sales_agent_name || "Rohan"}
+                        onChange={(e) => setFormData(prev => ({ ...prev, sales_agent_name: e.target.value }))}
+                        placeholder="e.g. Rohan"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                        Persuasion & Objection Handling Style
+                      </label>
+                      <select
+                        className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        value={formData.sales_eq_style || "consultative"}
+                        onChange={(e: any) => setFormData(prev => ({ ...prev, sales_eq_style: e.target.value }))}
+                      >
+                        {SALES_EQ_STYLES.map(s => (
+                          <option key={s.id} value={s.id}>{s.title} — {s.desc.split(",")[0]}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Featured Healthcare Package with Pricing */}
+                  <div className="p-3 rounded-lg border bg-background space-y-2">
+                    <span className="text-[11px] font-bold text-foreground block">
+                      Featured Health Checkup / Treatment Package Offer:
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div className="sm:col-span-2">
+                        <label className="text-[10px] text-muted-foreground uppercase font-semibold block mb-0.5">Package Name</label>
+                        <input
+                          type="text"
+                          className="w-full rounded border px-2.5 py-1 text-xs font-medium"
+                          value={formData.sales_packages?.[0]?.name || "Comprehensive Dental & Scaling Package"}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData(prev => {
+                              const existing = [...(prev.sales_packages || [{ name: "", price_inr: 999, description: "" }])];
+                              existing[0] = { ...existing[0], name: val };
+                              return { ...prev, sales_packages: existing };
+                            });
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-muted-foreground uppercase font-semibold block mb-0.5">Special Price (INR ₹)</label>
+                        <input
+                          type="number"
+                          className="w-full rounded border px-2.5 py-1 text-xs font-mono font-bold text-emerald-600"
+                          value={formData.sales_packages?.[0]?.price_inr || 999}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 0;
+                            setFormData(prev => {
+                              const existing = [...(prev.sales_packages || [{ name: "", price_inr: 999, description: "" }])];
+                              existing[0] = { ...existing[0], price_inr: val };
+                              return { ...prev, sales_packages: existing };
+                            });
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Automated Outbound Campaigns */}
+                  <div>
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1.5">
+                      Automated Revenue Campaigns Enabled:
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                      <div className="p-2 rounded border bg-background flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        <div>
+                          <div className="font-semibold text-foreground text-[11px]">Promotional Leads</div>
+                          <div className="text-[10px] text-muted-foreground">Inbounds inquiring about offers</div>
+                        </div>
+                      </div>
+                      <div className="p-2 rounded border bg-background flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        <div>
+                          <div className="font-semibold text-foreground text-[11px]">No-Show Recovery</div>
+                          <div className="text-[10px] text-muted-foreground">Calls back missed visits in 2h</div>
+                        </div>
+                      </div>
+                      <div className="p-2 rounded border bg-background flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        <div>
+                          <div className="font-semibold text-foreground text-[11px]">Treatment Follow-up</div>
+                          <div className="text-[10px] text-muted-foreground">Post-consultation conversion</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
           <CardFooter className="flex justify-between border-t p-4">
             <span />
-            <Button onClick={() => setStep(2)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            <Button onClick={() => setStep(2)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
               Next: Hours & Safety <ArrowRight className="h-4 w-4 ml-1.5" />
             </Button>
           </CardFooter>
@@ -716,12 +938,41 @@ export function VoiceSetupWizard({
 
             {/* Instant Mobile Test Calling Section */}
             <div className="p-5 rounded-xl border bg-muted/10 space-y-3">
-              <div className="flex items-center gap-2">
-                <Smartphone className="h-4 w-4 text-emerald-500" />
-                <h4 className="text-sm font-semibold">Test Maya Live on Your Mobile Right Now</h4>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="h-4 w-4 text-emerald-500" />
+                  <h4 className="text-sm font-semibold">Test Your Voice AI Live on Mobile</h4>
+                </div>
+                {/* Agent Role Toggle */}
+                <div className="flex rounded-lg border bg-background p-0.5 text-xs self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setTestCallRole("receptionist")}
+                    className={`px-2.5 py-1 rounded font-medium transition-colors ${
+                      testCallRole === "receptionist"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    👩‍⚕️ {formData.bot_name || "Maya"} (Receptionist)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTestCallRole("sales")}
+                    className={`px-2.5 py-1 rounded font-medium transition-colors ${
+                      testCallRole === "sales"
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    💼 {formData.sales_agent_name || "Rohan"} (Sales &amp; Offers)
+                  </button>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Enter your mobile number below. OmniRelay will ring your phone in 5 seconds so you can hear Maya speak in your clinic name!
+                {testCallRole === "receptionist"
+                  ? `Dial your phone to experience ${formData.bot_name || "Maya"} answering incoming appointment queries and operating hours.`
+                  : `Dial your phone to experience ${formData.sales_agent_name || "Rohan"} presenting your featured offer (${formData.sales_packages?.[0]?.name || "Package"} at ₹${formData.sales_packages?.[0]?.price_inr || 999}) with consultative EQ.`}
               </p>
 
               <div className="flex gap-2">
@@ -735,9 +986,9 @@ export function VoiceSetupWizard({
                 <Button
                   onClick={handleTestCall}
                   disabled={testCalling}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  className={testCallRole === "sales" ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-emerald-600 hover:bg-emerald-700 text-white"}
                 >
-                  {testCalling ? "Dialing..." : "Call My Phone"}
+                  {testCalling ? "Dialing..." : `Call My Phone (${testCallRole === "sales" ? "Sales" : "Reception"})`}
                 </Button>
               </div>
 
@@ -757,7 +1008,7 @@ export function VoiceSetupWizard({
               disabled={saving}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6"
             >
-              {saving ? "Activating..." : "Save & Activate AI Receptionist 🎉"}
+              {saving ? "Activating..." : "Save & Activate Dual AI Agents 🎉"}
             </Button>
           </CardFooter>
         </Card>

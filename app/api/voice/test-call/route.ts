@@ -34,8 +34,8 @@ export async function POST(request: Request) {
       patient_name: body.tester_name || user.email?.split("@")[0] || "Doctor",
       doctor_name: body.bot_name || "Maya AI",
       appointment_time: "Now (Interactive Test)",
-      campaign_type: "demo_test",
-      caller_id: "08047283676",
+      campaign_type: body.campaign_type || (body.agent_role === "sales" ? "sales_package" : "demo_test"),
+      caller_id: body.caller_id || "08047283676",
     };
 
     try {

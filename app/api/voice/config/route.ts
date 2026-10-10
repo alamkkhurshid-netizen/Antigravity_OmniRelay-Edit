@@ -57,6 +57,17 @@ export async function GET() {
       vmn_number: null,
       vmn_status: "none",
       vmn_plan_active: false,
+      business_category: "dental",
+      receptionist_eq_tone: "empathetic",
+      sales_agent_name: "Rohan",
+      sales_agent_active: true,
+      sales_eq_style: "consultative",
+      sales_packages: [
+        { name: "Comprehensive Dental & Scaling Package", price_inr: 999, description: "Ultrasonic scaling, intraoral checkup & polish" },
+        { name: "Teeth Whitening & Smile Makeover", price_inr: 4999, description: "Laser whitening with protective mineral seal" }
+      ],
+      sales_campaign_type: "promotional_leads",
+      outbound_calling_window: { start: "09:30", end: "19:30" },
     };
 
     return NextResponse.json({
@@ -124,6 +135,18 @@ export async function POST(request: Request) {
       vmn_number: body.vmn_number?.trim() || null,
       vmn_status: body.vmn_status || (body.vmn_number ? "active" : "none"),
       vmn_plan_active: body.vmn_plan_active === true,
+      business_category: body.business_category || "dental",
+      receptionist_eq_tone: body.receptionist_eq_tone || "empathetic",
+      sales_agent_name: body.sales_agent_name?.trim() || "Rohan",
+      sales_agent_active: body.sales_agent_active !== false,
+      sales_eq_style: body.sales_eq_style || "consultative",
+      sales_packages: Array.isArray(body.sales_packages) && body.sales_packages.length > 0
+        ? body.sales_packages
+        : [
+            { name: "Consultation & Health Screening", price_inr: 799, description: "Full diagnostic assessment" }
+          ],
+      sales_campaign_type: body.sales_campaign_type || "promotional_leads",
+      outbound_calling_window: body.outbound_calling_window || { start: "09:30", end: "19:30" },
       updated_at: new Date().toISOString(),
     };
 
