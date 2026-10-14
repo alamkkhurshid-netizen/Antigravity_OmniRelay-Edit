@@ -31,7 +31,7 @@ interface FacebookSDK {
       config_id?: string;
       response_type?: string;
       override_default_response_type?: boolean;
-      extras?: Record<string, any>;
+      extras?: Record<string, unknown>;
       scope?: string;
     }
   ): void;
@@ -39,7 +39,7 @@ interface FacebookSDK {
 
 declare global {
   interface Window {
-    FB: FacebookSDK;
+    FB?: FacebookSDK;
     fbAsyncInit?: () => void;
   }
 }
@@ -113,12 +113,12 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
 
   useEffect(() => {
     if (!configurationId) return;
-    (window as any).fbAsyncInit = () => {
-      (window as any).FB?.init({ appId, cookie: true, xfbml: false, version: "v25.0" });
+    window.fbAsyncInit = () => {
+      window.FB?.init({ appId, cookie: true, xfbml: false, version: "v25.0" });
       setSdkReady(true);
     };
     if (document.getElementById("facebook-jssdk")) {
-      (window as any).fbAsyncInit();
+      window.fbAsyncInit();
       return;
     }
     const script = document.createElement("script");
@@ -170,7 +170,7 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
   }
 
   function connect() {
-    if (!configurationId || !(window as any).FB) return;
+    if (!configurationId || !window.FB) return;
     metaDialogOpened.current = false;
     clearDialogWatch();
     setState("authorizing");

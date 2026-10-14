@@ -37,7 +37,6 @@ export function ActionCentreWorkspace({
 
   return (
     <main className="or-type-page sandbox-step-intro mx-auto grid max-w-7xl gap-5 pb-12">
-      {/* @ts-ignore */}
       <Joyride steps={tourSteps} run={state.runTour} continuous />
       
       <WorkspaceHero

@@ -206,7 +206,7 @@ async function forwardInboundMessage(
 
   // 2. Durable Inbound Message Lifecycle & Atomic Deduplication
   // Lifecycle: received -> queued -> processing -> completed / failed
-  let shouldProcess = true;
+  const shouldProcess = true;
   if (messageId) {
     // Attempt atomic insert
     const { error: insertErr } = await adminClient

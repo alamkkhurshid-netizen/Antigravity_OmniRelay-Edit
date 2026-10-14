@@ -63,7 +63,7 @@ export default async function CreativeVelocityPage() {
               </div>
               <div className="p-4 flex flex-col gap-2">
                 <p className="text-xs font-medium text-slate-700 line-clamp-3">
-                  "{creative.hook_script}"
+                  &quot;{creative.hook_script}&quot;
                 </p>
                 <div className="mt-2 flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase">
                   <span>Product:</span>

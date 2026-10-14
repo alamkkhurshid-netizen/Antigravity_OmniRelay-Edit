@@ -17,6 +17,8 @@ import { readdirSync, readFileSync } from "fs";
 import { resolve, join } from "path";
 import pg from "pg";
 
+import { assertSafeDatabaseTarget } from "./db-guard.mjs";
+
 const MIGRATIONS_DIR = resolve(process.cwd(), "supabase/migrations");
 
 export function getMigrationFiles() {
@@ -54,15 +56,17 @@ export async function runMigrations({ mode = "upgrade", connectionString = proce
   if (!connectionString) {
     console.warn("[DB Migration Runner] NOTICE: No DATABASE_URL or SUPABASE_DB_URL configured in environment.");
     console.warn("[DB Migration Runner] Ran dry-run sequencing and idempotency validation over all 215 files.");
-    console.warn("[DB Migration Runner] To execute against a live PostgreSQL database, pass DATABASE_URL=postgres://... npm run db:upgrade");
+    console.warn("[DB Migration Runner] To execute against a live PostgreSQL database, pass TARGET_ENV=disposable CONFIRM_MIGRATION_EXECUTION=true DATABASE_URL=postgres://... npm run db:upgrade");
     return { success: true, executedCount: 0, validatedCount: files.length, dryRun: true };
   }
 
-  // 1. Safety Guard: Guard against accidental production execution
-  const isProduction = /prod|production/i.test(connectionString) && process.env.ALLOW_PROD_MIGRATIONS !== "true";
-  if (isProduction) {
-    throw new Error("[DB Migration Runner] BLOCKED: Detected production database string. Set ALLOW_PROD_MIGRATIONS=true to execute migrations against production.");
-  }
+  // 1. Strict Environment Safety Guard
+  const guard = assertSafeDatabaseTarget({
+    connectionString,
+    operationName: `db-migration:${mode}`,
+    allowProdOverride: true
+  });
+  console.log(`[DB Migration Runner] Target environment verified: ${guard.targetEnv}${guard.detectedRef ? ` (ref: ${guard.detectedRef})` : ""}`);
 
   const client = new pg.Client({
     connectionString,
@@ -87,19 +91,28 @@ export async function runMigrations({ mode = "upgrade", connectionString = proce
     const appliedVersions = new Set(rows.map((r) => r.version));
     console.log(`[DB Migration Runner] Previously applied migrations: ${appliedVersions.size}`);
 
-    // 2. Safety Guard: Non-empty database guard on --mode=fresh
-    if (mode === "fresh") {
-      const { rows: tableRows } = await client.query(
-        `SELECT count(*)::int as count FROM information_schema.tables WHERE table_schema = 'public';`
+    // Check existing tables in public schema
+    const { rows: tableRows } = await client.query(
+      `SELECT count(*)::int as count FROM information_schema.tables WHERE table_schema = 'public';`
+    );
+    const existingTableCount = tableRows[0]?.count || 0;
+
+    // 2. Safety Guard: Fresh installation requires empty database
+    if (mode === "fresh" && existingTableCount > 0) {
+      throw new Error(
+        `[DB Migration Runner] BLOCKED: --mode=fresh requires a completely empty database (0 tables). ` +
+        `Found ${existingTableCount} existing tables in 'public' schema. Do not run fresh against populated databases.`
       );
-      const existingTableCount = tableRows[0]?.count || 0;
-      const forceFlag = process.argv.includes("--force") || process.env.FORCE_FRESH_INSTALL === "true";
-      if (existingTableCount > 0 && !forceFlag) {
-        throw new Error(
-          `[DB Migration Runner] BLOCKED: --mode=fresh cannot run against a non-empty database (${existingTableCount} existing tables in public schema). ` +
-          `Pass --force or FORCE_FRESH_INSTALL=true if this is disposable, or run with --mode=upgrade.`
-        );
-      }
+    }
+
+    // 3. Safety Guard: Upgrade on existing database requires ledger history
+    if (mode === "upgrade" && existingTableCount > 0 && appliedVersions.size === 0) {
+      throw new Error(
+        `[DB Migration Runner] BLOCKED: Found ${existingTableCount} existing tables in 'public' schema, ` +
+        `but the migration ledger 'supabase_migrations.schema_migrations' contains 0 records. ` +
+        `Running upgrade against an un-ledgered schema would attempt to replay old migrations and cause fatal errors. ` +
+        `Baseline or reconcile the ledger entries first.`
+      );
     }
 
     let pendingFiles = [];

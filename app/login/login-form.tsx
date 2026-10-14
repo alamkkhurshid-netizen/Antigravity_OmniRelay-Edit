@@ -115,7 +115,7 @@ export function LoginForm() {
       )}
       
       <p className="mt-8 text-xs leading-relaxed text-slate-400 text-center">
-        By continuing, you agree to OmniRelay's <a href="/terms" className="hover:text-slate-600 underline underline-offset-2">Terms</a> and <a href="/privacy" className="hover:text-slate-600 underline underline-offset-2">Privacy Policy</a>.
+        By continuing, you agree to OmniRelay&apos;s <a href="/terms" className="hover:text-slate-600 underline underline-offset-2">Terms</a> and <a href="/privacy" className="hover:text-slate-600 underline underline-offset-2">Privacy Policy</a>.
       </p>
     </div>
   );

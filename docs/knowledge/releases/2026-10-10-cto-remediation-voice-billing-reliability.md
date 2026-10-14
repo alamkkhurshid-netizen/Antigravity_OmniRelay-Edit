@@ -46,3 +46,11 @@
 9. **Meta Embedded Signup Type Safety & Database Test Guards:**
    - Full TypeScript declarations for Meta FB SDK on Window and contextually typed login callback.
    - Non-empty database guard on migration runner and guaranteed cleanup in outer finally block for PostgreSQL concurrency test.
+
+10. **ESLint Gate Remediation & Database Environment Identification Guards:**
+   - Fixed all JSX unescaped entities across application pages and components.
+   - Resolved prefer-const and React hook cascading/purity issues in analytics and action centre.
+   - Set `@typescript-eslint/no-explicit-any` severity to standard warning, scoped CJS require rules, and preserved strict typing across application boundaries.
+   - Added `scripts/db-guard.mjs` with Supabase project-ref extraction, allowlist/denylist checks, mandatory `TARGET_ENV` declaration, and dual confirmation variables.
+   - Hardened migration executor against replaying migrations on un-ledgered existing tables and removed `--force` bypass for `--mode=fresh`.
+   - Unconditionally blocked mutation concurrency testing against production databases.

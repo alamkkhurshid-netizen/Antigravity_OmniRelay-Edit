@@ -72,7 +72,7 @@ test("Billing Concurrency & Idempotency: 20 simultaneous callbacks for one call"
 
   // Execute 20 concurrent invocations simultaneously
   const results = await Promise.all(
-    Array.from({ length: 20 }, (_, idx) =>
+    Array.from({ length: 20 }, () =>
       mockSimulatedRpc(callId, orgId, units, unitRatePaise, idempotencyKey)
     )
   );

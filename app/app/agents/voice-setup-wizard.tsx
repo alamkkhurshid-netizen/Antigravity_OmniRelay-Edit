@@ -406,7 +406,7 @@ export function VoiceSetupWizard({
               <h2 className="text-2xl font-bold tracking-tight">AI Voice Receptionist Setup</h2>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
-              Configure your clinic's automated voice receptionist in 3 easy steps.
+              Configure your clinic&apos;s automated voice receptionist in 3 easy steps.
             </p>
           </div>
           {onCancel && (
@@ -992,7 +992,7 @@ export function VoiceSetupWizard({
                 </div>
 
                 <div className="mt-3 text-xs text-muted-foreground">
-                  Your patients continue dialing your existing Google Maps/WhatsApp clinic number. When you don't answer or line is busy, call forwards to Maya silently in &lt;1 sec.
+                  Your patients continue dialing your existing Google Maps/WhatsApp clinic number. When you don&apos;t answer or line is busy, call forwards to Maya silently in &lt;1 sec.
                 </div>
 
                 {formData.telephony_mode !== "dedicated_vmn" && (

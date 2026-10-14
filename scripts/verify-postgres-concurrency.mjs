@@ -14,6 +14,7 @@
 
 import pg from "pg";
 import crypto from "crypto";
+import { assertSafeDatabaseTarget } from "./db-guard.mjs";
 
 export async function runPostgresConcurrencyTest(connectionString = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL) {
   if (!connectionString) {
@@ -21,17 +22,13 @@ export async function runPostgresConcurrencyTest(connectionString = process.env.
     return { skipped: true, reason: "No database connection string configured" };
   }
 
-  // 1. Safety Guard: Require explicit opt-in
-  if (process.env.ALLOW_DB_INTEGRATION_TESTS !== "true") {
-    console.log("[Postgres Concurrency Test] Skipped: ALLOW_DB_INTEGRATION_TESTS=true is required to run live database mutations.");
-    return { skipped: true, reason: "ALLOW_DB_INTEGRATION_TESTS not set to true" };
-  }
-
-  // 2. Safety Guard: Block accidental production execution
-  const isProduction = /prod|production/i.test(connectionString) && process.env.ALLOW_PROD_INTEGRATION_TESTS !== "true";
-  if (isProduction) {
-    throw new Error("[Postgres Concurrency Test] BLOCKED: Detected production database URL. Refusing to run mutation test.");
-  }
+  // 1. Strict Environment Safety Guard (blocks production unconditionally)
+  const guard = assertSafeDatabaseTarget({
+    connectionString,
+    operationName: "billing-concurrency-test",
+    allowProdOverride: false
+  });
+  console.log(`[Postgres Concurrency Test] Target environment verified: ${guard.targetEnv}${guard.detectedRef ? ` (ref: ${guard.detectedRef})` : ""}`);
 
   const pool = new pg.Pool({
     connectionString,
@@ -68,7 +65,7 @@ export async function runPostgresConcurrencyTest(connectionString = process.env.
     console.log(`[Postgres Concurrency Test] Firing 20 simultaneous concurrent calls to billing.record_and_deduct...`);
 
     // Launch 20 concurrent transactions simultaneously across separate pool connections
-    const promises = Array.from({ length: 20 }, async (_, idx) => {
+    const promises = Array.from({ length: 20 }, async () => {
       const client = await pool.connect();
       try {
         const res = await client.query(

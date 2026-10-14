@@ -54,7 +54,7 @@ export async function GET(req: Request) {
     `;
 
     const result = await model.generateContent(prompt);
-    let brief = result.response.text().trim();
+    const brief = result.response.text().trim();
 
     console.log("[Growth Officer] Strategy Brief generated. Sending to Founder...");
 

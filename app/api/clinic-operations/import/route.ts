@@ -180,7 +180,7 @@ export async function POST(request: Request) {
       if (!chamberLocationId) continue;
 
       // Check if doctor resource already exists
-      let { data: existingResource } = await supabase
+      const { data: existingResource } = await supabase
         .from("booking_resources")
         .select("id")
         .eq("organization_id", organization.id)
@@ -222,7 +222,7 @@ export async function POST(request: Request) {
       }
 
       // Check or create provider location assignment
-      let { data: existingAssignment } = await supabase
+      const { data: existingAssignment } = await supabase
         .from("provider_location_assignments")
         .select("id")
         .eq("organization_id", organization.id)

@@ -101,7 +101,7 @@ export function ActiveWallet({ wallet, tier, organizationId }: ActiveWalletProps
               Volume Rewards
             </div>
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              Your current markup on Meta's base messaging rate is <b className="text-slate-900 dark:text-white">{tier?.markup_percentage || 20}%</b>.
+              Your current markup on Meta&apos;s base messaging rate is <b className="text-slate-900 dark:text-white">{tier?.markup_percentage || 20}%</b>.
             </p>
           </div>
           

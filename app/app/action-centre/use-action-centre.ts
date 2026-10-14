@@ -25,11 +25,7 @@ export function useActionCentre({
   const [result,setResult]=useState<{deployed_count:number;automatic_count:number;exception_count:number}|null>(null);
   
   const isDemo = aiDrafts.some(d => (d.draft_payload as any)?.metadata?.demo === true);
-  const [runTour, setRunTour] = useState(false);
-  
-  useEffect(() => {
-    if (isDemo) setRunTour(true);
-  }, [isDemo]);
+  const [runTour, setRunTour] = useState(() => isDemo);
 
   const now=new Date(nowIso).getTime();
   const dueCare=careRuns.filter(r=>new Date(r.scheduled_for).getTime()<=now);
