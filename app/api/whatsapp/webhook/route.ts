@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseUrl } from "@/lib/supabase/config";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isWorkerPaused, recordWorkerPauseAudit } from "@/lib/runtime-controls";
 
 function equalBytes(left:Uint8Array,right:Uint8Array) {
   if(left.length!==right.length)return false;
@@ -205,11 +206,10 @@ async function forwardInboundMessage(
   const orgId = conns[0].organization_id;
 
   // 1.5. Worker Kill Switch & Queue Pause Guard
-  // When WORKER_ENABLED=false, workers are paused from claiming new jobs.
-  // Inbound messages are recorded as 'queued' rather than 'processing', preserving state.
-  const workerEnabled = process.env.WORKER_ENABLED !== "false";
-  if (!workerEnabled) {
-    console.warn(`[WhatsApp Webhook] WORKER_ENABLED=false: worker is paused. Preserving message ${messageId} as 'queued'.`);
+  // Evaluates both global WORKER_ENABLED and granular WHATSAPP_INBOUND_WORKER_ENABLED switches
+  const pauseCheck = await isWorkerPaused("whatsapp_inbound", orgId);
+  if (pauseCheck.paused) {
+    console.warn(`[WhatsApp Webhook] Inbound worker paused: ${pauseCheck.reason}. Preserving message ${messageId} as 'queued'.`);
     if (messageId) {
       await adminClient.from("whatsapp_inbound_messages").insert({
         organization_id: orgId,
@@ -221,12 +221,10 @@ async function forwardInboundMessage(
         payload: { message_body: messageBody, profile_name: profileName, ref }
       });
     }
-    await adminClient.from("operational_events").insert({
-      organization_id: orgId,
-      error_code: "WORKER_PAUSED",
-      event_source: "whatsapp_worker_kill_switch",
-      safe_message: "Inbound worker paused via WORKER_ENABLED=false. Message preserved as queued.",
-      severity: "warning",
+    await recordWorkerPauseAudit("whatsapp_inbound", {
+      organizationId: orgId,
+      controlKey: pauseCheck.controlKey || "WORKER_ENABLED",
+      message: `Inbound worker paused via ${pauseCheck.controlKey}. Message preserved as queued.`,
       metadata: { provider_message_id: messageId, recipient_phone_id: recipientPhoneId }
     });
     return;

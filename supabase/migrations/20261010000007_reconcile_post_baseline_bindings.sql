@@ -160,3 +160,30 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.match_documents(vector, float, int, uuid) TO authenticated, service_role;
+
+-- 6. System Runtime Controls (Dynamic Instant Audited Emergency Controls)
+CREATE TABLE IF NOT EXISTS public.system_runtime_controls (
+    control_key text PRIMARY KEY,
+    is_enabled boolean NOT NULL DEFAULT true,
+    scope text NOT NULL DEFAULT 'global' CHECK (scope IN ('global', 'tenant')),
+    organization_id uuid REFERENCES public.organizations(id) ON DELETE CASCADE,
+    updated_by text,
+    reason text,
+    expires_at timestamptz,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.system_runtime_controls ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Authenticated users view runtime controls" ON public.system_runtime_controls;
+CREATE POLICY "Authenticated users view runtime controls"
+    ON public.system_runtime_controls
+    FOR SELECT
+    TO authenticated
+    USING (true);
+
+GRANT SELECT ON public.system_runtime_controls TO authenticated;
+GRANT ALL ON public.system_runtime_controls TO service_role;
+
