@@ -6,11 +6,15 @@ const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
 
 test("appointment completion requires an atomic clinical record", async () => {
-  const [manager, migration, page] = await Promise.all([
+  const [managerFile, hookFile, drawerFile, modalFile, migration, page] = await Promise.all([
     read("app/app/appointments/appointment-manager.tsx"),
+    read("app/app/appointments/use-appointments.ts"),
+    read("components/appointments/appointment-drawer.tsx"),
+    read("components/appointments/clinical-modal.tsx"),
     read("supabase/migrations/20260810062614_complete_appointment_patient_lifecycle.sql"),
     read("app/app/appointments/page.tsx"),
   ]);
+  const manager = managerFile + "\n" + hookFile + "\n" + drawerFile + "\n" + modalFile;
   assert.match(manager, /complete_appointment_visit/);
   assert.match(manager, /Complete & document/);
   assert.match(manager, /Clinical note <em>required<\/em>/);

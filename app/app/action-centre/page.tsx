@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getWorkspace } from "@/lib/workspace";
 import { isoBeforeNow, isoNow } from "@/lib/time";
 import { ActionCentreWorkspace } from "./workspace";
+import { CarrierRecoveryEvent } from "./types";
 
 export default async function ActionCentrePage() {
   const { supabase, organization } = await getWorkspace();
@@ -11,7 +12,7 @@ export default async function ActionCentrePage() {
   const canManageNotifications = ["owner", "admin"].includes(String((actor?.extra as Record<string, unknown> | null)?.role ?? "member"));
   const since = isoBeforeNow(30 * 24 * 60 * 60 * 1000);
 
-  const [{ data: careRuns }, { data: appointmentRuns }, { data: tasks }, { data: deployments }, { data: bookingRequests }, {data:waitlist}, {data:disruptions}, {data:emergencyRecipients}, {data:assignments}, {data:readinessChecks}, {data:pilotControl}, {data: aiDrafts}] = await Promise.all([
+  const [{ data: careRuns }, { data: appointmentRuns }, { data: tasks }, { data: deployments }, { data: bookingRequests }, {data:waitlist}, {data:disruptions}, {data:emergencyRecipients}, {data:assignments}, {data:readinessChecks}, {data:pilotControl}, {data: aiDrafts}, {data: carrierRecoveryEvents}] = await Promise.all([
     supabase.from("care_reminder_runs")
       .select("id,status,scheduled_for,attempt_count,max_attempts,failure_reason,channel,patient:patient_profiles(full_name,phone,care_communications_consent),reminder:care_reminders(title,reminder_type,approval_mode)")
       .eq("organization_id", organization.id).gte("scheduled_for", since).order("scheduled_for", { ascending: false }).limit(300),
@@ -34,7 +35,10 @@ export default async function ActionCentrePage() {
     supabase.from("production_readiness_checks").select("id,check_key,status,notes,updated_at").eq("organization_id", organization.id).eq("status", "blocked").order("updated_at", { ascending: false }).limit(20),
     supabase.from("clinic_pilot_controls").select("pilot_owner_name,rollback_owner_name,planned_start_date,health_status,health_note,reviewed_at").eq("organization_id", organization.id).maybeSingle(),
     supabase.from("ai_agent_drafts").select("*").eq("organization_id", organization.id).eq("status", "pending_approval"),
+    supabase.from("operational_events").select("id,created_at,safe_message,severity,error_code,metadata").eq("organization_id", organization.id).eq("event_source", "voice_carrier_recovery").is("resolved_at", null).order("created_at", { ascending: false }).limit(50),
   ]);
 
-  return <ActionCentreWorkspace careRuns={careRuns as any ?? []} appointmentRuns={appointmentRuns as any ?? []} tasks={tasks as any ?? []} deployments={deployments as any ?? []} bookingRequests={bookingRequests as any ?? []} waitlist={waitlist as any ?? []} disruptions={disruptions as any ?? []} emergencyRecipients={emergencyRecipients as any ?? []} assignments={assignments as any ?? []} readinessChecks={readinessChecks as any ?? []} pilotControl={pilotControl as any} aiDrafts={aiDrafts as any ?? []} currentUserId={user?.id??""} canManageNotifications={canManageNotifications} nowIso={isoNow()} />;
+  return <ActionCentreWorkspace careRuns={careRuns as any ?? []} appointmentRuns={appointmentRuns as any ?? []} tasks={tasks as any ?? []} deployments={deployments as any ?? []} bookingRequests={bookingRequests as any ?? []} waitlist={waitlist as any ?? []} disruptions={disruptions as any ?? []} emergencyRecipients={emergencyRecipients as any ?? []} assignments={assignments as any ?? []} readinessChecks={readinessChecks??[]} pilotControl={pilotControl} aiDrafts={aiDrafts as any ?? []} carrierRecoveryEvents={(carrierRecoveryEvents as CarrierRecoveryEvent[] | null) ?? []} currentUserId={user?.id??""} canManageNotifications={canManageNotifications} nowIso={isoNow()} />;
 }
+
+

@@ -1,5 +1,3 @@
-import { Loader2 } from "lucide-react";
-
 export default function Loading() {
   return (
     <div className="mx-auto grid max-w-7xl gap-5 pb-12 animate-pulse">

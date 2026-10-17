@@ -392,7 +392,7 @@ export default function Home() {
               </span>
             </h2>
             <p className="text-slate-400 max-w-2xl mx-auto text-sm md:text-base">
-              Every OmniRelay workspace can be upgraded with our four proprietary, vertical-specific AI agents. They don't just answer questions—they actively engineer, manage, and grow your business 24/7.
+              Every OmniRelay workspace can be upgraded with our four proprietary, vertical-specific AI agents. They don&apos;t just answer questions—they actively engineer, manage, and grow your business 24/7.
             </p>
           </div>
 

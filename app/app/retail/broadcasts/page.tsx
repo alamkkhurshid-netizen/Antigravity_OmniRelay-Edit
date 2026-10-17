@@ -50,7 +50,7 @@ export default async function BroadcastsPage() {
               <div>
                 <h3 className="font-bold text-slate-900">{broadcast.name}</h3>
                 <p className="mt-1 text-xs text-slate-500 line-clamp-1 max-w-xl">
-                  "{broadcast.template_text}"
+                  &quot;{broadcast.template_text}&quot;
                 </p>
                 <div className="mt-3 flex items-center gap-4 text-xs font-medium text-slate-500">
                   <span className="flex items-center gap-1">

@@ -12,7 +12,7 @@ const categories = [
   ["Professional services", "Consulting, legal, finance", false],
   ["Real estate", "Brokers, builders, property teams", false],
   ["Automotive services", "Garages, dealers, service centres", false],
-  ["Retail & e-commerce", "Stores, D2C and online retail", true],
+  ["Retail & e-commerce", "Stores, D2C and online retail", false],
   ["Home services", "Repairs, cleaning, field services", false],
   ["Other", "Custom business model", false],
 ] as const;
@@ -48,16 +48,19 @@ export function OnboardingForm() {
     e.preventDefault();
     setError("");
 
-    if (category === "Healthcare") {
-      if (!confirmHealthcare || !confirmSingleProfile) {
-        setError("Please confirm both required safeguards below to verify your clinic practice.");
-        return;
-      }
+    if (category !== "Healthcare") {
+      setError("Only Clinic & Healthcare practices are permitted.");
+      return;
+    }
 
-      if (primaryDoctorName.trim().length < 2) {
-        setError("Enter the first doctor’s full name. Patients will see this name when they book.");
-        return;
-      }
+    if (!confirmHealthcare || !confirmSingleProfile) {
+      setError("Please confirm both required safeguards below to verify your clinic practice.");
+      return;
+    }
+
+    if (primaryDoctorName.trim().length < 2) {
+      setError("Enter the first doctor’s full name. Patients will see this name when they book.");
+      return;
     }
 
     setStep(2);
@@ -72,11 +75,11 @@ export function OnboardingForm() {
     const locationCount = locations === "5+" ? 5 : Number(locations);
     const { error: insertError } = await supabase.rpc("complete_workspace_onboarding", {
       p_business_name: name.trim(),
-      p_business_category: category,
+      p_business_category: "Healthcare",
       p_location_count: locationCount,
       p_timezone: "Asia/Kolkata",
-      p_clinic_mode: category === "Healthcare" ? clinicMode : null,
-      p_primary_provider_name: category === "Healthcare" ? primaryDoctorName.trim() : null,
+      p_clinic_mode: clinicMode,
+      p_primary_provider_name: primaryDoctorName.trim(),
       p_subscription_tier: selectedTier,
     });
 
@@ -275,7 +278,7 @@ export function OnboardingForm() {
                 )}
                 {isAvailable && (
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded shadow-sm">
-                    Active
+                    Active CRM
                   </span>
                 )}
               </div>

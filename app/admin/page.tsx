@@ -140,7 +140,7 @@ export default async function AdminDashboardPage() {
                         
                         <div className="mb-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 border border-slate-100">
                           <p className="font-semibold text-xs text-slate-500 mb-1">PROPOSED MESSAGE:</p>
-                          "{draft.draft_payload?.message_text}"
+                          &quot;{draft.draft_payload?.message_text}&quot;
                         </div>
 
                         <div className="flex items-center gap-2">

@@ -184,7 +184,7 @@ export function calculateClinicAnalytics(params: {
   const appIds = new Set(apps.map((a) => a.id));
 
   // 1. Funnel Calculations
-  let booked = apps.length;
+  const booked = apps.length;
   let confirmed = 0;
   let arrived = 0;
   let completed = 0;

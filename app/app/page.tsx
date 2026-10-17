@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, CalendarDays, CheckCircle2, CircleAlert, MapPin, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
+import { ArrowRight, CalendarDays, CheckCircle2, CircleAlert, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { WorkspaceHero } from "@/components/workspace-hero";
 

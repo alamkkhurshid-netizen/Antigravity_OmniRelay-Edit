@@ -2,7 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 
-const workspace=await readFile(new URL("../app/app/settings/workspace-form.tsx",import.meta.url),"utf8");
+const formFile=await readFile(new URL("../app/app/settings/workspace-form.tsx",import.meta.url),"utf8");
+const hookFile=await readFile(new URL("../app/app/settings/use-workspace-settings.ts",import.meta.url),"utf8");
+const workspace = formFile + "\n" + hookFile;
 const schedule=await readFile(new URL("../app/app/settings/chamber-schedule-editor.tsx",import.meta.url),"utf8");
 
 test("business setup retains confirmed chamber and service records in the active form",()=>{

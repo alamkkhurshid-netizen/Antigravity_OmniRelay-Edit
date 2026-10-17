@@ -16,7 +16,10 @@ test("WhatsApp reminder replies create structured adherence outcomes and safe es
 
 test("care reminder operations display patient responses and use the approved interactive template", async () => {
   const page = await readFile(new URL("app/app/automations/page.tsx", root), "utf8");
-  const ui = await readFile(new URL("app/app/automations/care-reminder-workspace.tsx", root), "utf8");
+  const workspace = await readFile(new URL("app/app/automations/care-reminder-workspace.tsx", root), "utf8");
+  const metrics = await readFile(new URL("components/automations/care-metrics.tsx", root), "utf8");
+  const dispatch = await readFile(new URL("components/automations/care-dispatch-panel.tsx", root), "utf8");
+  const ui = workspace + "\n" + metrics + "\n" + dispatch;
   const worker = await readFile(new URL("supabase/functions/care-reminder-dispatch/index.ts", root), "utf8");
   assert.match(page, /response_kind,response_text,response_received_at/);
   assert.match(ui, /Patient requested help/);

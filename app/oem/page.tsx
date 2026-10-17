@@ -67,6 +67,21 @@ export default async function OemDashboard() {
         </article>
       </div>
 
+      {/* Workspace Health Section */}
+      <section className="mt-8 rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-base font-bold text-white">Workspace health</h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Aggregated adoption metrics, 30-day appointments, and recent failed deliveries across tenant organizations.
+            </p>
+          </div>
+          <span className="inline-flex items-center rounded-full bg-slate-800 border border-slate-700/50 px-3 py-1 text-xs font-semibold text-slate-300">
+            Support impersonation is not enabled
+          </span>
+        </div>
+      </section>
+
       {/* Emergency Controls */}
       <section className="mt-8 rounded-xl border border-rose-900/50 bg-rose-950/20 p-6">
         <div className="flex items-start gap-4">

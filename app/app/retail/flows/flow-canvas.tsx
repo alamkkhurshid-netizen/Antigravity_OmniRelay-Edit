@@ -28,7 +28,7 @@ function TriggerNode({ data }: { data: any }) {
         <span className="text-xs font-bold text-violet-900">Incoming Message</span>
       </div>
       <div className="p-3 text-xs text-slate-600 font-medium">
-        Keyword matches: <span className="text-violet-600 bg-violet-50 px-1 rounded">"order"</span>
+        Keyword matches: <span className="text-violet-600 bg-violet-50 px-1 rounded">&quot;order&quot;</span>
       </div>
       <Handle type="source" position={Position.Right} className="w-2 h-4 bg-violet-400 rounded-sm" />
     </div>
@@ -60,7 +60,7 @@ function MessageNode({ data }: { data: any }) {
         <span className="text-xs font-bold text-sky-900">Reply Message</span>
       </div>
       <div className="p-3 text-xs text-slate-600 font-medium">
-        "Here is our latest catalog!"
+        &quot;Here is our latest catalog!&quot;
       </div>
       <Handle type="source" position={Position.Right} className="w-2 h-4 bg-sky-400 rounded-sm" />
     </div>

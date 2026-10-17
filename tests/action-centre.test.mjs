@@ -15,7 +15,13 @@ test("action centre deploys only consented due WhatsApp care actions", async () 
 });
 
 test("action centre visibly separates routine actions from exceptions", async () => {
-  const ui = await readFile(new URL("app/app/action-centre/workspace.tsx", root), "utf8");
+  const [workspaceFile, hookFile, queueFile, auditFile] = await Promise.all([
+    readFile(new URL("app/app/action-centre/workspace.tsx", root), "utf8"),
+    readFile(new URL("app/app/action-centre/use-action-centre.ts", root), "utf8"),
+    readFile(new URL("components/action-centre/priority-review-queue.tsx", root), "utf8"),
+    readFile(new URL("components/action-centre/audit-trail.tsx", root), "utf8"),
+  ]);
+  const ui = workspaceFile + "\n" + hookFile + "\n" + queueFile + "\n" + auditFile;
   assert.match(ui, /Review & deploy/);
   assert.match(ui, /PRIORITIZED CLINIC QUEUE/);
   assert.match(ui, /clinical, consent or delivery exceptions are never batch-sent/i);
@@ -32,7 +38,11 @@ test("action centre visibly separates routine actions from exceptions", async ()
 
 test("action centre escalates blocked clinic launch gates without messaging patients", async () => {
   const page = await readFile(new URL("app/app/action-centre/page.tsx", root), "utf8");
-  const ui = await readFile(new URL("app/app/action-centre/workspace.tsx", root), "utf8");
+  const [workspaceFile, hookFile] = await Promise.all([
+    readFile(new URL("app/app/action-centre/workspace.tsx", root), "utf8"),
+    readFile(new URL("app/app/action-centre/use-action-centre.ts", root), "utf8"),
+  ]);
+  const ui = workspaceFile + "\n" + hookFile;
   assert.match(page, /from\("production_readiness_checks"\)/);
   assert.match(page, /eq\("status", "blocked"\)/);
   assert.match(page, /readinessChecks=\{readinessChecks\?\?\[\]\}/);
@@ -42,10 +52,12 @@ test("action centre escalates blocked clinic launch gates without messaging pati
 });
 
 test("action centre makes a missing, held or stale clinic pilot decision an explicit launch hold", async () => {
-  const [page, ui] = await Promise.all([
+  const [page, workspaceFile, hookFile] = await Promise.all([
     readFile(new URL("app/app/action-centre/page.tsx", root), "utf8"),
     readFile(new URL("app/app/action-centre/workspace.tsx", root), "utf8"),
+    readFile(new URL("app/app/action-centre/use-action-centre.ts", root), "utf8"),
   ]);
+  const ui = workspaceFile + "\n" + hookFile;
   assert.match(page, /from\("clinic_pilot_controls"\)/);
   assert.match(page, /pilotControl=\{pilotControl\}/);
   assert.match(ui, /pilotControl\.health_status === "hold"/);

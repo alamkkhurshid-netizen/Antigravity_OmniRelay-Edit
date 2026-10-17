@@ -39,4 +39,4 @@ create policy "system can insert oem drafts"
 create trigger set_oem_agent_drafts_updated_at
   before update on public.oem_agent_drafts
   for each row
-  execute function moddatetime(updated_at);
+  execute function public.set_updated_at();

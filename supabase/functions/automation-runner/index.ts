@@ -78,6 +78,25 @@ Deno.serve(async (request) => {
   const token = request.headers.get("authorization")?.replace("Bearer ", "");
   if (!token || token !== serviceKey) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Runtime control check before claiming automation runs
+  const { data: controls } = await db
+    .from("system_runtime_controls")
+    .select("control_key, is_enabled")
+    .in("control_key", ["WORKER_ENABLED", "AUTOMATION_RUNNER_WORKER_ENABLED"]);
+
+  const masterPaused = controls?.some((c: { control_key: string; is_enabled: boolean }) => c.control_key === "WORKER_ENABLED" && !c.is_enabled);
+  const automationPaused = controls?.some((c: { control_key: string; is_enabled: boolean }) => c.control_key === "AUTOMATION_RUNNER_WORKER_ENABLED" && !c.is_enabled);
+
+  if (masterPaused || automationPaused) {
+    return Response.json(
+      {
+        status: "paused",
+        reason: masterPaused ? "Master worker switch active (WORKER_ENABLED=false)" : "Automation runner worker switch active (AUTOMATION_RUNNER_WORKER_ENABLED=false)"
+      },
+      { status: 200 }
+    );
+  }
+
   await db.rpc("recover_stale_managed_automation_runs");
   await reconcileWorkerAlerts();
   const { data: claimed, error } = await db.rpc("claim_managed_automation_runs", { p_limit: 10 });
