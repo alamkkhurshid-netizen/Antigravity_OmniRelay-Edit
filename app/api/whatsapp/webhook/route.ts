@@ -204,6 +204,34 @@ async function forwardInboundMessage(
 
   const orgId = conns[0].organization_id;
 
+  // 1.5. Worker Kill Switch & Queue Pause Guard
+  // When WORKER_ENABLED=false, workers are paused from claiming new jobs.
+  // Inbound messages are recorded as 'queued' rather than 'processing', preserving state.
+  const workerEnabled = process.env.WORKER_ENABLED !== "false";
+  if (!workerEnabled) {
+    console.warn(`[WhatsApp Webhook] WORKER_ENABLED=false: worker is paused. Preserving message ${messageId} as 'queued'.`);
+    if (messageId) {
+      await adminClient.from("whatsapp_inbound_messages").insert({
+        organization_id: orgId,
+        provider_message_id: messageId,
+        recipient_phone_id: recipientPhoneId,
+        sender_phone: from,
+        status: "queued",
+        message_type: messageType,
+        payload: { message_body: messageBody, profile_name: profileName, ref }
+      });
+    }
+    await adminClient.from("operational_events").insert({
+      organization_id: orgId,
+      error_code: "WORKER_PAUSED",
+      event_source: "whatsapp_worker_kill_switch",
+      safe_message: "Inbound worker paused via WORKER_ENABLED=false. Message preserved as queued.",
+      severity: "warning",
+      metadata: { provider_message_id: messageId, recipient_phone_id: recipientPhoneId }
+    });
+    return;
+  }
+
   // 2. Durable Inbound Message Lifecycle & Atomic Deduplication
   // Lifecycle: received -> queued -> processing -> completed / failed
   const shouldProcess = true;

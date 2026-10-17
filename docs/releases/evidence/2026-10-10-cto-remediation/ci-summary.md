@@ -14,8 +14,10 @@ Both main platform and voice runtime repositories run strict, automated GitHub A
 
 | Repository | Workflow / Run | Commit | Status | Test Results | Lint / Types | Build |
 |---|---|---|---|---|---|---|
-| **Omnirelay-main** | [Run 39010915580](https://github.com/alamkkhurshid-netizen/Antigravity_OmniRelay-Edit/actions/runs/39010915580) | `4f42e71` | **PASSED** | 316/316 Passed (0 skipped) | 0 errors, 204 warnings | 126 Routes Compiled |
+| **Omnirelay-main** | [Run 39011621056](https://github.com/alamkkhurshid-netizen/Antigravity_OmniRelay-Edit/actions/runs/39011621056) | `b917c14` | **PASSED** | 316/316 Passed (0 skipped) | 0 errors, 204 warnings | 126 Routes Compiled |
+| **Omnirelay-main (Kill Switch)** | Local verification (pre-push) | `b917c14`+ | **PASSED** | 317/317 Passed (0 skipped) | 0 errors, 204 warnings | Verified |
 | **omnirelay-voice** | [Run 38073631001](https://github.com/alamkkhurshid-netizen/omnirelay-voice/actions/runs/38073631001) | `d99f42e` | **PASSED** | 10/10 Suites Passed (0 skipped) | Clean | Passed |
+| **omnirelay-voice (Kill Switch)** | [Commit e93a23b](https://github.com/alamkkhurshid-netizen/omnirelay-voice/commit/e93a23b) | `e93a23b` | **PASSED** | 11/11 Suites Passed (0 skipped) | Clean | Verified |
 
 ---
 

@@ -73,3 +73,9 @@
    - Hardens `public.match_documents` with explicit `SET search_path = public, extensions` and verified execute grants.
    - Successfully verified both fresh installation and existing-schema upgrade convergence with 100% schema parity.
 
+14. **Worker Pause Kill Switch (`WORKER_ENABLED`):**
+   - Implemented operational guard in `app/api/whatsapp/webhook/route.ts` checking `process.env.WORKER_ENABLED !== 'false'`.
+   - When `WORKER_ENABLED=false`, workers safely pause claiming new jobs and preserve inbound messages in `whatsapp_inbound_messages` with status `queued`.
+   - Automatically records kill switch activation audit records in `public.operational_events` with error code `WORKER_PAUSED` and severity `warning`.
+   - Verified by automated unit and lifecycle test suite (`tests/worker-kill-switch.test.mjs`).
+
