@@ -121,3 +121,17 @@
    - Implemented `app/api/action-centre/carrier-recovery/route.ts` allowing clinic staff to claim, mark resolved with notes, or queue an automated retry, updating `operational_events` with strict tenant isolation and audit tracking.
    - Tightened Action Centre typing and ratcheted lint warning baseline down to 203 with 0 errors.
 
+20. **Runtime-Control Platform Operator Isolation, Key Allowlist & Carrier Recovery Concurrency Versioning:**
+   - **Global Runtime Controls Authorization**: Hardened `public.set_runtime_control` RPC and `/api/operator/runtime-controls` route. Global controls (`scope = 'global'`) are strictly restricted to verified records in `private.platform_operators`. Workspace `admin` or `owner` roles in a clinic can NEVER update global platform controls or worker safety switches.
+   - **Tenant Runtime Controls Isolation**: Tenant controls (`scope = 'tenant'`) are strictly restricted to verified `owner` or `admin` of that exact organization. Tenant administrators cannot supply another organization ID (cross-tenant spoofing rejected with 403).
+   - **Explicit Control Key Allowlist**: Both RPC and API route validate `control_key` against an explicit allowlist (`VOICE_PILOT_KILL_SWITCH`, `VOICE_GLOBAL_KILL_SWITCH`, `WORKER_SAFETY_KILL_SWITCH`, `VOICE_PROVIDER_FALLBACK`, `SMS_FAILOVER_CARRIER`, plus all 11 worker keys: `WORKER_WHATSAPP_INBOUND_PAUSED`, `WORKER_APPOINTMENT_REMINDERS_PAUSED`, `WORKER_CARE_REMINDERS_PAUSED`, `WORKER_CAMPAIGNS_PAUSED`, `WORKER_AUTOMATIONS_PAUSED`, `WORKER_DOCTOR_QUEUE_PAUSED`, `WORKER_DEVICE_PUSH_PAUSED`, `WORKER_DEPOSIT_DISPATCH_PAUSED`, `WORKER_ROSTER_DISPATCH_PAUSED`, `WORKER_GROWTH_OFFICER_PAUSED`, `WORKER_TOKEN_HEALTH_PAUSED`).
+   - **Security Audit Logging**: Both denied unauthorized attempts (`RUNTIME_CONTROL_DENIED`, `CARRIER_RECOVERY_DENIED`) and successful modifications (`RUNTIME_CONTROL_UPDATED`, `CARRIER_RECOVERY_RESOLVED`, `CARRIER_RECOVERY_CLAIMED`, `CARRIER_RECOVERY_RETRY_QUEUED`) are persistently audited into `operational_events`.
+   - **Carrier Recovery Role & Lifecycle State Machine**: Hardened `/api/action-centre/carrier-recovery` to require `owner`, `admin`, or `receptionist` role. Enforced strict lifecycle state machine:
+     - `Unclaimed → claim`: Must be claimed before resolution or retry.
+     - `Claimed → resolve/retry`: Permitted only by claimant or workspace admin/owner.
+     - `Resolved → immutable`: Resolved tasks cannot be reopened or retried (409 Conflict).
+     - `Expired → admin recovery`: Expired tasks require admin/owner override (receptionist receives 403).
+   - **Optimistic Concurrency Versioning**: Added `expectedVersion` checking against `metadata.version` on recovery tasks to prevent concurrent overwrite between receptionists.
+   - **Voice PII Zero-Tolerance Telemetry**: Implemented `compliance/privacy_logger.py` with `mask_phone`, `pseudonymize_patient`, `PrivacySafeFilter`, and structured events. Sanitized all technical logs across voice components and added `tests/test_pii_logging_guard.py` AST scanner to fail CI on direct PII interpolation.
+
+

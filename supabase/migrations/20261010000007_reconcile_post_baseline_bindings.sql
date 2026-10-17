@@ -206,7 +206,8 @@ CREATE OR REPLACE FUNCTION public.set_runtime_control (
     p_reason text DEFAULT NULL,
     p_expected_version int DEFAULT NULL,
     p_expires_at timestamptz DEFAULT NULL,
-    p_is_emergency boolean DEFAULT false
+    p_is_emergency boolean DEFAULT false,
+    p_actor_id uuid DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -214,52 +215,122 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-    v_caller_id uuid := auth.uid();
-    v_is_service_role boolean := (auth.role() = 'service_role');
-    v_is_admin boolean := false;
+    v_caller_id uuid := coalesce(auth.uid(), p_actor_id);
+    v_is_service_role boolean := (auth.role() = 'service_role' AND p_actor_id IS NULL);
     v_existing RECORD;
     v_old_value boolean;
     v_old_version int;
     v_new_version int;
     v_result jsonb;
 BEGIN
-    -- 1. Operator Authorization Check
-    IF NOT v_is_service_role THEN
-        IF v_caller_id IS NULL THEN
-            RAISE EXCEPTION 'Authentication required to update runtime controls.' USING ERRCODE = '42501';
-        END IF;
-
-        SELECT EXISTS (
-            SELECT 1 FROM public.agents 
-            WHERE user_id = v_caller_id 
-              AND (
-                extra->>'role' IN ('admin', 'owner', 'platform_operator') 
-                OR role IN ('admin', 'owner', 'platform_operator')
-              )
-        ) INTO v_is_admin;
-
-        IF NOT v_is_admin THEN
-            RAISE EXCEPTION 'Platform operator or admin authorization required.' USING ERRCODE = '42501';
-        END IF;
+    -- 1. Control Key Allowlist Validation
+    IF p_control_key NOT IN (
+        'WORKER_ENABLED',
+        'WHATSAPP_INBOUND_WORKER_ENABLED',
+        'APPOINTMENT_REMINDER_WORKER_ENABLED',
+        'CARE_REMINDER_WORKER_ENABLED',
+        'CAMPAIGN_WORKER_ENABLED',
+        'CAMPAIGN_DISPATCH_WORKER_ENABLED',
+        'AUTOMATION_RUNNER_WORKER_ENABLED',
+        'DOCTOR_QUEUE_WORKER_ENABLED',
+        'DEVICE_PUSH_WORKER_ENABLED',
+        'DEPOSIT_ACCEPTANCE_WORKER_ENABLED',
+        'ROSTER_DISPATCH_WORKER_ENABLED',
+        'GROWTH_OFFICER_WORKER_ENABLED',
+        'TOKEN_HEALTH_WORKER_ENABLED',
+        'VOICE_PILOT_KILL_SWITCH',
+        'VOICE_PROVIDER_FALLBACK',
+        'RECORD_AND_DEDUCT_METERING',
+        'EMERGENCY_OVERRIDE'
+    ) THEN
+        INSERT INTO public.operational_events (
+            organization_id, event_source, error_code, safe_message, severity, metadata
+        ) VALUES (
+            p_organization_id, 'runtime_control_operator', 'RUNTIME_CONTROL_DENIED',
+            format('Denied update for unallowed control key: %s', p_control_key),
+            'warning',
+            jsonb_build_object('control_key', p_control_key, 'actor_id', coalesce(v_caller_id::text, 'service_role'), 'reason', 'unallowed_control_key')
+        );
+        RAISE EXCEPTION 'Control key % is not in the allowed runtime controls list.' USING ERRCODE = '22023';
     END IF;
 
-    -- 2. Scope Validation
-    IF p_scope NOT IN ('global', 'tenant') THEN
+    -- 2. Scope-Specific Authorization
+    IF p_scope = 'global' THEN
+        IF NOT v_is_service_role THEN
+            IF v_caller_id IS NULL OR NOT (
+                EXISTS (
+                    SELECT 1 FROM private.platform_operators po
+                    WHERE po.user_id = v_caller_id AND po.active
+                )
+            ) THEN
+                INSERT INTO public.operational_events (
+                    organization_id, event_source, error_code, safe_message, severity, metadata
+                ) VALUES (
+                    p_organization_id, 'runtime_control_operator', 'RUNTIME_CONTROL_DENIED',
+                    format('Unauthorized global runtime control update attempted for %s by user %s', p_control_key, coalesce(v_caller_id::text, 'anonymous')),
+                    'critical',
+                    jsonb_build_object('control_key', p_control_key, 'actor_id', coalesce(v_caller_id::text, 'anonymous'), 'reason', 'platform_operator_required', 'scope', 'global')
+                );
+                RAISE EXCEPTION 'Platform operator authorization required for global controls.' USING ERRCODE = '42501';
+            END IF;
+        END IF;
+    ELSIF p_scope = 'tenant' THEN
+        IF p_organization_id IS NULL THEN
+            RAISE EXCEPTION 'organization_id is strictly required when scope is tenant.' USING ERRCODE = '22023';
+        END IF;
+
+        IF NOT v_is_service_role THEN
+            IF v_caller_id IS NULL OR NOT (
+                EXISTS (
+                    SELECT 1 FROM public.agents a
+                    WHERE a.organization_id = p_organization_id
+                      AND a.user_id = v_caller_id
+                      AND CASE coalesce(a.extra->>'role', a.role, 'member')
+                            WHEN 'owner' THEN 30
+                            WHEN 'admin' THEN 20
+                            ELSE 10
+                          END >= 20
+                )
+            ) THEN
+                INSERT INTO public.operational_events (
+                    organization_id, event_source, error_code, safe_message, severity, metadata
+                ) VALUES (
+                    p_organization_id, 'runtime_control_operator', 'RUNTIME_CONTROL_DENIED',
+                    format('Unauthorized tenant control update attempted for %s on org %s by user %s', p_control_key, p_organization_id, coalesce(v_caller_id::text, 'anonymous')),
+                    'critical',
+                    jsonb_build_object('control_key', p_control_key, 'organization_id', p_organization_id, 'actor_id', coalesce(v_caller_id::text, 'anonymous'), 'reason', 'tenant_admin_or_owner_required', 'scope', 'tenant')
+                );
+                RAISE EXCEPTION 'Tenant admin or owner authorization required for organization %.', p_organization_id USING ERRCODE = '42501';
+            END IF;
+        END IF;
+    ELSE
         RAISE EXCEPTION 'Invalid scope: %. Must be either global or tenant.', p_scope USING ERRCODE = '22023';
-    END IF;
-
-    IF p_scope = 'tenant' AND p_organization_id IS NULL THEN
-        RAISE EXCEPTION 'organization_id is strictly required when scope is tenant.' USING ERRCODE = '22023';
     END IF;
 
     -- 3. Mandatory Reason
     IF p_reason IS NULL OR length(trim(p_reason)) < 5 THEN
+        INSERT INTO public.operational_events (
+            organization_id, event_source, error_code, safe_message, severity, metadata
+        ) VALUES (
+            p_organization_id, 'runtime_control_operator', 'RUNTIME_CONTROL_DENIED',
+            format('Denied update for control %s: insufficient justification reason', p_control_key),
+            'warning',
+            jsonb_build_object('control_key', p_control_key, 'actor_id', coalesce(v_caller_id::text, 'service_role'), 'reason', 'missing_justification')
+        );
         RAISE EXCEPTION 'A descriptive reason (min 5 chars) is strictly required to modify runtime controls.' USING ERRCODE = '22023';
     END IF;
 
     -- 4. Expiry Required for Emergency Overrides
     IF p_is_emergency THEN
         IF p_expires_at IS NULL OR p_expires_at <= now() THEN
+            INSERT INTO public.operational_events (
+                organization_id, event_source, error_code, safe_message, severity, metadata
+            ) VALUES (
+                p_organization_id, 'runtime_control_operator', 'RUNTIME_CONTROL_DENIED',
+                format('Denied emergency override for control %s: missing future expiry timestamp', p_control_key),
+                'warning',
+                jsonb_build_object('control_key', p_control_key, 'actor_id', coalesce(v_caller_id::text, 'service_role'), 'reason', 'missing_emergency_expiry')
+            );
             RAISE EXCEPTION 'Emergency overrides strictly require a future expiration timestamp (expires_at).' USING ERRCODE = '22023';
         END IF;
     END IF;

@@ -169,11 +169,15 @@ export function useActionCentre({
     const reason = window.prompt(promptMsg, defaultMsg);
     if (!reason) return;
 
-    setWorking(item.id); setError(""); setNotice("");
     const response = await fetch("/api/action-centre/carrier-recovery", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: item.id, action, reason })
+      body: JSON.stringify({
+        id: item.id,
+        action,
+        reason,
+        expectedVersion: (item.draft_payload as Record<string, unknown> | undefined)?.version ?? null,
+      }),
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) {
