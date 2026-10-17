@@ -54,3 +54,8 @@
    - Added `scripts/db-guard.mjs` with Supabase project-ref extraction, allowlist/denylist checks, mandatory `TARGET_ENV` declaration, and dual confirmation variables.
    - Hardened migration executor against replaying migrations on un-ledgered existing tables and removed `--force` bypass for `--mode=fresh`.
    - Unconditionally blocked mutation concurrency testing against production databases.
+
+11. **Database Safety Token Isolation, Test Honesty & Warning Ratchet:**
+   - Isolated operational tokens in `scripts/db-guard.mjs`: `CONFIRM_MIGRATION_EXECUTION=true` for migrations; `ALLOW_DB_INTEGRATION_TESTS=true` and `CONFIRM_CONCURRENCY_TEST=true` strictly on `TARGET_ENV=disposable` for concurrency testing. Concurrency tokens never authorize migrations.
+   - Pre-compilation of Cloudflare Sites Worker entrypoint (`dist/server/index.js`) via `"build:worker": "vinext build"` and removed skip condition from `tests/rendered-html.test.mjs`, ensuring 316/316 tests execute unconditionally with 0 skips.
+   - Automated warning baseline ratchet (`scripts/check-lint-baseline.mjs`) enforcing 0 errors and ratcheting warning ceiling down to 210.
