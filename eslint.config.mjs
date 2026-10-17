@@ -37,6 +37,10 @@ const eslintConfig = defineConfig([
     "dist/**",
     // Scratch scripts and local artifacts
     "scratch/**",
+    ".sites-runtime/**",
+    ".agents/**",
+    ".wrangler/**",
+    ".vinext/**",
     // Supabase Edge Functions run in Deno and are verified by their dedicated
     // integration tests; the Next.js ESLint runtime is not their type/runtime.
     "supabase/functions/**",

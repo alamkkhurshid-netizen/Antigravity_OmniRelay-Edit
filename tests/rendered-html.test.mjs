@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
 import test from "node:test";
 
 const developmentPreviewMeta =
@@ -7,7 +6,7 @@ const developmentPreviewMeta =
 
 const workerPath = new URL("../dist/server/index.js", import.meta.url);
 
-test("renders development preview metadata", { skip: !existsSync(workerPath) }, async () => {
+test("renders development preview metadata", async () => {
   const workerUrl = new URL(workerPath);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);

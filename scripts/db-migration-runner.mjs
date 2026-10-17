@@ -63,6 +63,7 @@ export async function runMigrations({ mode = "upgrade", connectionString = proce
   // 1. Strict Environment Safety Guard
   const guard = assertSafeDatabaseTarget({
     connectionString,
+    operationType: "migration",
     operationName: `db-migration:${mode}`,
     allowProdOverride: true
   });

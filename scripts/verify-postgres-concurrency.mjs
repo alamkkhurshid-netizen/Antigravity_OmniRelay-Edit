@@ -25,6 +25,7 @@ export async function runPostgresConcurrencyTest(connectionString = process.env.
   // 1. Strict Environment Safety Guard (blocks production unconditionally)
   const guard = assertSafeDatabaseTarget({
     connectionString,
+    operationType: "concurrency-test",
     operationName: "billing-concurrency-test",
     allowProdOverride: false
   });

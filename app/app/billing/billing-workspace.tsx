@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 type Plan={id:string;name:string;monthly_price_paise:number;max_locations:number;max_seats:number;conversations_quota:number};
 type RazorpayResult={razorpay_order_id:string;razorpay_payment_id:string;razorpay_signature:string};
-type RazorpayOptions={key:string;amount:number;currency:string;order_id:string;name:string;description:string;theme:{color:string};handler:(r:RazorpayResult)=>void;modal:{ondismiss:()=>void}};
 
 
 export function BillingWorkspace({plans,currentPlan,status,isTest,business}:{plans:Plan[];currentPlan:string|null;status:string;isTest:boolean;business:string}){

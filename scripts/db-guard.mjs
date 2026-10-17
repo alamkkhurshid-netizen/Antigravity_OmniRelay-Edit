@@ -1,11 +1,15 @@
 /**
  * Database Environment Safety & Guard Utility
  * 
- * Provides strict verification for database migration and mutation scripts:
+ * Provides strict, isolated verification for database migration and mutation scripts:
  * 1. Explicit project-ref extraction & denylist/allowlist enforcement (prevents relying solely on "prod" in URL).
  * 2. Mandates TARGET_ENV (e.g. "disposable", "staging", "production") - fail closed if absent.
- * 3. Enforces dual confirmation tokens for any production mutations.
- * 4. Guards against accidental replay against existing un-ledgered schemas.
+ * 3. Operation-specific confirmation enforcement:
+ *    - Migrations: require TARGET_ENV=disposable|staging and CONFIRM_MIGRATION_EXECUTION=true.
+ *      Production migrations require TARGET_ENV=production, ALLOW_PROD_MIGRATIONS=true, and CONFIRM_PROD_EXECUTION="I_UNDERSTAND_THIS_MUTATES_PRODUCTION".
+ *    - Concurrency testing: requires TARGET_ENV=disposable, ALLOW_DB_INTEGRATION_TESTS=true, and CONFIRM_CONCURRENCY_TEST=true.
+ *      Concurrency flags never authorize migrations.
+ *      Production concurrency testing is strictly prohibited.
  */
 
 /**
@@ -47,10 +51,18 @@ export function getKnownStagingProjectRefs() {
 }
 
 /**
- * Validates target environment and enforces fail-closed safety guards.
+ * Validates target environment and enforces fail-closed, operation-specific safety guards.
+ *
+ * @param {Object} options
+ * @param {string} options.connectionString - Target PostgreSQL connection string
+ * @param {"migration" | "concurrency-test"} [options.operationType] - Type of operation being authorized
+ * @param {string} [options.operationName] - Human-readable operation name for logging
+ * @param {boolean} [options.allowProdOverride=false] - Whether production execution can be authorized
+ * @param {boolean} [options.allowStaging=true] - Whether staging execution is permitted
  */
 export function assertSafeDatabaseTarget({
   connectionString,
+  operationType,
   operationName = "database operation",
   allowProdOverride = false,
   allowStaging = true,
@@ -59,7 +71,26 @@ export function assertSafeDatabaseTarget({
     return { dryRun: true, targetEnv: "dry-run" };
   }
 
+  // Derive operationType if not explicitly passed
+  let resolvedType = operationType;
+  if (!resolvedType) {
+    if (operationName.includes("migration") || operationName.includes("db-migration")) {
+      resolvedType = "migration";
+    } else if (operationName.includes("concurrency")) {
+      resolvedType = "concurrency-test";
+    } else {
+      throw new Error(`[Database Guard] BLOCKED: operationType ('migration' | 'concurrency-test') is required.`);
+    }
+  }
+
   const targetEnv = (process.env.TARGET_ENV || "").toLowerCase().trim();
+  if (!targetEnv) {
+    throw new Error(
+      `[Database Guard] BLOCKED: TARGET_ENV must be set explicitly (e.g. TARGET_ENV=disposable or TARGET_ENV=staging). ` +
+      `Explicit environment targeting prevents unintended executions.`
+    );
+  }
+
   const detectedRef = extractProjectRef(connectionString);
   const prodRefs = getKnownProdProjectRefs();
   const stagingRefs = getKnownStagingProjectRefs();
@@ -71,48 +102,87 @@ export function assertSafeDatabaseTarget({
 
   const isProductionTarget = isProdRef || hasProdName || isProdEnv;
 
-  // 1. Production Detection: Must fail closed
-  if (isProductionTarget) {
-    const confirmationToken = process.env.CONFIRM_PROD_EXECUTION;
-    const isExplicitlyAllowed = allowProdOverride && confirmationToken === "I_UNDERSTAND_THIS_MUTATES_PRODUCTION";
-    if (!isExplicitlyAllowed) {
+  // ==========================================
+  // OPERATION 1: CONCURRENCY TESTING
+  // ==========================================
+  if (resolvedType === "concurrency-test") {
+    // 1. Production is strictly prohibited under all circumstances
+    if (isProductionTarget) {
       throw new Error(
-        `[Database Guard] BLOCKED: Detected production database target ` +
-        `(${detectedRef ? `project-ref: ${detectedRef}` : "production environment/URL"}). ` +
-        `Operation '${operationName}' is forbidden on production without explicit TARGET_ENV=production ` +
-        `and CONFIRM_PROD_EXECUTION="I_UNDERSTAND_THIS_MUTATES_PRODUCTION".`
+        `[Database Guard] BLOCKED: Concurrency mutation testing is strictly prohibited on production databases ` +
+        `(${detectedRef ? `project-ref: ${detectedRef}` : "production environment/URL"}).`
       );
     }
+
+    // 2. Concurrency testing is only permitted against disposable databases
+    if (targetEnv !== "disposable" || isStagingRef || !allowStaging) {
+      throw new Error(
+        `[Database Guard] BLOCKED: Concurrency testing requires TARGET_ENV=disposable. ` +
+        `Running concurrency tests on staging or production is strictly prohibited.`
+      );
+    }
+
+    // 3. Isolated confirmation requirements: both ALLOW_DB_INTEGRATION_TESTS and CONFIRM_CONCURRENCY_TEST
+    const hasOptIn = process.env.ALLOW_DB_INTEGRATION_TESTS === "true";
+    const hasConcurrencyConfirm = process.env.CONFIRM_CONCURRENCY_TEST === "true";
+
+    if (!hasOptIn || !hasConcurrencyConfirm) {
+      throw new Error(
+        `[Database Guard] BLOCKED: Concurrency testing requires BOTH ALLOW_DB_INTEGRATION_TESTS=true ` +
+        `and CONFIRM_CONCURRENCY_TEST=true.`
+      );
+    }
+
+    return { targetEnv, detectedRef, isProductionTarget: false, isStagingRef: false, operationType: resolvedType };
   }
 
-  // 2. Explicit environment name requirement (disposable, staging, or production)
-  if (!targetEnv) {
-    throw new Error(
-      `[Database Guard] BLOCKED: TARGET_ENV must be set explicitly (e.g. TARGET_ENV=disposable or TARGET_ENV=staging). ` +
-      `Explicit environment targeting prevents unintended executions.`
-    );
+  // ==========================================
+  // OPERATION 2: DATABASE MIGRATIONS
+  // ==========================================
+  if (resolvedType === "migration") {
+    if (!["disposable", "staging", "production"].includes(targetEnv)) {
+      throw new Error(
+        `[Database Guard] BLOCKED: Migrations require TARGET_ENV to be 'disposable', 'staging', or 'production'.`
+      );
+    }
+
+    // Production Migrations Guard
+    if (isProductionTarget || targetEnv === "production") {
+      const hasProdEnv = targetEnv === "production";
+      const hasAllowProdMigrations = process.env.ALLOW_PROD_MIGRATIONS === "true";
+      const confirmationToken = process.env.CONFIRM_PROD_EXECUTION;
+      const isConfirmed = confirmationToken === "I_UNDERSTAND_THIS_MUTATES_PRODUCTION";
+
+      if (!allowProdOverride || !hasProdEnv || !hasAllowProdMigrations || !isConfirmed) {
+        throw new Error(
+          `[Database Guard] BLOCKED: Production migrations require ALL of: ` +
+          `TARGET_ENV=production, ALLOW_PROD_MIGRATIONS=true, and CONFIRM_PROD_EXECUTION="I_UNDERSTAND_THIS_MUTATES_PRODUCTION".`
+        );
+      }
+
+      return { targetEnv: "production", detectedRef, isProductionTarget: true, isStagingRef: false, operationType: resolvedType };
+    }
+
+    // Disposable or Staging Migrations
+    if (isProdRef || hasProdName) {
+      throw new Error(
+        `[Database Guard] BLOCKED: Connection URL matches production target (${detectedRef || connectionString}), ` +
+        `but TARGET_ENV is set to '${targetEnv}'. Production targets cannot be used with non-production TARGET_ENV.`
+      );
+    }
+
+    // Require CONFIRM_MIGRATION_EXECUTION=true.
+    // Concurrency flags (ALLOW_DB_INTEGRATION_TESTS, CONFIRM_CONCURRENCY_TEST) MUST NEVER authorize migrations.
+    const hasMigrationConfirm = process.env.CONFIRM_MIGRATION_EXECUTION === "true";
+    if (!hasMigrationConfirm) {
+      throw new Error(
+        `[Database Guard] BLOCKED: Migrations on ${targetEnv} require CONFIRM_MIGRATION_EXECUTION=true. ` +
+        `Concurrency flags do not authorize migration execution.`
+      );
+    }
+
+    return { targetEnv, detectedRef, isProductionTarget: false, isStagingRef, operationType: resolvedType };
   }
 
-  if (targetEnv === "production" && !allowProdOverride) {
-    throw new Error(`[Database Guard] BLOCKED: Operation '${operationName}' cannot be executed against production.`);
-  }
-
-  if (!allowStaging && (targetEnv === "staging" || isStagingRef)) {
-    throw new Error(`[Database Guard] BLOCKED: Operation '${operationName}' cannot be executed against staging.`);
-  }
-
-  // 3. Confirmation variable requirement
-  const isConfirmed =
-    process.env.CONFIRM_MIGRATION_EXECUTION === "true" ||
-    process.env.CONFIRM_CONCURRENCY_TEST === "true" ||
-    process.env.ALLOW_DB_INTEGRATION_TESTS === "true";
-
-  if (!isConfirmed) {
-    throw new Error(
-      `[Database Guard] BLOCKED: Operation '${operationName}' requires confirmation variable ` +
-      `(CONFIRM_MIGRATION_EXECUTION=true or CONFIRM_CONCURRENCY_TEST=true).`
-    );
-  }
-
-  return { targetEnv, detectedRef, isProductionTarget, isStagingRef };
+  throw new Error(`[Database Guard] BLOCKED: Unknown operationType '${resolvedType}'.`);
 }
