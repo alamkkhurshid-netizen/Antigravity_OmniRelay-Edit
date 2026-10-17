@@ -110,3 +110,14 @@
    - Added automated, machine-verifiable verification matrix in `tests/worker-kill-switch.test.mjs` executing all 11 worker boundaries across 6 behavioral invariants: Pause, Queue preservation, No dispatch, Resume, Duplicate protection, and Audit event generation.
    - Implemented durable `CarrierDispatchLedger` with atomic provider dispatch leasing, winner locking, custom data passing, late callback termination (`<Hangup/>`), and actionable recovery task creation in `operational_events` with `action_centre_status="pending_manual_intervention"`.
 
+19. **Operator Runtime Control RPC, Carrier Ledger Fail-Closed Redis Hardening & Action Centre Recovery Tasks:**
+   - Aligned runtime control scopes strictly to `'global'` and `'tenant'` across schema and documentation, eliminating conflicting nomenclature.
+   - Implemented `public.set_runtime_control` RPC in `supabase/migrations/20261010000007_reconcile_post_baseline_bindings.sql` requiring platform operator authorization (`agents.role`), mandatory reason (min 5 chars), mandatory future expiry for emergency overrides, optimistic version locking, and direct audit logging to `operational_events`. Direct browser mutations on `public.system_runtime_controls` are revoked from `anon`, `authenticated`, and `public`.
+   - Created `app/api/operator/runtime-controls/route.ts` as the authenticated gateway for platform operator control updates.
+   - In `omnirelay-voice/server/carrier_ledger.py`, eliminated all local in-memory fallback during Redis outages outside local mode: lease acquisition returns `False` (stop dispatch), callback validation returns `False` (safe hangup of late callbacks), and winner recording raises `RuntimeError` (fails closed).
+   - In `omnirelay-voice/tools/supabase_client.py` and `routes/dial.py`, `create_recovery_task()` reports success and durable persistence only after verified HTTP 200/201 database confirmation. Unpersisted recovery tasks report `recovery_task_persisted=False` and log critical incidents.
+   - Documented carrier `CustomField` and headers as correlation tracking identifiers, with internal atomic Redis leases providing duplicate call protection. Added 5 test scenarios in `tests/test_carrier_failover_scenarios.py` (timeout, late callback, duplicate callback, carrier failover, Redis outage).
+   - Wired carrier exhaustion recovery tasks directly into the Action Centre (`app/app/action-centre/page.tsx`, `use-action-centre.ts`, `workspace.tsx`, and `components/action-centre/priority-review-queue.tsx`), surfacing ownership, expiry, phone destination, and failed carrier attempts to clinic staff.
+   - Implemented `app/api/action-centre/carrier-recovery/route.ts` allowing clinic staff to claim, mark resolved with notes, or queue an automated retry, updating `operational_events` with strict tenant isolation and audit tracking.
+
+

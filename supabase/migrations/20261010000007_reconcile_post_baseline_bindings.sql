@@ -197,3 +197,200 @@ CREATE POLICY "Tenants view own runtime controls"
 GRANT SELECT ON public.system_runtime_controls TO authenticated;
 GRANT ALL ON public.system_runtime_controls TO service_role;
 
+-- 7. Controlled Operator Update RPC for System Runtime Controls
+CREATE OR REPLACE FUNCTION public.set_runtime_control (
+    p_control_key text,
+    p_is_enabled boolean,
+    p_scope text DEFAULT 'global',
+    p_organization_id uuid DEFAULT NULL,
+    p_reason text DEFAULT NULL,
+    p_expected_version int DEFAULT NULL,
+    p_expires_at timestamptz DEFAULT NULL,
+    p_is_emergency boolean DEFAULT false
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    v_caller_id uuid := auth.uid();
+    v_is_service_role boolean := (auth.role() = 'service_role');
+    v_is_admin boolean := false;
+    v_existing RECORD;
+    v_old_value boolean;
+    v_old_version int;
+    v_new_version int;
+    v_result jsonb;
+BEGIN
+    -- 1. Operator Authorization Check
+    IF NOT v_is_service_role THEN
+        IF v_caller_id IS NULL THEN
+            RAISE EXCEPTION 'Authentication required to update runtime controls.' USING ERRCODE = '42501';
+        END IF;
+
+        SELECT EXISTS (
+            SELECT 1 FROM public.agents 
+            WHERE user_id = v_caller_id 
+              AND (
+                extra->>'role' IN ('admin', 'owner', 'platform_operator') 
+                OR role IN ('admin', 'owner', 'platform_operator')
+              )
+        ) INTO v_is_admin;
+
+        IF NOT v_is_admin THEN
+            RAISE EXCEPTION 'Platform operator or admin authorization required.' USING ERRCODE = '42501';
+        END IF;
+    END IF;
+
+    -- 2. Scope Validation
+    IF p_scope NOT IN ('global', 'tenant') THEN
+        RAISE EXCEPTION 'Invalid scope: %. Must be either global or tenant.', p_scope USING ERRCODE = '22023';
+    END IF;
+
+    IF p_scope = 'tenant' AND p_organization_id IS NULL THEN
+        RAISE EXCEPTION 'organization_id is strictly required when scope is tenant.' USING ERRCODE = '22023';
+    END IF;
+
+    -- 3. Mandatory Reason
+    IF p_reason IS NULL OR length(trim(p_reason)) < 5 THEN
+        RAISE EXCEPTION 'A descriptive reason (min 5 chars) is strictly required to modify runtime controls.' USING ERRCODE = '22023';
+    END IF;
+
+    -- 4. Expiry Required for Emergency Overrides
+    IF p_is_emergency THEN
+        IF p_expires_at IS NULL OR p_expires_at <= now() THEN
+            RAISE EXCEPTION 'Emergency overrides strictly require a future expiration timestamp (expires_at).' USING ERRCODE = '22023';
+        END IF;
+    END IF;
+
+    -- 5. Fetch Existing Row and Enforce Optimistic Version Locking
+    SELECT * INTO v_existing 
+    FROM public.system_runtime_controls 
+    WHERE control_key = p_control_key 
+      AND (
+        (p_organization_id IS NULL AND organization_id IS NULL)
+        OR organization_id = p_organization_id
+      )
+    FOR UPDATE;
+
+    IF FOUND THEN
+        v_old_value := v_existing.is_enabled;
+        v_old_version := v_existing.version;
+        
+        IF p_expected_version IS NOT NULL AND v_old_version <> p_expected_version THEN
+            RAISE EXCEPTION 'Optimistic concurrency failure: expected version % does not match current version %.', 
+                p_expected_version, v_old_version USING ERRCODE = 'P0002';
+        END IF;
+        
+        v_new_version := v_old_version + 1;
+
+        UPDATE public.system_runtime_controls
+        SET is_enabled = p_is_enabled,
+            scope = p_scope,
+            reason = p_reason,
+            updated_by = coalesce(v_caller_id::text, 'service_role'),
+            version = v_new_version,
+            expires_at = p_expires_at,
+            updated_at = now()
+        WHERE id = v_existing.id
+        RETURNING to_jsonb(system_runtime_controls.*) INTO v_result;
+    ELSE
+        v_old_value := NULL;
+        v_old_version := 0;
+        v_new_version := 1;
+
+        IF p_expected_version IS NOT NULL AND p_expected_version <> 0 THEN
+            RAISE EXCEPTION 'Optimistic concurrency failure: record does not exist but expected version was %.', 
+                p_expected_version USING ERRCODE = 'P0002';
+        END IF;
+
+        INSERT INTO public.system_runtime_controls (
+            control_key,
+            is_enabled,
+            scope,
+            organization_id,
+            updated_by,
+            reason,
+            version,
+            expires_at
+        ) VALUES (
+            p_control_key,
+            p_is_enabled,
+            p_scope,
+            p_organization_id,
+            coalesce(v_caller_id::text, 'service_role'),
+            p_reason,
+            v_new_version,
+            p_expires_at
+        )
+        RETURNING to_jsonb(system_runtime_controls.*) INTO v_result;
+    END IF;
+
+    -- 6. Record Audit Event in operational_events
+    INSERT INTO public.operational_events (
+        organization_id,
+        event_source,
+        error_code,
+        safe_message,
+        severity,
+        metadata
+    ) VALUES (
+        p_organization_id,
+        'runtime_control_operator',
+        'RUNTIME_CONTROL_UPDATED',
+        format('Runtime control %s updated by %s (version %s -> %s): enabled=%s', 
+            p_control_key, coalesce(v_caller_id::text, 'service_role'), v_old_version, v_new_version, p_is_enabled),
+        CASE WHEN p_is_emergency THEN 'critical' ELSE 'warning' END,
+        jsonb_build_object(
+            'control_key', p_control_key,
+            'previous_value', v_old_value,
+            'new_value', p_is_enabled,
+            'previous_version', v_old_version,
+            'new_version', v_new_version,
+            'reason', p_reason,
+            'expires_at', p_expires_at,
+            'scope', p_scope,
+            'is_emergency', p_is_emergency
+        )
+    );
+
+    RETURN v_result;
+END;
+$$;
+
+-- Revoke direct table mutations; enforce RPC or service-role management only
+REVOKE INSERT, UPDATE, DELETE ON public.system_runtime_controls FROM anon, authenticated, public;
+GRANT EXECUTE ON FUNCTION public.set_runtime_control TO authenticated, service_role;
+
+-- 8. Action Centre Carrier Recovery & Tenant Isolation Policies on operational_events
+GRANT UPDATE ON public.operational_events TO authenticated;
+
+DROP POLICY IF EXISTS "Workspace members select operational events" ON public.operational_events;
+CREATE POLICY "Workspace members select operational events"
+ON public.operational_events FOR SELECT TO authenticated
+USING (
+    organization_id IS NOT NULL 
+    AND organization_id IN (
+        SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
+    )
+);
+
+DROP POLICY IF EXISTS "Workspace members update operational events" ON public.operational_events;
+CREATE POLICY "Workspace members update operational events"
+ON public.operational_events FOR UPDATE TO authenticated
+USING (
+    organization_id IS NOT NULL 
+    AND organization_id IN (
+        SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
+    )
+)
+WITH CHECK (
+    organization_id IS NOT NULL 
+    AND organization_id IN (
+        SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
+    )
+);
+
+
+

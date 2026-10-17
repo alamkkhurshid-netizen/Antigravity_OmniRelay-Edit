@@ -10,21 +10,22 @@ import { PriorityReviewQueue } from "@/components/action-centre/priority-review-
 import { AuditTrail } from "@/components/action-centre/audit-trail";
 import {
   CareRun, AppointmentRun, Task, Deployment, BookingRequest, WaitlistItem,
-  Disruption, EmergencyRecipient, Assignment, ReadinessCheck, PilotControl, AiDraft
+  Disruption, EmergencyRecipient, Assignment, ReadinessCheck, PilotControl, AiDraft, CarrierRecoveryEvent
 } from "./types";
 
 export function ActionCentreWorkspace({
   careRuns, appointmentRuns, tasks, deployments, bookingRequests, waitlist, disruptions, emergencyRecipients,
-  assignments, readinessChecks, pilotControl, aiDrafts, currentUserId, canManageNotifications, nowIso
+  assignments, readinessChecks, pilotControl, aiDrafts, carrierRecoveryEvents = [], currentUserId, canManageNotifications, nowIso
 }: {
   careRuns:CareRun[]; appointmentRuns:AppointmentRun[]; tasks:Task[]; deployments:Deployment[];
   bookingRequests:BookingRequest[]; waitlist:WaitlistItem[]; disruptions:Disruption[]; emergencyRecipients:EmergencyRecipient[];
   assignments:Assignment[]; readinessChecks:ReadinessCheck[]; pilotControl:PilotControl|null; aiDrafts:AiDraft[];
+  carrierRecoveryEvents?:CarrierRecoveryEvent[];
   currentUserId:string; canManageNotifications:boolean; nowIso:string;
 }) {
   const state = useActionCentre({
     careRuns, appointmentRuns, tasks, deployments, bookingRequests, waitlist, disruptions,
-    emergencyRecipients, assignments, readinessChecks, pilotControl, aiDrafts, currentUserId, nowIso
+    emergencyRecipients, assignments, readinessChecks, pilotControl, aiDrafts, carrierRecoveryEvents, currentUserId, nowIso
   });
 
   const tourSteps: Step[] = [
@@ -141,6 +142,7 @@ export function ActionCentreWorkspace({
         coordinate={state.coordinate}
         updateTask={state.updateTask}
         retry={state.retry}
+        resolveCarrierRecovery={state.resolveCarrierRecovery}
       />
 
       <AuditTrail deployments={deployments} />
