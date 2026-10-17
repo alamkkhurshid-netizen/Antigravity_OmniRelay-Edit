@@ -2,9 +2,9 @@
 
 **Release Identifier:** `2026-10-10-cto-remediation-voice-billing-reliability`  
 **Evaluation Date:** 2026-10-17  
-**Platform Release Commit:** `4f42e71` (branch: `remediation/cto-pilot-readiness`)  
-**Voice Runtime Commit:** `d99f42e` (branch: `remediation/cto-pilot-readiness`)  
-**PR Status:** Branches ready and pushed; draft PRs prepared; not yet opened or reviewed.
+**Platform Release Commit:** `8b58cbf` (branch: `remediation/cto-pilot-readiness`)  
+**Voice Runtime Commit:** `79b2453` (branch: `remediation/cto-pilot-readiness`)  
+**PR Status:** Draft PRs opened and awaiting independent peer review.
 
 ---
 
@@ -14,8 +14,8 @@ Both main platform and voice runtime repositories run strict, automated GitHub A
 
 | Repository | Workflow / Run | Commit | Status | Test Results | Lint / Types | Build |
 |---|---|---|---|---|---|---|
-| **Omnirelay-main** | [Run 39015759136](https://github.com/alamkkhurshid-netizen/Antigravity_OmniRelay-Edit/actions/runs/39015759136) | `f0f9db4` | **PASSED** | 319/319 Passed (0 skipped) | 0 errors, 204 warnings | 126 Routes Compiled |
-| **omnirelay-voice** | [Run 39015418944](https://github.com/alamkkhurshid-netizen/omnirelay-voice/actions/runs/39015418944) | `6ffa01d` | **PASSED** | 11/11 Suites Passed (0 skipped) | Clean virtualenv | Passed |
+| **Omnirelay-main** | [Run 39018341939](https://github.com/alamkkhurshid-netizen/Antigravity_OmniRelay-Edit/actions/runs/39018341939) | `8b58cbf` | **PASSED** | 319/319 Passed (0 skipped) | 0 errors, 204 warnings | 126 Routes Compiled |
+| **omnirelay-voice** | [Run 39017870347](https://github.com/alamkkhurshid-netizen/omnirelay-voice/actions/runs/39017870347) | `79b2453` | **PASSED** | 11/11 Suites Passed (0 skipped) | Clean virtualenv | Passed |
 
 ---
 
@@ -69,16 +69,25 @@ Both main platform and voice runtime repositories run strict, automated GitHub A
 
 ## 4. Pull Request Status
 
-- **Status:** **Branches ready; draft PRs not yet opened or reviewed.**
-- **Main Platform Compare & Open URL:**  
-  `https://github.com/alamkkhurshid-netizen/Antigravity_OmniRelay-Edit/compare/main...remediation/cto-pilot-readiness?expand=1`
-- **Voice Runtime Compare & Open URL:**  
-  `https://github.com/alamkkhurshid-netizen/omnirelay-voice/compare/main...remediation/cto-pilot-readiness?expand=1`
-- **Reviewer Requirement:** Independent reviewer nomination required from project owner before merge.
+- **Status:** **Draft PRs opened and awaiting independent peer review.**
+- **Main Platform Draft PR #1:**  
+  [https://github.com/alamkkhurshid-netizen/Antigravity_OmniRelay-Edit/pull/1](https://github.com/alamkkhurshid-netizen/Antigravity_OmniRelay-Edit/pull/1)
+- **Voice Runtime Draft PR #1:**  
+  [https://github.com/alamkkhurshid-netizen/omnirelay-voice/pull/1](https://github.com/alamkkhurshid-netizen/omnirelay-voice/pull/1)
+- **Reviewer Requirement:** Independent peer reviewer nomination requested for formal sign-off.
 
 ---
 
-## 5. Working Tree Hygiene
+## 5. Secret Scanning & Git History Hygiene
+
+Both repositories have been scanned with the Gitleaks security engine (`zricethezav/gitleaks:latest`):
+- **omnirelay-voice**: 23 commits scanned across complete history -> **0 leaks found**.
+- **Omnirelay-main**: Scanned across all commits -> **0 leaks found**.
+- **Exposed Credentials Remediated**: Plaintext Exotel API credentials removed from `README.md` and `compliance/trai_realtime_dnd.py`. Git history purged via `git-filter-repo` and forced update pushed to remote.
+
+---
+
+## 6. Working Tree Hygiene
 
 Both working trees are completely clean on branch `remediation/cto-pilot-readiness`:
 - `Omnirelay-main`: Clean working tree.
