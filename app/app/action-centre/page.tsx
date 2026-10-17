@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getWorkspace } from "@/lib/workspace";
 import { isoBeforeNow, isoNow } from "@/lib/time";
 import { ActionCentreWorkspace } from "./workspace";
+import { CarrierRecoveryEvent } from "./types";
 
 export default async function ActionCentrePage() {
   const { supabase, organization } = await getWorkspace();
@@ -37,6 +38,7 @@ export default async function ActionCentrePage() {
     supabase.from("operational_events").select("id,created_at,safe_message,severity,error_code,metadata").eq("organization_id", organization.id).eq("event_source", "voice_carrier_recovery").is("resolved_at", null).order("created_at", { ascending: false }).limit(50),
   ]);
 
-  return <ActionCentreWorkspace careRuns={careRuns as any ?? []} appointmentRuns={appointmentRuns as any ?? []} tasks={tasks as any ?? []} deployments={deployments as any ?? []} bookingRequests={bookingRequests as any ?? []} waitlist={waitlist as any ?? []} disruptions={disruptions as any ?? []} emergencyRecipients={emergencyRecipients as any ?? []} assignments={assignments as any ?? []} readinessChecks={readinessChecks??[]} pilotControl={pilotControl} aiDrafts={aiDrafts as any ?? []} carrierRecoveryEvents={carrierRecoveryEvents as any ?? []} currentUserId={user?.id??""} canManageNotifications={canManageNotifications} nowIso={isoNow()} />;
+  return <ActionCentreWorkspace careRuns={careRuns as any ?? []} appointmentRuns={appointmentRuns as any ?? []} tasks={tasks as any ?? []} deployments={deployments as any ?? []} bookingRequests={bookingRequests as any ?? []} waitlist={waitlist as any ?? []} disruptions={disruptions as any ?? []} emergencyRecipients={emergencyRecipients as any ?? []} assignments={assignments as any ?? []} readinessChecks={readinessChecks??[]} pilotControl={pilotControl} aiDrafts={aiDrafts as any ?? []} carrierRecoveryEvents={(carrierRecoveryEvents as CarrierRecoveryEvent[] | null) ?? []} currentUserId={user?.id??""} canManageNotifications={canManageNotifications} nowIso={isoNow()} />;
 }
+
 

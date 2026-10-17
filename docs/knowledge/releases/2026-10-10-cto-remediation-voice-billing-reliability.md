@@ -119,5 +119,5 @@
    - Documented carrier `CustomField` and headers as correlation tracking identifiers, with internal atomic Redis leases providing duplicate call protection. Added 5 test scenarios in `tests/test_carrier_failover_scenarios.py` (timeout, late callback, duplicate callback, carrier failover, Redis outage).
    - Wired carrier exhaustion recovery tasks directly into the Action Centre (`app/app/action-centre/page.tsx`, `use-action-centre.ts`, `workspace.tsx`, and `components/action-centre/priority-review-queue.tsx`), surfacing ownership, expiry, phone destination, and failed carrier attempts to clinic staff.
    - Implemented `app/api/action-centre/carrier-recovery/route.ts` allowing clinic staff to claim, mark resolved with notes, or queue an automated retry, updating `operational_events` with strict tenant isolation and audit tracking.
-
+   - Tightened Action Centre typing and ratcheted lint warning baseline down to 203 with 0 errors.
 

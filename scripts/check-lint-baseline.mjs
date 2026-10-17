@@ -15,7 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
 
 // Recorded baseline for warnings on remediation/cto-pilot-readiness branch
-const MAX_ALLOWED_WARNINGS = 204;
+const MAX_ALLOWED_WARNINGS = 203;
 
 console.log(`[Lint Ratchet] Verifying code quality against baseline (max warnings: ${MAX_ALLOWED_WARNINGS})...`);
 
