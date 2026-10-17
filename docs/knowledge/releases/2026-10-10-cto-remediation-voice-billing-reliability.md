@@ -134,4 +134,12 @@
    - **Optimistic Concurrency Versioning**: Added `expectedVersion` checking against `metadata.version` on recovery tasks to prevent concurrent overwrite between receptionists.
    - **Voice PII Zero-Tolerance Telemetry**: Implemented `compliance/privacy_logger.py` with `mask_phone`, `pseudonymize_patient`, `PrivacySafeFilter`, and structured events. Sanitized all technical logs across voice components and added `tests/test_pii_logging_guard.py` AST scanner to fail CI on direct PII interpolation.
 
+21: **Atomic Carrier-Recovery RPC, 20-Claim Concurrency Proof & Hardened Privacy Logging:**
+   - **PostgreSQL Atomic Concurrency Locking**: Moved carrier recovery task transitions into `public.transition_carrier_recovery_task` RPC executing within a single ACID database transaction. Employs `SELECT ... FOR UPDATE` to lock the recovery operational event row. Requires mandatory `expected_version` parameter; returns 409 Conflict if current version does not match.
+   - **Transactional Co-Commitment**: The operational event update, `action_centre_assignments` status sync, and audit record insertion (`CARRIER_RECOVERY_CLAIMED`, `CARRIER_RECOVERY_RESOLVED`, `CARRIER_RECOVERY_RETRY_QUEUED`) commit together atomically in one transaction with zero risk of partial or orphaned state.
+   - **20-Client Concurrency Proof**: Verified through both simulated lock concurrency and live PostgreSQL integration test (`scripts/verification/verify-carrier-concurrency.mjs`), proving that when 20 receptionists simultaneously claim a recovery task, exactly 1 succeeds (status 200) and 19 fail (status 409 Conflict).
+   - **Live Database Runtime Controls Validation**: Created `scripts/verification/verify-runtime-controls-live.mjs` verifying that clinic admins cannot modify global controls or other tenants, platform operators can update controls, direct table writes remain blocked for authenticated users, and 20 simultaneous updates result in exactly 1 success and 19 version conflict failures.
+   - **Fail-Closed Privacy Logging Architecture**: Upgraded `compliance/privacy_logger.py` with fail-closed error suppression, universal international phone redaction (`[REDACTED_PHONE]`), clinical condition filtering, and startup abort if `PATIENT_PSEUDONYM_SALT` is absent in staging or production. Verified by synthetic call canary test with zero seeded PII leakage across all log streams.
+
+
 

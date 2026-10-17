@@ -463,5 +463,306 @@ WITH CHECK (
     )
 );
 
+-- 9. Atomic Carrier Recovery Task Lifecycle Transition RPC
+ALTER TABLE public.action_centre_assignments DROP CONSTRAINT IF EXISTS action_centre_assignments_item_kind_check;
+ALTER TABLE public.action_centre_assignments ADD CONSTRAINT action_centre_assignments_item_kind_check 
+    CHECK (item_kind IN ('booking_approval','waitlist','schedule_disruption','care_retry','appointment_retry','care_task','carrier_recovery'));
+
+ALTER TABLE public.action_centre_assignments DROP CONSTRAINT IF EXISTS action_centre_assignments_status_check;
+ALTER TABLE public.action_centre_assignments ADD CONSTRAINT action_centre_assignments_status_check 
+    CHECK (status IN ('claimed','reviewed','released','resolved','retrying'));
+
+CREATE OR REPLACE FUNCTION public.transition_carrier_recovery_task(
+    p_task_id uuid,
+    p_action text,
+    p_expected_version integer,
+    p_reason text DEFAULT NULL,
+    p_actor_id uuid DEFAULT NULL,
+    p_organization_id uuid DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    v_caller_id uuid := coalesce(p_actor_id, auth.uid());
+    v_org_id uuid := p_organization_id;
+    v_actor_role text;
+    v_is_authorized boolean := false;
+    v_is_admin boolean := false;
+    v_event RECORD;
+    v_existing_meta jsonb;
+    v_current_version integer;
+    v_new_version integer;
+    v_claimed_by uuid;
+    v_status text;
+    v_is_claimed boolean;
+    v_is_resolved boolean;
+    v_is_expired boolean;
+    v_now timestamptz := now();
+    v_now_iso text := to_char(v_now AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"');
+    v_updated_meta jsonb;
+    v_updated_event RECORD;
+BEGIN
+    -- 1. Validate inputs
+    IF v_caller_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'status', 401, 'error', 'Authentication required.');
+    END IF;
+
+    IF p_task_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'status', 400, 'error', 'Invalid operational event ID.');
+    END IF;
+
+    IF p_action NOT IN ('claim', 'resolve', 'retry') THEN
+        RETURN jsonb_build_object('success', false, 'status', 400, 'error', 'Invalid action: must be claim, resolve, or retry.');
+    END IF;
+
+    IF p_expected_version IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'status', 400, 'error', 'expectedVersion is strictly required for optimistic concurrency control.');
+    END IF;
+
+    IF p_action IN ('resolve', 'retry') AND (p_reason IS NULL OR length(trim(p_reason)) < 3) THEN
+        RETURN jsonb_build_object('success', false, 'status', 400, 'error', 'A reason (min 3 characters) is required to resolve or retry.');
+    END IF;
+
+    -- Infer organization_id from caller's agents membership if not explicitly supplied
+    IF v_org_id IS NULL THEN
+        SELECT a.organization_id INTO v_org_id
+        FROM public.agents a
+        WHERE a.user_id = v_caller_id
+        LIMIT 1;
+    END IF;
+
+    IF v_org_id IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'status', 409, 'error', 'Workspace organization not found.');
+    END IF;
+
+    -- 2. Role Authorization: Staff role must be owner, admin, or receptionist
+    SELECT COALESCE((a.extra->>'role'), a.role::text, 'member') INTO v_actor_role
+    FROM public.agents a
+    WHERE a.user_id = v_caller_id AND a.organization_id = v_org_id
+    LIMIT 1;
+
+    IF v_actor_role IN ('owner', 'admin', 'receptionist') THEN
+        v_is_authorized := true;
+    END IF;
+
+    IF v_actor_role IN ('owner', 'admin') THEN
+        v_is_admin := true;
+    END IF;
+
+    IF NOT v_is_authorized THEN
+        INSERT INTO public.operational_events (
+            organization_id, actor_user_id, event_source, error_code, safe_message, severity, metadata
+        ) VALUES (
+            v_org_id, v_caller_id, 'action_centre_recovery', 'CARRIER_RECOVERY_DENIED',
+            format('Unauthorized carrier recovery attempt: user %s has role %s, but owner, admin, or receptionist is required.', v_caller_id, coalesce(v_actor_role, 'none')),
+            'critical',
+            jsonb_build_object('task_id', p_task_id, 'caller_id', v_caller_id, 'caller_role', coalesce(v_actor_role, 'none'), 'reason', 'role_not_authorized')
+        );
+        RETURN jsonb_build_object('success', false, 'status', 403, 'error', 'Forbidden: Receptionist or administrator role required for carrier recovery.');
+    END IF;
+
+    -- 3. Lock operational_events row using SELECT ... FOR UPDATE
+    SELECT * INTO v_event
+    FROM public.operational_events
+    WHERE id = p_task_id
+      AND organization_id = v_org_id
+      AND event_source = 'voice_carrier_recovery'
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'status', 404, 'error', 'Carrier recovery task not found for this workspace.');
+    END IF;
+
+    v_existing_meta := COALESCE(v_event.metadata, '{}'::jsonb);
+    v_current_version := COALESCE((v_existing_meta->>'version')::integer, 1);
+
+    -- 4. Optimistic Version Predicate: Require matching expected_version
+    IF p_expected_version <> v_current_version THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'status', 409,
+            'error', format('Optimistic concurrency failure: task was updated by another team member (current version: %s, expected: %s). Please refresh.', v_current_version, p_expected_version),
+            'current_version', v_current_version
+        );
+    END IF;
+
+    -- 5. Lifecycle Constraints
+    -- Resolved -> immutable
+    v_is_resolved := (v_event.resolved_at IS NOT NULL) OR ((v_existing_meta->>'action_centre_status') = 'resolved');
+    IF v_is_resolved THEN
+        INSERT INTO public.operational_events (
+            organization_id, actor_user_id, event_source, error_code, safe_message, severity, metadata
+        ) VALUES (
+            v_org_id, v_caller_id, 'action_centre_recovery', 'CARRIER_RECOVERY_DENIED',
+            format('Denied mutation on immutable resolved carrier task %s by user %s.', p_task_id, v_caller_id),
+            'warning',
+            jsonb_build_object('task_id', p_task_id, 'caller_id', v_caller_id, 'action', p_action, 'reason', 'task_already_resolved')
+        );
+        RETURN jsonb_build_object('success', false, 'status', 409, 'error', 'This carrier recovery task is already resolved and immutable.');
+    END IF;
+
+    -- Expired -> admin recovery only
+    v_is_expired := ((v_existing_meta->>'action_centre_status') = 'expired') OR
+                    ((v_existing_meta->>'expires_at') IS NOT NULL AND (v_existing_meta->>'expires_at')::timestamptz <= v_now);
+    IF v_is_expired AND NOT v_is_admin THEN
+        INSERT INTO public.operational_events (
+            organization_id, actor_user_id, event_source, error_code, safe_message, severity, metadata
+        ) VALUES (
+            v_org_id, v_caller_id, 'action_centre_recovery', 'CARRIER_RECOVERY_DENIED',
+            format('Denied recovery of expired carrier task %s: admin privileges required.', p_task_id),
+            'warning',
+            jsonb_build_object('task_id', p_task_id, 'caller_id', v_caller_id, 'action', p_action, 'reason', 'admin_required_for_expired_task')
+        );
+        RETURN jsonb_build_object('success', false, 'status', 403, 'error', 'Forbidden: Only an administrator can recover an expired carrier recovery task.');
+    END IF;
+
+    -- Check claimed status
+    IF (v_existing_meta->>'claimed_by') IS NOT NULL AND (v_existing_meta->>'claimed_by') <> '' THEN
+        v_claimed_by := (v_existing_meta->>'claimed_by')::uuid;
+    END IF;
+
+    v_status := COALESCE(v_existing_meta->>'action_centre_status', 'pending_manual_intervention');
+    v_is_claimed := (v_claimed_by IS NOT NULL) AND (v_status = 'claimed');
+
+    -- 6. Apply atomic state transition in ONE transaction
+    v_new_version := v_current_version + 1;
+
+    IF p_action = 'claim' THEN
+        IF v_is_claimed AND v_claimed_by <> v_caller_id AND NOT v_is_admin THEN
+            RETURN jsonb_build_object('success', false, 'status', 409, 'error', 'Task is already claimed by another team member.');
+        END IF;
+
+        v_updated_meta := v_existing_meta || jsonb_build_object(
+            'action_centre_status', 'claimed',
+            'claimed_by', v_caller_id::text,
+            'claimed_at', v_now_iso,
+            'version', v_new_version
+        );
+
+        UPDATE public.operational_events
+        SET metadata = v_updated_meta
+        WHERE id = p_task_id
+        RETURNING * INTO v_updated_event;
+
+        INSERT INTO public.action_centre_assignments (
+            organization_id, item_kind, subject_id, assigned_to, status, assigned_at, updated_at
+        ) VALUES (
+            v_org_id, 'carrier_recovery', p_task_id, v_caller_id, 'claimed', v_now, v_now
+        )
+        ON CONFLICT (organization_id, item_kind, subject_id)
+        DO UPDATE SET
+            assigned_to = EXCLUDED.assigned_to,
+            status = 'claimed',
+            updated_at = v_now;
+
+        INSERT INTO public.operational_events (
+            organization_id, actor_user_id, event_source, error_code, safe_message, severity, metadata
+        ) VALUES (
+            v_org_id, v_caller_id, 'action_centre_recovery', 'CARRIER_RECOVERY_CLAIMED',
+            format('Carrier recovery task %s claimed by staff member %s.', p_task_id, v_caller_id),
+            'warning',
+            jsonb_build_object('task_id', p_task_id, 'claimed_by', v_caller_id, 'action', 'claim', 'version', v_new_version)
+        );
+
+    ELSIF p_action IN ('resolve', 'retry') THEN
+        IF NOT v_is_claimed THEN
+            INSERT INTO public.operational_events (
+                organization_id, actor_user_id, event_source, error_code, safe_message, severity, metadata
+            ) VALUES (
+                v_org_id, v_caller_id, 'action_centre_recovery', 'CARRIER_RECOVERY_DENIED',
+                format('Denied %s on unclaimed carrier task %s: claim required first.', p_action, p_task_id),
+                'warning',
+                jsonb_build_object('task_id', p_task_id, 'caller_id', v_caller_id, 'action', p_action, 'reason', 'task_must_be_claimed_first')
+            );
+            RETURN jsonb_build_object('success', false, 'status', 400, 'error', 'Task must be claimed before it can be resolved or retried.');
+        END IF;
+
+        IF v_claimed_by <> v_caller_id AND NOT v_is_admin THEN
+            RETURN jsonb_build_object('success', false, 'status', 403, 'error', 'Only the assigned task owner or an administrator can resolve or retry this task.');
+        END IF;
+
+        IF p_action = 'resolve' THEN
+            v_updated_meta := v_existing_meta || jsonb_build_object(
+                'action_centre_status', 'resolved',
+                'resolved_by', v_caller_id::text,
+                'resolved_at', v_now_iso,
+                'resolution_notes', p_reason,
+                'version', v_new_version
+            );
+
+            UPDATE public.operational_events
+            SET resolved_at = v_now,
+                metadata = v_updated_meta
+            WHERE id = p_task_id
+            RETURNING * INTO v_updated_event;
+
+            UPDATE public.action_centre_assignments
+            SET status = 'resolved',
+                reviewed_at = v_now,
+                updated_at = v_now
+            WHERE organization_id = v_org_id
+              AND item_kind = 'carrier_recovery'
+              AND subject_id = p_task_id;
+
+            INSERT INTO public.operational_events (
+                organization_id, actor_user_id, event_source, error_code, safe_message, severity, metadata
+            ) VALUES (
+                v_org_id, v_caller_id, 'action_centre_recovery', 'CARRIER_RECOVERY_RESOLVED',
+                format('Carrier recovery task %s marked resolved by %s: %s', p_task_id, v_caller_id, p_reason),
+                'info',
+                jsonb_build_object('task_id', p_task_id, 'resolved_by', v_caller_id, 'action', 'resolve', 'reason', p_reason, 'version', v_new_version)
+            );
+
+        ELSIF p_action = 'retry' THEN
+            v_updated_meta := v_existing_meta || jsonb_build_object(
+                'action_centre_status', 'retried',
+                'retried_by', v_caller_id::text,
+                'retried_at', v_now_iso,
+                'retry_reason', p_reason,
+                'version', v_new_version
+            );
+
+            UPDATE public.operational_events
+            SET metadata = v_updated_meta
+            WHERE id = p_task_id
+            RETURNING * INTO v_updated_event;
+
+            UPDATE public.action_centre_assignments
+            SET status = 'retrying',
+                updated_at = v_now
+            WHERE organization_id = v_org_id
+              AND item_kind = 'carrier_recovery'
+              AND subject_id = p_task_id;
+
+            INSERT INTO public.operational_events (
+                organization_id, actor_user_id, event_source, error_code, safe_message, severity, metadata
+            ) VALUES (
+                v_org_id, v_caller_id, 'action_centre_recovery', 'CARRIER_RECOVERY_RETRY_QUEUED',
+                format('Automated carrier retry queued for task %s by %s: %s', p_task_id, v_caller_id, p_reason),
+                'info',
+                jsonb_build_object('task_id', p_task_id, 'retried_by', v_caller_id, 'action', 'retry', 'reason', p_reason, 'version', v_new_version)
+            );
+        END IF;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'status', 200,
+        'action', p_action,
+        'version', v_new_version,
+        'task_id', p_task_id,
+        'event', to_jsonb(v_updated_event)
+    );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.transition_carrier_recovery_task FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.transition_carrier_recovery_task FROM anon;
+GRANT EXECUTE ON FUNCTION public.transition_carrier_recovery_task TO authenticated, service_role;
+
+
 
 
