@@ -14,10 +14,8 @@ Both main platform and voice runtime repositories run strict, automated GitHub A
 
 | Repository | Workflow / Run | Commit | Status | Test Results | Lint / Types | Build |
 |---|---|---|---|---|---|---|
-| **Omnirelay-main** | [Run 39012785411](https://github.com/alamkkhurshid-netizen/Antigravity_OmniRelay-Edit/actions/runs/39012785411) | `f82dde0` | **PASSED** | 317/317 Passed (0 skipped) | 0 errors, 204 warnings | 126 Routes Compiled |
-| **Omnirelay-main (Updated Controls)** | Local verification (pre-push) | `f82dde0`+ | **PASSED** | 319/319 Passed (0 skipped) | 0 errors, 204 warnings | Verified |
-| **omnirelay-voice** | [Run 39012732038](https://github.com/alamkkhurshid-netizen/omnirelay-voice/actions/runs/39012732038) | `e93a23b` | **PASSED** | 11/11 Suites Passed (0 skipped) | Clean | Passed |
-| **omnirelay-voice (Hardened Controls)** | [Commit 6ffa01d](https://github.com/alamkkhurshid-netizen/omnirelay-voice/commit/6ffa01d) | `6ffa01d` | **PASSED** | 11/11 Suites Passed (0 skipped) | Clean | Verified |
+| **Omnirelay-main** | [Run 39015759136](https://github.com/alamkkhurshid-netizen/Antigravity_OmniRelay-Edit/actions/runs/39015759136) | `f0f9db4` | **PASSED** | 319/319 Passed (0 skipped) | 0 errors, 204 warnings | 126 Routes Compiled |
+| **omnirelay-voice** | [Run 39015418944](https://github.com/alamkkhurshid-netizen/omnirelay-voice/actions/runs/39015418944) | `6ffa01d` | **PASSED** | 11/11 Suites Passed (0 skipped) | Clean virtualenv | Passed |
 
 ---
 
