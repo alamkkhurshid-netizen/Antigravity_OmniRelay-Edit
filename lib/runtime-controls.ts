@@ -1,5 +1,6 @@
 /**
  * OmniRelay: Audited Runtime Controls & Emergency Kill-Switch Architecture
+ * Version: 2026-10-10-cto-remediation-voice-billing-reliability
  * 
  * Provides dynamic, cached runtime control state with:
  * - 5-second in-memory cache TTL for instant (<5s) operator toggle response without restarts

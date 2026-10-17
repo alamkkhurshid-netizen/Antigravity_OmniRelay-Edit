@@ -79,3 +79,12 @@
    - Automatically records kill switch activation audit records in `public.operational_events` with error code `WORKER_PAUSED` and severity `warning`.
    - Verified by automated unit and lifecycle test suite (`tests/worker-kill-switch.test.mjs`).
 
+15. **Dynamic Runtime Controls & Granular Worker Kill Switches:**
+   - Authored `lib/runtime-controls.ts` providing sub-5-second operator toggle response without restarting or redeploying services.
+   - Enforces 5-second in-memory cache TTL with database persistence in `public.system_runtime_controls` and safe fail-closed defaults.
+   - Implemented both global master switch (`WORKER_ENABLED`) and granular worker switches (`WHATSAPP_INBOUND_WORKER_ENABLED`, `ROSTER_DISPATCH_WORKER_ENABLED`, `TOKEN_HEALTH_WORKER_ENABLED`).
+   - Integrated worker pause guards into `app/api/whatsapp/webhook/route.ts`, `app/api/cron/roster-dispatch/route.ts`, and `app/api/cron/token-health/route.ts`.
+   - Defined `public.system_runtime_controls` table DDL, RLS, and grants in forward migration `20261010000007_reconcile_post_baseline_bindings.sql`.
+   - Created tracked real PostgreSQL integration test (`scripts/verification/verify-worker-kill-switch-db.mjs`) verifying table schema, operator control updates, queue preservation, and audit logging against real database container.
+
+
