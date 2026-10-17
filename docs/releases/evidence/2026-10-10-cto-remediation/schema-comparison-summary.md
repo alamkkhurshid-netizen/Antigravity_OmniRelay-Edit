@@ -1,11 +1,15 @@
-# Schema Parity & Comparison Summary
+# Schema Parity & Comparison Summary (Local Verification)
 
 **Release Identifier:** `2026-10-10-cto-remediation-voice-billing-reliability`  
 **Execution Date:** 2026-10-17  
 **Comparison Tool:** `scripts/verification/compare-schemas.mjs`  
 **Target Environments:**
-- Fresh Installation: Disposable PostgreSQL Container (Port 54323)
-- Upgraded Staging: Existing Populated Database with Forward Migration (Port 54324)
+- Local Fresh Installation: Disposable PostgreSQL Container (`127.0.0.1:54323`)
+- Local Synthetic Upgraded Staging: Existing Populated Database with Forward Migration (`127.0.0.1:54324`)
+
+> [!NOTE]
+> **Environment Note:**
+> The parity comparison below confirms that a fresh installation and a forward upgrade from historical migrations converge to 100% identical schema definitions on local PostgreSQL. Verification against the hosted Supabase staging instance will occur immediately following hosted environment provisioning.
 
 ---
 
@@ -13,7 +17,7 @@
 
 Every database object across schemas `public`, `billing`, `private`, and `supabase_migrations` was extracted and normalized.
 
-| Database Object Category | Fresh Database Count | Upgraded Database Count | Differences Detected | Parity Status |
+| Database Object Category | Fresh Database Count (Local 54323) | Upgraded Database Count (Local 54324) | Differences Detected | Parity Status |
 |---|---|---|---|---|
 | **Columns** | 1,867 | 1,867 | 0 | **100% PARITY (MATCH)** |
 | **Constraints** | 937 | 937 | 0 | **100% PARITY (MATCH)** |
@@ -60,4 +64,4 @@ Every database object across schemas `public`, `billing`, `private`, and `supaba
 ===========================================================
 ```
 
-Fresh and upgraded database schemas have converged completely.
+Local fresh and synthetic upgraded database schemas converged completely with 0 drift.

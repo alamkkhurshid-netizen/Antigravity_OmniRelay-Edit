@@ -1,8 +1,9 @@
-# Local Migration Summary & Schema Convergence
+# Local Migration Summary & Synthetic Upgrade Simulation
 
 **Release Identifier:** `2026-10-10-cto-remediation-voice-billing-reliability`  
 **Execution Date:** 2026-10-17  
 **Total Canonical Migrations:** 216 migrations (from `00000000000000` to `20261010000007`)  
+**Scope:** Local Disposable PostgreSQL & Local Synthetic Upgrade Database (Not Hosted Supabase Staging)
 
 ---
 
@@ -21,9 +22,9 @@ To avoid relying on modified historical files and to guarantee clean forward-onl
 
 ---
 
-## 2. Fresh Installation Verification
+## 2. Local Fresh Installation Verification
 
-Executed against isolated disposable PostgreSQL container:
+Executed against isolated local disposable PostgreSQL container (`127.0.0.1:54323`):
 - **Environment:** `TARGET_ENV=disposable`
 - **Command:** `npm run db:fresh`
 - **Baseline Execution:** Applied `00000000000000_initial_schema.sql` (194 baseline migrations incorporated).
@@ -33,14 +34,19 @@ Executed against isolated disposable PostgreSQL container:
 
 ---
 
-## 3. Existing-Schema Upgrade Verification
+## 3. Local Synthetic Upgrade Simulation
 
-Executed against populated staging database containing real clinic seed data:
-- **Environment:** `TARGET_ENV=staging`
+Executed against a locally running synthetic upgrade database (`127.0.0.1:54324`):
+
+> [!NOTE]
+> **Synthetic Upgrade Clarification:**
+> The upgrade database used for this verification contained one synthetic clinic (`Apex Health Clinic Staging`), one synthetic appointment, and one synthetic wallet. While this proves schema convergence and non-destructive column/policy migrations, it was a **synthetic upgrade simulation** and not an exported clone or snapshot of the deployed production database. Real hosted staging execution remains pending owner provisioning.
+
+- **Environment:** `TARGET_ENV=staging` (local simulation)
 - **Initial Migration State:** 215 migrations previously recorded in `supabase_migrations.schema_migrations`.
 - **Initial Data State:**
   - Organization: `Apex Health Clinic Staging` (ID: `11111111-1111-1111-1111-111111111111`)
-  - Appointment: Active doctor appointment record
+  - Appointment: Active synthetic doctor appointment record
   - Wallet: Balance of `10,000 paise` (₹100.00)
 - **First Upgrade Execution:**
   - Detected 1 pending migration: `20261010000007_reconcile_post_baseline_bindings.sql`.
@@ -53,7 +59,7 @@ Executed against populated staging database containing real clinic seed data:
 
 ---
 
-## 4. Customer Data Preservation Audit
+## 4. Synthetic Data Preservation Audit
 
 | Table / Entity | Pre-Upgrade State | Post-Upgrade State | Data Loss / Drift |
 |---|---|---|---|
@@ -62,4 +68,4 @@ Executed against populated staging database containing real clinic seed data:
 | `billing.tenant_wallets` | Balance: `10,000 paise` | Balance: `10,000 paise` | **0% (Preserved)** |
 | `supabase_migrations` | 215 records | 216 records | **Clean +1 Ledger Entry** |
 
-Zero data rows were dropped or altered during the upgrade.
+Zero data rows were dropped or altered during the synthetic upgrade simulation.

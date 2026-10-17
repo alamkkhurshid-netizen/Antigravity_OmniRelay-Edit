@@ -1,12 +1,33 @@
-# Remaining Risks & Pilot Boundaries Register
+# Remaining Risks, Untested Hosted Services & Rollback Procedures
 
 **Release Identifier:** `2026-10-10-cto-remediation-voice-billing-reliability`  
 **Evaluation Date:** 2026-10-17  
-**Scope:** Hosted Staging & 100-Call Healthcare-Only Pilot  
+**Scope:** Local Remediation Baseline & Transition to Hosted Staging  
 
 ---
 
-## 1. Active Risk Register
+## 1. Untested Hosted Services Inventory
+
+While local verification (PostgreSQL, Node test harnesses, advisory lock concurrency) is 100% complete, the following cloud-managed services remain untested pending provisioning of the separate hosted Supabase staging project:
+
+| Service / Capability | Untested Surface in Staging | Verification Required Post-Provisioning |
+|---|---|---|
+| **Hosted Supabase Auth** | Session refresh, token expiry, magic link generation | End-to-end auth login and session persistence test |
+| **Realtime Subscriptions** | WebSocket broadcast on appointment updates | Live client listener subscription test |
+| **Storage Buckets & Policies** | Clinic brochure / creative assets upload | Upload & signed URL download under RLS |
+| **Edge Functions** | Cloud execution of helper functions | Invocation via authenticated staging client |
+| **Cron Execution & Logs** | Background reconciliation / reminder cron jobs | Scheduled invocation & execution log inspection |
+| **Supabase Vault / Secrets** | Secret retrieval in database triggers | Verification of service-role secret access |
+| **Database Webhooks** | Outbound HTTP triggers on table mutations | Verification of webhook delivery to staging listener |
+| **Network & CORS** | Cross-origin browser calls from staging domain | Browser preflight OPTIONS and header checks |
+| **Hosted Backups** | Cloud snapshot creation | Manual backup snapshot trigger |
+| **Restore Operation** | Restoration into disposable database | Execution of `verify-recovery-readiness.sql` |
+| **Staging OAuth Callbacks** | Google Calendar redirect to staging domain | Staging redirect URI approval & nonce check |
+| **Provider Integrations** | Test accounts for Meta, Exotel, and Razorpay | Real HTTP webhook delivery & signature check |
+
+---
+
+## 2. Active Risk Register
 
 | Risk ID | Category | Risk Description | Initial Severity | Controlled / Residual Severity | Mitigation & Kill Switches |
 |---|---|---|---|---|---|
@@ -20,13 +41,49 @@
 
 ---
 
-## 2. Emergency Operational Kill Switches
+## 3. Demonstrable Rollback & Recovery Procedures
 
-1. **Voice Runtime Pilot Kill Switch:**
-   - Environment variable `VOICE_PILOT_KILL_SWITCH=true` immediately redirects incoming voice calls to clinic reception desk without LLM processing.
-2. **Worker Pause:**
-   - Background lease workers (`whatsapp_inbound_messages`, reminder workers) can be paused instantly via `WORKER_ENABLED=false`.
-3. **Provider Failover Switch:**
-   - `VOICE_PROVIDER_FALLBACK=true` reroutes PSTN traffic between carriers without code redeployment.
-4. **Tenant Service Disablement:**
-   - Organization `is_active` flag in `public.organizations` allows instant single-tenant isolation during anomaly investigation.
+In the event of an operational anomaly during hosted staging or pilot execution, the following rollback procedures are established:
+
+### Procedure A: Application Rollback
+- Revert staging deployment to preceding verified tag:
+  ```bash
+  git checkout tags/v2026.09.13-baseline
+  npm run build && npx vercel --prod --token $VERCEL_TOKEN
+  ```
+- Instant deployment target swap via hosting environment dashboard (Vercel instant rollback).
+
+### Procedure B: Voice Runtime Rollback
+- Revert voice runtime container to stable image tag:
+  ```bash
+  docker pull omnirelay/voice-runtime:v2026.09.13-stable
+  docker-compose up -d --force-recreate voice-runtime
+  ```
+
+### Procedure C: Worker Shutdown & Kill Switch
+- Disable background workers immediately by setting environment variable:
+  ```text
+  WORKER_ENABLED=false
+  VOICE_PILOT_KILL_SWITCH=true
+  ```
+- Incoming calls bypass the AI pipeline and immediately route to the human receptionist fallback number.
+
+### Procedure D: Provider Routing Fallback
+- In the event of primary carrier disruption, toggle fallback:
+  ```text
+  VOICE_PROVIDER_FALLBACK=true
+  ```
+- Reroutes SIP trunks from primary carrier to secondary provider without code changes.
+
+### Procedure E: Database Forward-Repair (Never Destructive Rollback)
+- Reversing a release must never drop columns or destroy customer records.
+- Database rollback must be executed via forward corrective migration (e.g. `20261010000008_revert_feature_x.sql`), altering views or restoring previous RLS policies cleanly.
+
+### Procedure F: Backup Restoration & Verification
+1. Export staging snapshot using `scripts/create-supabase-backup.sh`.
+2. Restore snapshot into an isolated disposable test database.
+3. Execute metadata verification:
+   ```bash
+   psql "$DISPOSABLE_DB_URL" -f scripts/verification/verify-recovery-readiness.sql
+   ```
+4. Confirm 0 RLS-disabled tables, valid migration ledger, and intact tenant balances.
