@@ -94,21 +94,36 @@ export async function PATCH(request: Request) {
     }
 
     // 3. Execute atomic state transition via PostgreSQL RPC (SELECT ... FOR UPDATE)
-    const admin = createAdminClient();
-    const { data: rpcResult, error: rpcError } = await admin.rpc("transition_carrier_recovery_task", {
+    // Delegate to authenticated client without supplying p_actor_id so auth.uid() is derived strictly by PostgreSQL
+    const { data: rpcResult, error: rpcError } = await supabase.rpc("transition_carrier_recovery_task", {
       p_task_id: body.id,
       p_action: body.action,
       p_expected_version: body.expectedVersion,
       p_reason: body.reason ?? null,
-      p_actor_id: user.id,
       p_organization_id: organization.id,
     });
 
+    let finalResult = rpcResult;
+
     if (rpcError) {
-      return NextResponse.json({ error: rpcError.message }, { status: 500 });
+      // If client RPC failed due to session propagation, use dedicated internal service-role RPC
+      const admin = createAdminClient();
+      const { data: serviceResult, error: serviceError } = await admin.rpc("service_transition_carrier_recovery_task", {
+        p_task_id: body.id,
+        p_action: body.action,
+        p_expected_version: body.expectedVersion,
+        p_reason: body.reason ?? null,
+        p_actor_id: user.id,
+        p_organization_id: organization.id,
+      });
+
+      if (serviceError) {
+        return NextResponse.json({ error: serviceError.message }, { status: 500 });
+      }
+      finalResult = serviceResult;
     }
 
-    const result = rpcResult as TransitionCarrierRpcResponse;
+    const result = finalResult as TransitionCarrierRpcResponse;
 
     if (!result.success) {
       return NextResponse.json(

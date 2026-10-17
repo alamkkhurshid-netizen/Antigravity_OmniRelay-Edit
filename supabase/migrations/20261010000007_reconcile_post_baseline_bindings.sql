@@ -486,7 +486,9 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-    v_caller_id uuid := coalesce(p_actor_id, auth.uid());
+    v_is_service_role boolean := (coalesce(auth.role(), '') = 'service_role' OR current_user = 'service_role');
+    v_auth_uid uuid := auth.uid();
+    v_caller_id uuid;
     v_org_id uuid := p_organization_id;
     v_actor_role text;
     v_is_authorized boolean := false;
@@ -505,8 +507,34 @@ DECLARE
     v_updated_meta jsonb;
     v_updated_event RECORD;
 BEGIN
-    -- 1. Validate inputs
-    IF v_caller_id IS NULL THEN
+    -- 1. Identity Resolution & Strict Impersonation Prevention
+    IF v_auth_uid IS NOT NULL THEN
+        -- Authenticated user request: Actor is derived EXCLUSIVELY from database session auth.uid()
+        -- Reject if caller supplies any actor ID that differs from auth.uid()
+        IF p_actor_id IS NOT NULL AND p_actor_id <> v_auth_uid THEN
+            INSERT INTO public.operational_events (
+                organization_id, actor_user_id, event_source, error_code, safe_message, severity, metadata
+            ) VALUES (
+                v_org_id, v_auth_uid, 'action_centre_recovery', 'CARRIER_RECOVERY_IMPERSONATION_DENIED',
+                format('Impersonation attempt blocked: user %s attempted to act as %s', v_auth_uid, p_actor_id),
+                'critical',
+                jsonb_build_object('task_id', p_task_id, 'auth_uid', v_auth_uid, 'supplied_actor_id', p_actor_id)
+            );
+            RETURN jsonb_build_object(
+                'success', false,
+                'status', 403,
+                'error', 'Forbidden: Caller cannot impersonate another actor ID. Actor identity is derived strictly from session.'
+            );
+        END IF;
+        v_caller_id := v_auth_uid;
+    ELSIF v_is_service_role THEN
+        -- Verified service_role request: Permit explicit supplied actor
+        IF p_actor_id IS NULL THEN
+            RETURN jsonb_build_object('success', false, 'status', 400, 'error', 'Actor ID is required for service-role transitions.');
+        END IF;
+        v_caller_id := p_actor_id;
+    ELSE
+        -- Unauthenticated / anon request: Reject unconditionally
         RETURN jsonb_build_object('success', false, 'status', 401, 'error', 'Authentication required.');
     END IF;
 
@@ -526,23 +554,51 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'status', 400, 'error', 'A reason (min 3 characters) is required to resolve or retry.');
     END IF;
 
-    -- Infer organization_id from caller's agents membership if not explicitly supplied
-    IF v_org_id IS NULL THEN
-        SELECT a.organization_id INTO v_org_id
-        FROM public.agents a
-        WHERE a.user_id = v_caller_id
-        LIMIT 1;
+    -- 2. Fetch and lock operational_events row using SELECT ... FOR UPDATE FIRST
+    SELECT * INTO v_event
+    FROM public.operational_events
+    WHERE id = p_task_id
+      AND event_source = 'voice_carrier_recovery'
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'status', 404, 'error', 'Carrier recovery task not found.');
     END IF;
 
-    IF v_org_id IS NULL THEN
-        RETURN jsonb_build_object('success', false, 'status', 409, 'error', 'Workspace organization not found.');
+    -- Cross-tenant isolation check: If caller specified an organization, it MUST match the task's organization
+    IF v_org_id IS NOT NULL AND v_org_id <> v_event.organization_id THEN
+        INSERT INTO public.operational_events (
+            organization_id, actor_user_id, event_source, error_code, safe_message, severity, metadata
+        ) VALUES (
+            v_event.organization_id, v_caller_id, 'action_centre_recovery', 'CARRIER_RECOVERY_TENANT_DENIED',
+            format('Cross-tenant violation: caller %s supplied organization %s for task belonging to %s', v_caller_id, v_org_id, v_event.organization_id),
+            'critical',
+            jsonb_build_object('task_id', p_task_id, 'caller_id', v_caller_id, 'supplied_org', v_org_id, 'actual_org', v_event.organization_id)
+        );
+        RETURN jsonb_build_object('success', false, 'status', 403, 'error', 'Forbidden: Cross-tenant operation denied.');
     END IF;
 
-    -- 2. Role Authorization: Staff role must be owner, admin, or receptionist
+    v_org_id := v_event.organization_id;
+
+    -- 3. Tenant Membership & Role Authorization
+    -- Verify caller (v_caller_id) belongs to v_org_id
     SELECT COALESCE((a.extra->>'role'), a.role::text, 'member') INTO v_actor_role
     FROM public.agents a
     WHERE a.user_id = v_caller_id AND a.organization_id = v_org_id
     LIMIT 1;
+
+    IF v_actor_role IS NULL THEN
+        -- Caller is not a member of the task's workspace organization
+        INSERT INTO public.operational_events (
+            organization_id, actor_user_id, event_source, error_code, safe_message, severity, metadata
+        ) VALUES (
+            v_org_id, v_caller_id, 'action_centre_recovery', 'CARRIER_RECOVERY_TENANT_DENIED',
+            format('Cross-tenant violation: user %s is not an agent in organization %s', v_caller_id, v_org_id),
+            'critical',
+            jsonb_build_object('task_id', p_task_id, 'caller_id', v_caller_id, 'organization_id', v_org_id)
+        );
+        RETURN jsonb_build_object('success', false, 'status', 403, 'error', 'Forbidden: User does not belong to the task workspace organization.');
+    END IF;
 
     IF v_actor_role IN ('owner', 'admin', 'receptionist') THEN
         v_is_authorized := true;
@@ -562,18 +618,6 @@ BEGIN
             jsonb_build_object('task_id', p_task_id, 'caller_id', v_caller_id, 'caller_role', coalesce(v_actor_role, 'none'), 'reason', 'role_not_authorized')
         );
         RETURN jsonb_build_object('success', false, 'status', 403, 'error', 'Forbidden: Receptionist or administrator role required for carrier recovery.');
-    END IF;
-
-    -- 3. Lock operational_events row using SELECT ... FOR UPDATE
-    SELECT * INTO v_event
-    FROM public.operational_events
-    WHERE id = p_task_id
-      AND organization_id = v_org_id
-      AND event_source = 'voice_carrier_recovery'
-    FOR UPDATE;
-
-    IF NOT FOUND THEN
-        RETURN jsonb_build_object('success', false, 'status', 404, 'error', 'Carrier recovery task not found for this workspace.');
     END IF;
 
     v_existing_meta := COALESCE(v_event.metadata, '{}'::jsonb);
@@ -754,6 +798,7 @@ BEGIN
         'action', p_action,
         'version', v_new_version,
         'task_id', p_task_id,
+        'actor_id', v_caller_id,
         'event', to_jsonb(v_updated_event)
     );
 END;
@@ -762,6 +807,39 @@ $$;
 REVOKE ALL ON FUNCTION public.transition_carrier_recovery_task FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.transition_carrier_recovery_task FROM anon;
 GRANT EXECUTE ON FUNCTION public.transition_carrier_recovery_task TO authenticated, service_role;
+
+-- 10. Dedicated Internal Service-Role Carrier Recovery RPC
+CREATE OR REPLACE FUNCTION public.service_transition_carrier_recovery_task(
+    p_task_id uuid,
+    p_action text,
+    p_expected_version integer,
+    p_actor_id uuid,
+    p_organization_id uuid,
+    p_reason text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    IF coalesce(auth.role(), '') <> 'service_role' AND current_user <> 'service_role' THEN
+        RAISE EXCEPTION 'Forbidden: service_transition_carrier_recovery_task requires service_role authorization.' USING ERRCODE = '42501';
+    END IF;
+
+    RETURN public.transition_carrier_recovery_task(
+        p_task_id := p_task_id,
+        p_action := p_action,
+        p_expected_version := p_expected_version,
+        p_reason := p_reason,
+        p_actor_id := p_actor_id,
+        p_organization_id := p_organization_id
+    );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.service_transition_carrier_recovery_task FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.service_transition_carrier_recovery_task TO service_role;
 
 
 
