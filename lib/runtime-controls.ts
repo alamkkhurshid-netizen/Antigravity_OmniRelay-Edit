@@ -142,6 +142,16 @@ export async function getRuntimeControl(
       );
       return cached.value;
     }
+
+    // Strict Fail-Closed Policy: Cache expired or unavailable + DB unavailable -> safe default.
+    // Prohibit evaluating permissive environment variables during a database outage.
+    const safeFailClosedDefault = SAFE_DEFAULTS[key] ?? false;
+    _memoryCache.set(cacheKey, {
+      value: safeFailClosedDefault,
+      expiresAt: null,
+      cachedAt: now,
+    });
+    return safeFailClosedDefault;
   }
 
   let finalValue: boolean;

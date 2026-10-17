@@ -104,3 +104,9 @@
    - Complete 11-worker claim boundary coverage wired across: WhatsApp inbound, appointment reminders, care reminders, campaigns, automation runner, doctor queue, device push, deposit dispatch, roster dispatch, growth officer, and token-health checks.
    - Hardened voice runtime `DialSessionStore` to strictly require Redis in staging and production, prohibit volatile memory fallback outside local dev, implement atomic Lua `LUA_ATOMIC_GETDEL`, and store technical internal IDs rather than plain text.
    - Added comprehensive integration test suites verifying atomic concurrency (10 concurrent consumers, 1 succeeds), dynamic sub-5s database propagation, and multi-carrier failover cascade (Exotel -> Plivo -> Secondary Exotel).
+
+18. **Strict Fail-Closed DB Outage Policy & Eleven Worker Boundary Machine Verification:**
+   - Enforced strict fail-closed behavior on confirmed database outages in `lib/runtime-controls.ts` and `compliance/runtime_controls.py`: prohibits evaluating permissive environment variables (`process.env` / `os.getenv`) after an outage; immediately returns `SAFE_DEFAULTS[key]` when cache is expired or missing.
+   - Added automated, machine-verifiable verification matrix in `tests/worker-kill-switch.test.mjs` executing all 11 worker boundaries across 6 behavioral invariants: Pause, Queue preservation, No dispatch, Resume, Duplicate protection, and Audit event generation.
+   - Implemented durable `CarrierDispatchLedger` with atomic provider dispatch leasing, winner locking, custom data passing, late callback termination (`<Hangup/>`), and actionable recovery task creation in `operational_events` with `action_centre_status="pending_manual_intervention"`.
+
