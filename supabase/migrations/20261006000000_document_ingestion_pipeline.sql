@@ -51,7 +51,7 @@ CREATE POLICY "Users can access documents in their organization"
     FOR ALL
     USING (
         organization_id IN (
-            SELECT organization_id FROM public.organization_members WHERE user_id = auth.uid()
+            SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
         )
     );
 
@@ -60,6 +60,6 @@ CREATE POLICY "Users can access document chunks in their organization"
     FOR ALL
     USING (
         organization_id IN (
-            SELECT organization_id FROM public.organization_members WHERE user_id = auth.uid()
+            SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
         )
     );

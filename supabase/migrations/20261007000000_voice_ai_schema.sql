@@ -80,13 +80,12 @@ CREATE OR REPLACE VIEW voice_org_config_readonly AS
 SELECT 
     id,
     name,
-    phone,
-    address,
-    operating_hours,
-    emergency_phone,
-    is_active
-FROM organizations
-WHERE is_active = true;
+    COALESCE(extra->>'phone', '') AS phone,
+    COALESCE(extra->>'address', '') AS address,
+    COALESCE(extra->>'operating_hours', '{}') AS operating_hours,
+    COALESCE(extra->>'emergency_phone', '') AS emergency_phone,
+    TRUE AS is_active
+FROM organizations;
 
 -- 4. Enable Row Level Security (RLS) on voice_call_logs
 ALTER TABLE voice_call_logs ENABLE ROW LEVEL SECURITY;
@@ -105,6 +104,6 @@ CREATE POLICY "Tenants view own voice_call_logs"
     FOR SELECT
     USING (
         org_id IN (
-            SELECT organization_id FROM user_organizations WHERE user_id = auth.uid()
+            SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
         )
     );

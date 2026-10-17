@@ -49,15 +49,25 @@ export async function runPostgresConcurrencyTest(connectionString = process.env.
     console.log(`[Postgres Concurrency Test] Initializing test org ${testOrgId}...`);
 
     const initClient = await pool.connect();
+    const testUserId = "00000000-0000-0000-0000-000000000001";
     try {
+      await initClient.query(`
+        INSERT INTO auth.users (id, email, raw_user_meta_data, role, created_at, updated_at)
+        VALUES ($1, 'concurrency-tester@omnirelay.test', '{"full_name": "Concurrency Tester"}'::jsonb, 'authenticated', NOW(), NOW())
+        ON CONFLICT (id) DO NOTHING;
+      `, [testUserId]);
+
+      await initClient.query("BEGIN;");
+      await initClient.query(`SET LOCAL request.jwt.claim.sub = '${testUserId}';`);
       await initClient.query(
-        `INSERT INTO public.organizations (id, name, slug) VALUES ($1, 'Concurrency Test Clinic', $2) ON CONFLICT DO NOTHING;`,
-        [testOrgId, `conc-test-${Date.now()}`]
+        `INSERT INTO public.organizations (id, name) VALUES ($1, 'Concurrency Test Clinic') ON CONFLICT DO NOTHING;`,
+        [testOrgId]
       );
       await initClient.query(
         `INSERT INTO billing.tenant_wallets (organization_id, balance_paise) VALUES ($1, $2) ON CONFLICT (organization_id) DO UPDATE SET balance_paise = $2;`,
         [testOrgId, initialBalancePaise]
       );
+      await initClient.query("COMMIT;");
       seeded = true;
     } finally {
       initClient.release();
@@ -141,6 +151,12 @@ export async function runPostgresConcurrencyTest(connectionString = process.env.
         try {
           await cleanupClient.query(`DELETE FROM billing.message_ledger WHERE meta_message_id = $1;`, [testMetaMsgId]);
           await cleanupClient.query(`DELETE FROM billing.tenant_wallets WHERE organization_id = $1;`, [testOrgId]);
+          await cleanupClient.query(`DELETE FROM public.appointments WHERE organization_id = $1;`, [testOrgId]);
+          await cleanupClient.query(`DELETE FROM public.booking_resources WHERE organization_id = $1;`, [testOrgId]);
+          await cleanupClient.query(`DELETE FROM public.organization_services WHERE organization_id = $1;`, [testOrgId]);
+          await cleanupClient.query(`DELETE FROM public.business_locations WHERE organization_id = $1;`, [testOrgId]);
+          await cleanupClient.query(`DELETE FROM public.onboarding_profiles WHERE organization_id = $1;`, [testOrgId]);
+          await cleanupClient.query(`DELETE FROM public.organizations_addresses WHERE organization_id = $1;`, [testOrgId]);
           await cleanupClient.query(`DELETE FROM public.organizations WHERE id = $1;`, [testOrgId]);
           console.log(`[Postgres Concurrency Test] Cleaned up test organization and ledger records.`);
         } finally {

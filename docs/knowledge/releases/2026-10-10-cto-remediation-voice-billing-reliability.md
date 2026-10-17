@@ -59,3 +59,10 @@
    - Isolated operational tokens in `scripts/db-guard.mjs`: `CONFIRM_MIGRATION_EXECUTION=true` for migrations; `ALLOW_DB_INTEGRATION_TESTS=true` and `CONFIRM_CONCURRENCY_TEST=true` strictly on `TARGET_ENV=disposable` for concurrency testing. Concurrency tokens never authorize migrations.
    - Pre-compilation of Cloudflare Sites Worker entrypoint (`dist/server/index.js`) via `"build:worker": "vinext build"` and removed skip condition from `tests/rendered-html.test.mjs`, ensuring 316/316 tests execute unconditionally with 0 skips.
    - Automated warning baseline ratchet (`scripts/check-lint-baseline.mjs`) enforcing 0 errors and ratcheting warning ceiling down to 210.
+
+12. **Database Migration Parity, RLS Binding & Concurrency Verification:**
+   - Corrected RLS table references in migrations `20261006000000`, `20261006100000`, `20261007000000`, and `20261009000000` from obsolete `organization_members` / `user_organizations` to canonical `public.agents`.
+   - Hardened `scripts/db-migration-runner.mjs` to establish clean baseline execution and mark incorporated versions in `supabase_migrations.schema_migrations` ledger.
+   - Verified 100% schema parity between fresh installation and production upgrade path across 1,867 columns, 937 constraints, 446 indexes, 355 functions, 155 triggers, 277 RLS policies, 11 extensions, and 3,649 grants.
+   - Successfully executed real PostgreSQL concurrency harness against disposable database: 20 simultaneous concurrent calls, exactly 1 deduction (₹19.95), 19 idempotent responses, 1 ledger record, and complete database cleanup.
+

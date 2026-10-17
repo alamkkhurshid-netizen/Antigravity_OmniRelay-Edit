@@ -78,6 +78,20 @@ export async function runMigrations({ mode = "upgrade", connectionString = proce
     await client.connect();
     console.log("[DB Migration Runner] Connected to PostgreSQL successfully.");
 
+    // Ensure auth.jwt() exists for RLS policies if not provided
+    try {
+      await client.query(`
+        CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb AS $$
+          SELECT coalesce(
+            nullif(current_setting('request.jwt.claim', true), '')::jsonb,
+            '{}'::jsonb
+          );
+        $$ LANGUAGE sql STABLE;
+      `);
+    } catch (err) {
+      console.warn("[DB Migration Runner] Auth jwt setup note:", err.message);
+    }
+
     // Ensure migration schema and ledger table exist (Supabase CLI compatible)
     await client.query(`
       CREATE SCHEMA IF NOT EXISTS supabase_migrations;
@@ -117,15 +131,49 @@ export async function runMigrations({ mode = "upgrade", connectionString = proce
     }
 
     let pendingFiles = [];
+    let appliedCount = 0;
+
     if (mode === "fresh") {
-      pendingFiles = files;
+      const baselineFile = files.find((f) => f.startsWith("00000000000000"));
+      if (baselineFile) {
+        console.log(`[DB Migration Runner] Executing baseline snapshot: ${baselineFile}...`);
+        const baselineSql = readFileSync(join(MIGRATIONS_DIR, baselineFile), "utf8");
+        await client.query("BEGIN;");
+        try {
+          await client.query("SET search_path TO public, extensions;");
+          await client.query(baselineSql);
+
+          // Mark baseline migration and all pre-baseline historical migrations (prior to 20261006) as applied
+          const baselineVersions = files
+            .filter((f) => f < "20261006")
+            .map((f) => f.split("_")[0]);
+
+          for (const ver of baselineVersions) {
+            await client.query(
+              `INSERT INTO supabase_migrations.schema_migrations (version, inserted_at) VALUES ($1, NOW()) ON CONFLICT (version) DO NOTHING;`,
+              [ver]
+            );
+          }
+          await client.query("COMMIT;");
+          appliedCount += baselineVersions.length;
+          console.log(`[DB Migration Runner] Baseline snapshot applied with ${baselineVersions.length} incorporated migration versions recorded in ledger.`);
+        } catch (err) {
+          await client.query("ROLLBACK;");
+          console.error(`[DB Migration Runner] FAILED executing baseline snapshot ${baselineFile}:`, err.message);
+          throw err;
+        }
+
+        // Post-baseline pending files to apply
+        pendingFiles = files.filter((f) => f >= "20261006");
+      } else {
+        pendingFiles = files;
+      }
     } else {
       pendingFiles = files.filter((f) => !appliedVersions.has(f.split("_")[0]));
     }
 
     console.log(`[DB Migration Runner] Pending migrations to apply: ${pendingFiles.length}`);
 
-    let appliedCount = 0;
     for (const file of pendingFiles) {
       const version = file.split("_")[0];
       const filePath = join(MIGRATIONS_DIR, file);
@@ -134,6 +182,7 @@ export async function runMigrations({ mode = "upgrade", connectionString = proce
       console.log(`[DB Migration Runner] Applying: ${file}...`);
       await client.query("BEGIN;");
       try {
+        await client.query("SET search_path TO public, extensions;");
         await client.query(sql);
         await client.query(
           `INSERT INTO supabase_migrations.schema_migrations (version, inserted_at) VALUES ($1, NOW()) ON CONFLICT (version) DO NOTHING;`,
