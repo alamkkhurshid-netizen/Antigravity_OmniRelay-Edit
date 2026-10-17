@@ -97,4 +97,10 @@
      - `supabase/functions/care-reminder-dispatch/index.ts` (`care_reminder` worker guard before claiming due runs)
    - Updated comprehensive test coverage in `tests/worker-kill-switch.test.mjs` verifying fail-closed defaults, DB outage safety, and granular worker claim blocks.
 
-
+17. **Multi-Tenant Runtime Controls DDL, RLS Isolation & Distributed Session Durability:**
+   - Upgraded `public.system_runtime_controls` to multi-tenant schema with UUID primary key `id`, `CONSTRAINT system_runtime_controls_key_org_uidx UNIQUE NULLS NOT DISTINCT (control_key, organization_id)`, `scope`, `version`, `reason`, and `updated_by` audit columns.
+   - Restricted RLS: Authenticated users can only read runtime controls matching their own `organization_id`; platform operators and service role retain manage access across all controls.
+   - Implemented hierarchical control resolution in both TypeScript (`lib/runtime-controls.ts`) and Python voice runtime (`tools/supabase_client.py` and `compliance/runtime_controls.py`): tenant-scoped row takes precedence over global row (`organization_id IS NULL`), with strict fail-closed fallback on database outage.
+   - Complete 11-worker claim boundary coverage wired across: WhatsApp inbound, appointment reminders, care reminders, campaigns, automation runner, doctor queue, device push, deposit dispatch, roster dispatch, growth officer, and token-health checks.
+   - Hardened voice runtime `DialSessionStore` to strictly require Redis in staging and production, prohibit volatile memory fallback outside local dev, implement atomic Lua `LUA_ATOMIC_GETDEL`, and store technical internal IDs rather than plain text.
+   - Added comprehensive integration test suites verifying atomic concurrency (10 concurrent consumers, 1 succeeds), dynamic sub-5s database propagation, and multi-carrier failover cascade (Exotel -> Plivo -> Secondary Exotel).

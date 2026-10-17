@@ -9,6 +9,26 @@ Deno.serve(async(request)=>{
   if(!token||token!==serviceKey)return Response.json({error:"Unauthorized"},{status:401});
   const body=await request.json().catch(()=>({})) as {organization_id?:string};
   if(!body.organization_id)return Response.json({error:"Organization is required"},{status:400});
+
+  // Runtime control check before claiming deposit acceptance dispatch
+  const { data: controls } = await db
+    .from("system_runtime_controls")
+    .select("control_key, is_enabled")
+    .in("control_key", ["WORKER_ENABLED", "DEPOSIT_ACCEPTANCE_WORKER_ENABLED"]);
+
+  const masterPaused = controls?.some((c: { control_key: string; is_enabled: boolean }) => c.control_key === "WORKER_ENABLED" && !c.is_enabled);
+  const depositPaused = controls?.some((c: { control_key: string; is_enabled: boolean }) => c.control_key === "DEPOSIT_ACCEPTANCE_WORKER_ENABLED" && !c.is_enabled);
+
+  if (masterPaused || depositPaused) {
+    return Response.json(
+      {
+        status: "paused",
+        reason: masterPaused ? "Master worker switch active (WORKER_ENABLED=false)" : "Deposit acceptance worker switch active (DEPOSIT_ACCEPTANCE_WORKER_ENABLED=false)"
+      },
+      { status: 200 }
+    );
+  }
+
   const {data:run,error:claimError}=await db.rpc("claim_deposit_acceptance_dispatch",{p_organization_id:body.organization_id});
   if(claimError)return Response.json({error:claimError.message},{status:400});
   if(!run?.id)return Response.json({processed:0,queued:0});

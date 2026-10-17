@@ -31,41 +31,44 @@ export async function runWorkerKillSwitchDbVerification(
   console.log("=" .repeat(65));
 
   try {
-    // 2. Ensure migration 000007 DDL is applied
+    // 2. Ensure migration 000007 DDL is applied (multi-tenant with unique nulls not distinct)
     await client.query(`
       CREATE TABLE IF NOT EXISTS public.system_runtime_controls (
-          control_key text PRIMARY KEY,
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          control_key text NOT NULL,
           is_enabled boolean NOT NULL DEFAULT true,
           scope text NOT NULL DEFAULT 'global' CHECK (scope IN ('global', 'tenant')),
           organization_id uuid REFERENCES public.organizations(id) ON DELETE CASCADE,
           updated_by text,
           reason text,
+          version integer NOT NULL DEFAULT 1,
           expires_at timestamptz,
           metadata jsonb DEFAULT '{}'::jsonb,
           created_at timestamptz NOT NULL DEFAULT now(),
-          updated_at timestamptz NOT NULL DEFAULT now()
+          updated_at timestamptz NOT NULL DEFAULT now(),
+          CONSTRAINT system_runtime_controls_key_org_uidx UNIQUE NULLS NOT DISTINCT (control_key, organization_id)
       );
       ALTER TABLE public.system_runtime_controls ENABLE ROW LEVEL SECURITY;
     `);
     console.log("  [PASS] public.system_runtime_controls table schema and RLS verified.");
 
-    // 3. Test operator control update with audit metadata
+    // 3. Test global operator control update with audit metadata
     const testControlKey = "WHATSAPP_INBOUND_WORKER_ENABLED";
     await client.query(`
-      INSERT INTO public.system_runtime_controls (control_key, is_enabled, scope, updated_by, reason)
-      VALUES ($1, false, 'global', 'cto_drill_runner', 'Emergency rollback simulation drill')
-      ON CONFLICT (control_key) DO UPDATE 
+      INSERT INTO public.system_runtime_controls (control_key, organization_id, is_enabled, scope, updated_by, reason)
+      VALUES ($1, NULL, false, 'global', 'cto_drill_runner', 'Emergency rollback simulation drill')
+      ON CONFLICT (control_key, organization_id) DO UPDATE 
         SET is_enabled = false, updated_by = 'cto_drill_runner', reason = 'Emergency rollback simulation drill', updated_at = now();
     `, [testControlKey]);
 
     const controlRes = await client.query(
-      `SELECT control_key, is_enabled, updated_by, reason FROM public.system_runtime_controls WHERE control_key = $1;`,
+      `SELECT control_key, is_enabled, updated_by, reason FROM public.system_runtime_controls WHERE control_key = $1 AND organization_id IS NULL;`,
       [testControlKey]
     );
     if (!controlRes.rows.length || controlRes.rows[0].is_enabled !== false) {
       throw new Error("Failed to persist and read back runtime control state.");
     }
-    console.log(`  [PASS] Runtime control ${testControlKey}=false successfully stored and verified in PostgreSQL.`);
+    console.log(`  [PASS] Global runtime control ${testControlKey}=false successfully stored and verified in PostgreSQL.`);
 
     // 4. Test Inbound WhatsApp message preservation during pause
     let orgRes = await client.query(`SELECT id FROM public.organizations LIMIT 1;`);

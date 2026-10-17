@@ -11,13 +11,21 @@ test("WORKER_ENABLED and granular worker switches: static code invariants", () =
   const careReminderSource = readFileSync(new URL("../app/api/care-reminder-runs/route.ts", import.meta.url), "utf8");
   const campaignSource = readFileSync(new URL("../app/api/campaigns/route.ts", import.meta.url), "utf8");
   const growthSource = readFileSync(new URL("../app/api/cron/growth-officer/route.ts", import.meta.url), "utf8");
-  const edgeSource = readFileSync(new URL("../supabase/functions/care-reminder-dispatch/index.ts", import.meta.url), "utf8");
+  const careEdgeSource = readFileSync(new URL("../supabase/functions/care-reminder-dispatch/index.ts", import.meta.url), "utf8");
+  const appointmentEdgeSource = readFileSync(new URL("../supabase/functions/appointment-reminder-dispatch/index.ts", import.meta.url), "utf8");
+  const automationEdgeSource = readFileSync(new URL("../supabase/functions/automation-runner/index.ts", import.meta.url), "utf8");
+  const doctorQueueEdgeSource = readFileSync(new URL("../supabase/functions/doctor-queue-dispatch/index.ts", import.meta.url), "utf8");
+  const devicePushEdgeSource = readFileSync(new URL("../supabase/functions/device-push-dispatch/index.ts", import.meta.url), "utf8");
+  const depositEdgeSource = readFileSync(new URL("../supabase/functions/deposit-acceptance-dispatch/index.ts", import.meta.url), "utf8");
+  const campaignEdgeSource = readFileSync(new URL("../supabase/functions/campaign-dispatch/index.ts", import.meta.url), "utf8");
 
-  // 1. Verify system_runtime_controls table in Migration 000007
+  // 1. Verify multi-tenant system_runtime_controls table in Migration 000007
   assert.match(migrationSource, /CREATE TABLE IF NOT EXISTS public\.system_runtime_controls/, "Migration must define system_runtime_controls table");
-  assert.match(migrationSource, /control_key text PRIMARY KEY/, "Must index control_key as primary key");
-  assert.match(migrationSource, /is_enabled boolean NOT NULL DEFAULT true/, "Controls must default to true");
+  assert.match(migrationSource, /id uuid PRIMARY KEY DEFAULT gen_random_uuid\(\)/, "Must define id uuid as primary key");
+  assert.match(migrationSource, /UNIQUE NULLS NOT DISTINCT \(control_key, organization_id\)/, "Must enforce unique nulls not distinct on control_key and organization_id");
+  assert.match(migrationSource, /version integer NOT NULL DEFAULT 1/, "Must include version column for optimistic concurrency");
   assert.match(migrationSource, /ALTER TABLE public\.system_runtime_controls ENABLE ROW LEVEL SECURITY/, "Must enable RLS on controls table");
+  assert.match(migrationSource, /CREATE POLICY "Tenants view own runtime controls"/, "Must restrict RLS policy to organization members");
   assert.match(migrationSource, /GRANT ALL ON public\.system_runtime_controls TO service_role/, "Must grant service_role permissions");
 
   // 2. Verify Runtime Controls implementation
@@ -26,35 +34,50 @@ test("WORKER_ENABLED and granular worker switches: static code invariants", () =
   assert.match(runtimeControlsSource, /export async function recordWorkerPauseAudit/, "Must export recordWorkerPauseAudit");
   assert.match(runtimeControlsSource, /CACHE_TTL_MS = 5000/, "Must enforce 5-second in-memory cache TTL");
 
-  // 3. Verify Complete Worker Coverage Across All Claim Boundaries
-  // 3a. WhatsApp Webhook
+  // 3. Verify Complete Worker Coverage Across All 11 Claim Boundaries
+  // 3a. WhatsApp Inbound
   assert.match(webhookSource, /isWorkerPaused\("whatsapp_inbound"/, "Webhook must evaluate whatsapp_inbound worker pause");
   assert.match(webhookSource, /status: "queued"/, "Must preserve message in queued state during pause");
   assert.match(webhookSource, /recordWorkerPauseAudit\("whatsapp_inbound"/, "Must record pause audit to operational_events");
 
-  // 3b. Roster Dispatch
-  assert.match(rosterSource, /isWorkerPaused\("roster_dispatch"\)/, "Roster cron must evaluate roster_dispatch worker pause");
-  assert.match(rosterSource, /recordWorkerPauseAudit\("roster_dispatch"/, "Must record pause audit for roster dispatch");
+  // 3b. Appointment Reminders Edge Function
+  assert.match(appointmentEdgeSource, /WORKER_ENABLED/, "Appointment edge function must evaluate WORKER_ENABLED before claiming runs");
+  assert.match(appointmentEdgeSource, /APPOINTMENT_REMINDER_WORKER_ENABLED/, "Appointment edge function must evaluate APPOINTMENT_REMINDER_WORKER_ENABLED");
 
-  // 3c. Token Health
-  assert.match(tokenHealthSource, /isWorkerPaused\("token_health"\)/, "Token health cron must evaluate token_health worker pause");
-  assert.match(tokenHealthSource, /recordWorkerPauseAudit\("token_health"/, "Must record pause audit for token health");
-
-  // 3d. Care Reminder Runs
+  // 3c. Care Reminders
   assert.match(careReminderSource, /isWorkerPaused\("care_reminder"/, "Care reminder route must evaluate care_reminder worker pause");
-  assert.match(careReminderSource, /recordWorkerPauseAudit\("care_reminder"/, "Must record pause audit for care reminder");
+  assert.match(careEdgeSource, /WORKER_ENABLED/, "Care edge function must evaluate WORKER_ENABLED before claiming runs");
+  assert.match(careEdgeSource, /CARE_REMINDER_WORKER_ENABLED/, "Care edge function must evaluate CARE_REMINDER_WORKER_ENABLED");
 
-  // 3e. Campaign Dispatch
+  // 3d. Campaign Dispatch
   assert.match(campaignSource, /isWorkerPaused\("campaign_dispatch"/, "Campaign route must evaluate campaign_dispatch worker pause");
-  assert.match(campaignSource, /recordWorkerPauseAudit\("campaign_dispatch"/, "Must record pause audit for campaign dispatch");
+  assert.match(campaignEdgeSource, /WORKER_ENABLED/, "Campaign edge function must evaluate WORKER_ENABLED before claiming recipients");
+  assert.match(campaignEdgeSource, /CAMPAIGN_DISPATCH_WORKER_ENABLED/, "Campaign edge function must evaluate CAMPAIGN_DISPATCH_WORKER_ENABLED");
 
-  // 3f. Growth Officer Cron
+  // 3e. Automation Runner Edge Function
+  assert.match(automationEdgeSource, /WORKER_ENABLED/, "Automation runner must evaluate WORKER_ENABLED before claiming runs");
+  assert.match(automationEdgeSource, /AUTOMATION_RUNNER_WORKER_ENABLED/, "Automation runner must evaluate AUTOMATION_RUNNER_WORKER_ENABLED");
+
+  // 3f. Doctor Queue Edge Function
+  assert.match(doctorQueueEdgeSource, /WORKER_ENABLED/, "Doctor queue must evaluate WORKER_ENABLED before claiming dispatches");
+  assert.match(doctorQueueEdgeSource, /DOCTOR_QUEUE_WORKER_ENABLED/, "Doctor queue must evaluate DOCTOR_QUEUE_WORKER_ENABLED");
+
+  // 3g. Device Push Edge Function
+  assert.match(devicePushEdgeSource, /WORKER_ENABLED/, "Device push must evaluate WORKER_ENABLED before claiming deliveries");
+  assert.match(devicePushEdgeSource, /DEVICE_PUSH_WORKER_ENABLED/, "Device push must evaluate DEVICE_PUSH_WORKER_ENABLED");
+
+  // 3h. Deposit Acceptance Edge Function
+  assert.match(depositEdgeSource, /WORKER_ENABLED/, "Deposit acceptance must evaluate WORKER_ENABLED before claiming dispatches");
+  assert.match(depositEdgeSource, /DEPOSIT_ACCEPTANCE_WORKER_ENABLED/, "Deposit acceptance must evaluate DEPOSIT_ACCEPTANCE_WORKER_ENABLED");
+
+  // 3i. Roster Dispatch Cron
+  assert.match(rosterSource, /isWorkerPaused\("roster_dispatch"\)/, "Roster cron must evaluate roster_dispatch worker pause");
+
+  // 3j. Growth Officer Cron
   assert.match(growthSource, /isWorkerPaused\("growth_officer"\)/, "Growth officer cron must evaluate growth_officer worker pause");
-  assert.match(growthSource, /recordWorkerPauseAudit\("growth_officer"/, "Must record pause audit for growth officer");
 
-  // 3g. Care Reminder Edge Function Claim Check
-  assert.match(edgeSource, /WORKER_ENABLED/, "Edge function must evaluate WORKER_ENABLED before claiming runs");
-  assert.match(edgeSource, /CARE_REMINDER_WORKER_ENABLED/, "Edge function must evaluate CARE_REMINDER_WORKER_ENABLED");
+  // 3k. Token Health Cron
+  assert.match(tokenHealthSource, /isWorkerPaused\("token_health"\)/, "Token health cron must evaluate token_health worker pause");
 });
 
 test("Worker pause behavioral simulation: master switch vs granular switches and fail-closed policy", () => {

@@ -8,6 +8,26 @@ async function release(item:Dispatch,reason:string,retryable=true){const exhaust
 Deno.serve(async(request)=>{
   const token=request.headers.get("authorization")?.replace("Bearer ","");
   if(!token||token!==serviceKey)return Response.json({error:"Unauthorized"},{status:401});
+
+  // Runtime control check before claiming doctor queue dispatches
+  const { data: controls } = await db
+    .from("system_runtime_controls")
+    .select("control_key, is_enabled")
+    .in("control_key", ["WORKER_ENABLED", "DOCTOR_QUEUE_WORKER_ENABLED"]);
+
+  const masterPaused = controls?.some((c: { control_key: string; is_enabled: boolean }) => c.control_key === "WORKER_ENABLED" && !c.is_enabled);
+  const queuePaused = controls?.some((c: { control_key: string; is_enabled: boolean }) => c.control_key === "DOCTOR_QUEUE_WORKER_ENABLED" && !c.is_enabled);
+
+  if (masterPaused || queuePaused) {
+    return Response.json(
+      {
+        status: "paused",
+        reason: masterPaused ? "Master worker switch active (WORKER_ENABLED=false)" : "Doctor queue worker switch active (DOCTOR_QUEUE_WORKER_ENABLED=false)"
+      },
+      { status: 200 }
+    );
+  }
+
   await db.rpc("materialize_due_doctor_queue_dispatches",{p_now:new Date().toISOString()});
   const {data:claimed,error}=await db.rpc("claim_due_doctor_queue_dispatches",{p_limit:20});
   if(error)return Response.json({error:error.message},{status:500});

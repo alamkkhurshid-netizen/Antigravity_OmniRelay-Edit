@@ -13,11 +13,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export type WorkerType =
   | "whatsapp_inbound"
-  | "roster_dispatch"
-  | "token_health"
+  | "appointment_reminder"
   | "care_reminder"
   | "campaign_dispatch"
-  | "growth_officer";
+  | "automation_runner"
+  | "doctor_queue"
+  | "device_push"
+  | "deposit_acceptance"
+  | "roster_dispatch"
+  | "growth_officer"
+  | "token_health";
 
 export interface RuntimeControlState {
   value: boolean;
@@ -36,17 +41,23 @@ const _memoryCache = new Map<string, RuntimeControlState>();
 const SAFE_DEFAULTS: Record<string, boolean> = {
   WORKER_ENABLED: false,
   WHATSAPP_INBOUND_WORKER_ENABLED: true,
-  ROSTER_DISPATCH_WORKER_ENABLED: true,
-  TOKEN_HEALTH_WORKER_ENABLED: true,
+  APPOINTMENT_REMINDER_WORKER_ENABLED: true,
   CARE_REMINDER_WORKER_ENABLED: true,
   CAMPAIGN_DISPATCH_WORKER_ENABLED: true,
+  AUTOMATION_RUNNER_WORKER_ENABLED: true,
+  DOCTOR_QUEUE_WORKER_ENABLED: true,
+  DEVICE_PUSH_WORKER_ENABLED: true,
+  DEPOSIT_ACCEPTANCE_WORKER_ENABLED: true,
+  ROSTER_DISPATCH_WORKER_ENABLED: true,
   GROWTH_OFFICER_WORKER_ENABLED: true,
+  TOKEN_HEALTH_WORKER_ENABLED: true,
   VOICE_PILOT_KILL_SWITCH: true,
   VOICE_PROVIDER_FALLBACK: false,
 };
 
 /**
  * Retrieves a runtime control value, prioritizing in-memory cache, then database, then environment variables.
+ * Enforces hierarchical resolution: tenant-specific control takes precedence over global control.
  * Enforces fail-closed safety policy on database outage.
  */
 export async function getRuntimeControl(
@@ -71,24 +82,47 @@ export async function getRuntimeControl(
 
   try {
     const admin = createAdminClient();
-    const query = admin
-      .from("system_runtime_controls")
-      .select("is_enabled, expires_at")
-      .eq("control_key", key);
 
+    // 1. If organizationId provided, query tenant-specific control first
     if (organizationId) {
-      query.eq("organization_id", organizationId);
+      const { data: tenantData, error: tenantErr } = await admin
+        .from("system_runtime_controls")
+        .select("is_enabled, expires_at")
+        .eq("control_key", key)
+        .eq("organization_id", organizationId)
+        .maybeSingle();
+
+      if (tenantErr) {
+        dbError = tenantErr;
+      } else if (tenantData) {
+        dbValue = Boolean(tenantData.is_enabled);
+        if (tenantData.expires_at) {
+          expiresAt = new Date(tenantData.expires_at).getTime();
+          if (now > expiresAt) {
+            dbValue = null; // Expired
+          }
+        }
+      }
     }
 
-    const { data, error } = await query.maybeSingle();
-    if (error) {
-      dbError = error;
-    } else if (data) {
-      dbValue = Boolean(data.is_enabled);
-      if (data.expires_at) {
-        expiresAt = new Date(data.expires_at).getTime();
-        if (now > expiresAt) {
-          dbValue = null; // Expired
+    // 2. If no tenant value found (or global query), check global control (organization_id IS NULL)
+    if (dbValue === null && !dbError) {
+      const { data: globalData, error: globalErr } = await admin
+        .from("system_runtime_controls")
+        .select("is_enabled, expires_at")
+        .eq("control_key", key)
+        .is("organization_id", null)
+        .maybeSingle();
+
+      if (globalErr) {
+        dbError = globalErr;
+      } else if (globalData) {
+        dbValue = Boolean(globalData.is_enabled);
+        if (globalData.expires_at) {
+          expiresAt = new Date(globalData.expires_at).getTime();
+          if (now > expiresAt) {
+            dbValue = null; // Expired
+          }
         }
       }
     }

@@ -163,26 +163,36 @@ GRANT EXECUTE ON FUNCTION public.match_documents(vector, float, int, uuid) TO au
 
 -- 6. System Runtime Controls (Dynamic Instant Audited Emergency Controls)
 CREATE TABLE IF NOT EXISTS public.system_runtime_controls (
-    control_key text PRIMARY KEY,
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    control_key text NOT NULL,
     is_enabled boolean NOT NULL DEFAULT true,
     scope text NOT NULL DEFAULT 'global' CHECK (scope IN ('global', 'tenant')),
     organization_id uuid REFERENCES public.organizations(id) ON DELETE CASCADE,
     updated_by text,
     reason text,
+    version integer NOT NULL DEFAULT 1,
     expires_at timestamptz,
     metadata jsonb DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT system_runtime_controls_key_org_uidx UNIQUE NULLS NOT DISTINCT (control_key, organization_id)
 );
 
 ALTER TABLE public.system_runtime_controls ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Authenticated users view runtime controls" ON public.system_runtime_controls;
-CREATE POLICY "Authenticated users view runtime controls"
+DROP POLICY IF EXISTS "Tenants view own runtime controls" ON public.system_runtime_controls;
+
+CREATE POLICY "Tenants view own runtime controls"
     ON public.system_runtime_controls
     FOR SELECT
     TO authenticated
-    USING (true);
+    USING (
+        organization_id IS NOT NULL 
+        AND organization_id IN (
+            SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
+        )
+    );
 
 GRANT SELECT ON public.system_runtime_controls TO authenticated;
 GRANT ALL ON public.system_runtime_controls TO service_role;
