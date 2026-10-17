@@ -66,3 +66,10 @@
    - Verified 100% schema parity between fresh installation and production upgrade path across 1,867 columns, 937 constraints, 446 indexes, 355 functions, 155 triggers, 277 RLS policies, 11 extensions, and 3,649 grants.
    - Successfully executed real PostgreSQL concurrency harness against disposable database: 20 simultaneous concurrent calls, exactly 1 deduction (₹19.95), 19 idempotent responses, 1 ledger record, and complete database cleanup.
 
+13. **Post-Baseline Forward Migration Reconciliation (20261010000007):**
+   - Authored forward-only reconciliation migration `20261010000007_reconcile_post_baseline_bindings.sql`.
+   - Idempotently re-binds RLS policies on `tenant_documents`, `document_chunks`, `meta_capi_config`, `retail_products`, and `capi_event_logs` to canonical `public.agents`.
+   - Recreates `voice_org_config_readonly` view with safe JSONB extra bindings and re-binds `voice_call_logs` and `voice_agent_configs` RLS to `public.agents`.
+   - Hardens `public.match_documents` with explicit `SET search_path = public, extensions` and verified execute grants.
+   - Successfully verified both fresh installation and existing-schema upgrade convergence with 100% schema parity.
+
