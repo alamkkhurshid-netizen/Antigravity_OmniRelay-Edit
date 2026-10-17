@@ -16,7 +16,8 @@ export type WorkerType =
   | "roster_dispatch"
   | "token_health"
   | "care_reminder"
-  | "campaign_dispatch";
+  | "campaign_dispatch"
+  | "growth_officer";
 
 export interface RuntimeControlState {
   value: boolean;
@@ -25,22 +26,28 @@ export interface RuntimeControlState {
 }
 
 const CACHE_TTL_MS = 5000;
+const STRICT_OUTAGE_CACHE_EXPIRY_MS = 30000;
 const _memoryCache = new Map<string, RuntimeControlState>();
 
-// Safe defaults if database and environment are completely unset
+// Safe fail-closed defaults for controlled pilot
+// If control database is unreachable:
+// - WORKER_ENABLED: false (fail-closed: stops claiming new jobs)
+// - VOICE_PILOT_KILL_SWITCH: true (fail-closed: routes safely to human/unavailable)
 const SAFE_DEFAULTS: Record<string, boolean> = {
-  WORKER_ENABLED: true,
+  WORKER_ENABLED: false,
   WHATSAPP_INBOUND_WORKER_ENABLED: true,
   ROSTER_DISPATCH_WORKER_ENABLED: true,
   TOKEN_HEALTH_WORKER_ENABLED: true,
   CARE_REMINDER_WORKER_ENABLED: true,
   CAMPAIGN_DISPATCH_WORKER_ENABLED: true,
-  VOICE_PILOT_KILL_SWITCH: false,
+  GROWTH_OFFICER_WORKER_ENABLED: true,
+  VOICE_PILOT_KILL_SWITCH: true,
   VOICE_PROVIDER_FALLBACK: false,
 };
 
 /**
  * Retrieves a runtime control value, prioritizing in-memory cache, then database, then environment variables.
+ * Enforces fail-closed safety policy on database outage.
  */
 export async function getRuntimeControl(
   key: string,
@@ -53,13 +60,14 @@ export async function getRuntimeControl(
   if (cached && (now - cached.cachedAt) < CACHE_TTL_MS) {
     if (cached.expiresAt && now > cached.expiresAt) {
       // Expired control reverts to default
-      return SAFE_DEFAULTS[key] ?? true;
+      return SAFE_DEFAULTS[key] ?? false;
     }
     return cached.value;
   }
 
   let dbValue: boolean | null = null;
   let expiresAt: number | null = null;
+  let dbError: unknown = null;
 
   try {
     const admin = createAdminClient();
@@ -73,7 +81,9 @@ export async function getRuntimeControl(
     }
 
     const { data, error } = await query.maybeSingle();
-    if (!error && data) {
+    if (error) {
+      dbError = error;
+    } else if (data) {
       dbValue = Boolean(data.is_enabled);
       if (data.expires_at) {
         expiresAt = new Date(data.expires_at).getTime();
@@ -82,8 +92,22 @@ export async function getRuntimeControl(
         }
       }
     }
-  } catch {
-    // If Supabase admin client is unconfigured or table not present, fall back cleanly
+  } catch (err) {
+    dbError = err;
+  }
+
+  if (dbError) {
+    console.error(
+      `[RuntimeControls CRITICAL] Control DB read error for '${key}':`,
+      dbError
+    );
+    // If we have a recent cached state (< 30s), use it briefly during outage
+    if (cached && (now - cached.cachedAt) < STRICT_OUTAGE_CACHE_EXPIRY_MS) {
+      console.warn(
+        `[RuntimeControls OUTAGE] Using last-known state for '${key}' (${Math.round((now - cached.cachedAt) / 1000)}s old).`
+      );
+      return cached.value;
+    }
   }
 
   let finalValue: boolean;
@@ -95,7 +119,7 @@ export async function getRuntimeControl(
     if (envVal !== undefined) {
       finalValue = envVal.toLowerCase() !== "false" && envVal !== "0";
     } else {
-      finalValue = SAFE_DEFAULTS[key] ?? true;
+      finalValue = SAFE_DEFAULTS[key] ?? false;
     }
   }
 

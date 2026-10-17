@@ -87,4 +87,14 @@
    - Defined `public.system_runtime_controls` table DDL, RLS, and grants in forward migration `20261010000007_reconcile_post_baseline_bindings.sql`.
    - Created tracked real PostgreSQL integration test (`scripts/verification/verify-worker-kill-switch-db.mjs`) verifying table schema, operator control updates, queue preservation, and audit logging against real database container.
 
+16. **Fail-Closed Runtime Safety Defaults & 100% Worker Claim Boundary Coverage:**
+   - Enforced true fail-closed safety defaults (`WORKER_ENABLED=false`, `VOICE_PILOT_KILL_SWITCH=true`) ensuring AI and background workers safely halt/bypass during any database outage.
+   - Restricted cached healthy state to a strict 30-second expiry window during database unavailability; emits high-severity critical incident error logs on connection failures.
+   - Extended worker kill switch guards across 100% of background worker job-claim boundaries:
+     - `app/api/care-reminder-runs/route.ts` (`care_reminder` worker type check on approval and retry actions)
+     - `app/api/campaigns/route.ts` (`campaign_dispatch` worker type check on send_now and resume actions)
+     - `app/api/cron/growth-officer/route.ts` (`growth_officer` worker type check on weekly report execution)
+     - `supabase/functions/care-reminder-dispatch/index.ts` (`care_reminder` worker guard before claiming due runs)
+   - Updated comprehensive test coverage in `tests/worker-kill-switch.test.mjs` verifying fail-closed defaults, DB outage safety, and granular worker claim blocks.
+
 
