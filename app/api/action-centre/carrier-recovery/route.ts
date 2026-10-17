@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getWorkspace } from "@/lib/workspace";
-import { createAdminClient } from "@/lib/supabase/admin";
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const allowedActions = new Set(["claim", "resolve", "retry"]);
@@ -94,7 +93,7 @@ export async function PATCH(request: Request) {
     }
 
     // 3. Execute atomic state transition via PostgreSQL RPC (SELECT ... FOR UPDATE)
-    // Delegate to authenticated client without supplying p_actor_id so auth.uid() is derived strictly by PostgreSQL
+    // The authenticated RPC is the sole authoritative path. Service-role fallback is prohibited to prevent privilege escalation.
     const { data: rpcResult, error: rpcError } = await supabase.rpc("transition_carrier_recovery_task", {
       p_task_id: body.id,
       p_action: body.action,
@@ -103,29 +102,14 @@ export async function PATCH(request: Request) {
       p_organization_id: organization.id,
     });
 
-    let finalResult = rpcResult;
-
     if (rpcError) {
-      // If client RPC failed due to session propagation, use dedicated internal service-role RPC
-      const admin = createAdminClient();
-      const { data: serviceResult, error: serviceError } = await admin.rpc("service_transition_carrier_recovery_task", {
-        p_task_id: body.id,
-        p_action: body.action,
-        p_expected_version: body.expectedVersion,
-        p_reason: body.reason ?? null,
-        p_actor_id: user.id,
-        p_organization_id: organization.id,
-      });
-
-      if (serviceError) {
-        return NextResponse.json({ error: serviceError.message }, { status: 500 });
-      }
-      finalResult = serviceResult;
+      return NextResponse.json({ error: rpcError.message }, { status: 500 });
     }
 
-    const result = finalResult as TransitionCarrierRpcResponse;
+    const result = rpcResult as TransitionCarrierRpcResponse;
 
     if (!result.success) {
+      // Never retry 400, 401, 403, 404, 409, validation, authorization, or concurrency errors through service role
       return NextResponse.json(
         { error: result.error || "Carrier recovery transition failed." },
         { status: result.status || 400 }

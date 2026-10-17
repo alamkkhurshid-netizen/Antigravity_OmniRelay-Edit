@@ -148,5 +148,11 @@
    - **Authenticated Client Delegation**: Updated `app/api/action-centre/carrier-recovery/route.ts` to delegate directly to `supabase.rpc("transition_carrier_recovery_task", ...)` using the authenticated user's session without passing client-supplied actor IDs.
    - **Fail-Closed Exception Redaction & Future Handler Attachment**: Hardened `compliance/privacy_logger.py` to ensure that if exception traceback or message sanitization encounters an unexpected error, the record immediately fails closed: `msg` is replaced with the generic privacy error and `args`, `exc_info`, `exc_text`, and `stack_info` are completely wiped. Centralized global filter hooks ensure future handlers created after startup dynamically receive `PrivacySafeFilter`.
 
+23. **Elimination of Service-Role Fallback & Enforced Authenticated RPC Authority:**
+   - **Authoritative Client RPC**: In `app/api/action-centre/carrier-recovery/route.ts`, eliminated all fallback logic to `service_transition_carrier_recovery_task` and removed `createAdminClient` imports entirely.
+   - **Prohibition of Privileged Retry**: Strictly prohibits retrying 400, 401, 403, 404, 409, validation, authorization, concurrency, or database integrity errors through service role.
+   - **Verified Invariants**: Tested in `tests/runtime-controls-and-carrier-auth.test.mjs` that authorization failures (403) and optimistic version conflicts (409) return directly to the caller without triggering privileged retries or altering audit state.
+
+
 
 

@@ -46,7 +46,8 @@ test("P0 Carrier Recovery: Role Authorization, Atomic RPC & 20-Claim Concurrency
 
   // 3. Delegation to atomic PostgreSQL RPC
   assert.match(routeSource, /supabase\.rpc\("transition_carrier_recovery_task"/, "Route must delegate transition to atomic PostgreSQL RPC via authenticated client");
-  assert.match(routeSource, /service_transition_carrier_recovery_task/, "Route must have fallback to dedicated service-role RPC");
+  assert.doesNotMatch(routeSource, /service_transition_carrier_recovery_task/, "Route must NOT fall back to service-role RPC to prevent privilege escalation");
+  assert.doesNotMatch(routeSource, /createAdminClient/, "Route must NOT import or use admin client for carrier recovery mutations");
 
   // 4. Migration RPC invariants: SELECT ... FOR UPDATE & Atomic Concurrency & Anti-Impersonation
   assert.match(migrationSource, /CREATE OR REPLACE FUNCTION public\.transition_carrier_recovery_task/, "Migration must define transition_carrier_recovery_task RPC");
@@ -192,6 +193,37 @@ test("P0 Carrier Recovery: Role Authorization, Atomic RPC & 20-Claim Concurrency
   assert.equal(directClientResult.status, 200);
   assert.equal(directClientResult.actor_id, receptionistA);
   assert.equal(directClientResult.auditActor, receptionistA, "Audit must record database authenticated identity");
+
+  // Test: Authorization failure cannot trigger privileged retry
+  const unauthorizedRoleResult = simulateCarrierRpc({
+    authUid: "user_regular_member",
+    p_actor_id: null,
+    taskOrg: mockTenantA,
+    expectedVersion: 1,
+    memberships: {
+      [receptionistA]: { org: mockTenantA, role: "receptionist" },
+      [adminA]: { org: mockTenantA, role: "admin" },
+      [userB]: { org: mockTenantB, role: "receptionist" },
+      user_regular_member: { org: mockTenantA, role: "member" },
+    }
+  });
+  assert.equal(unauthorizedRoleResult.success, false);
+  assert.equal(unauthorizedRoleResult.status, 403);
+  assert.equal(unauthorizedRoleResult.auditLogged, "CARRIER_RECOVERY_DENIED");
+  assert.match(unauthorizedRoleResult.error, /Receptionist or administrator role required/);
+
+  // Test: Version conflict remains 409 and is never retried
+  const conflictResult = simulateCarrierRpc({
+    authUid: receptionistA,
+    p_actor_id: null,
+    p_organization_id: mockTenantA,
+    taskOrg: mockTenantA,
+    expectedVersion: 999, // Mismatched version
+    currentVersion: 1
+  });
+  assert.equal(conflictResult.success, false);
+  assert.equal(conflictResult.status, 409);
+  assert.match(conflictResult.error, /version mismatch/);
 
   // 6. Behavioral Simulation: 20 simultaneous claim attempts with atomic row lock
   let taskVersion = 1;
