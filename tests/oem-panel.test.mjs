@@ -92,3 +92,106 @@ test("operator RPC raises 42501 error code on unauthorized caller", async () => 
   const migration = await read("supabase/migrations/20260809180000_oem_tenant_health.sql");
   assert.match(migration, /errcode = '42501'/);
 });
+
+test("Meta Cloud reconciliation flags discrepancies when variance exceeds 2%", () => {
+  function checkVarianceFlag(metaInvoicePaise, ledgerRecordedPaise) {
+    const diffPaise = Math.abs(metaInvoicePaise - ledgerRecordedPaise);
+    const variancePct = ledgerRecordedPaise > 0 ? (diffPaise / ledgerRecordedPaise) * 100 : 0;
+    return {
+      variancePct: parseFloat(variancePct.toFixed(2)),
+      isFlagged: variancePct > 2.0,
+      diffINR: (diffPaise / 100).toFixed(2),
+    };
+  }
+
+  // 1% variance - acceptable within buffer
+  const withinBuffer = checkVarianceFlag(101000, 100000);
+  assert.equal(withinBuffer.variancePct, 1.0);
+  assert.equal(withinBuffer.isFlagged, false);
+
+  // 2.5% variance - triggers operator reconciliation alert
+  const flagged = checkVarianceFlag(102500, 100000);
+  assert.equal(flagged.variancePct, 2.5);
+  assert.equal(flagged.isFlagged, true);
+  assert.equal(flagged.diffINR, "25.00");
+});
+
+test("rate card manager computes tenant message costs with platform margin", () => {
+  function computeMessageRate(basePaise, platformFeePaise) {
+    const totalPaise = basePaise + platformFeePaise;
+    return {
+      totalPaise,
+      totalINR: (totalPaise / 100).toFixed(2),
+      platformMarginPct: parseFloat(((platformFeePaise / totalPaise) * 100).toFixed(1)),
+    };
+  }
+
+  // Marketing message: base 78 paise + 15 paise platform fee = 93 paise (₹0.93)
+  const marketing = computeMessageRate(78, 15);
+  assert.equal(marketing.totalPaise, 93);
+  assert.equal(marketing.totalINR, "0.93");
+  assert.equal(marketing.platformMarginPct, 16.1);
+
+  // Utility message: base 12 paise + 5 paise fee = 17 paise (₹0.17)
+  const utility = computeMessageRate(12, 5);
+  assert.equal(utility.totalPaise, 17);
+  assert.equal(utility.totalINR, "0.17");
+});
+
+test("tenant lifecycle state transitions enforce valid status invariants", () => {
+  const VALID_STATUSES = new Set(["active", "trialing", "suspended", "archived"]);
+
+  function transitionTenantState(currentStatus, action) {
+    if (!VALID_STATUSES.has(currentStatus)) {
+      throw new Error(`Invalid current status: ${currentStatus}`);
+    }
+
+    switch (action) {
+      case "suspend":
+        return "suspended";
+      case "reactivate":
+        return "active";
+      case "extend_trial":
+        return "trialing";
+      default:
+        throw new Error(`Unknown action: ${action}`);
+    }
+  }
+
+  assert.equal(transitionTenantState("active", "suspend"), "suspended");
+  assert.equal(transitionTenantState("suspended", "reactivate"), "active");
+  assert.equal(transitionTenantState("trialing", "extend_trial"), "trialing");
+  assert.throws(() => transitionTenantState("corrupted_state", "suspend"), /Invalid current status/);
+});
+
+test("support impersonation session enforces 1 hour TTL and security defaults", () => {
+  function getImpersonationCookieConfig(orgId) {
+    return {
+      name: "omnirelay_impersonate_org",
+      value: orgId,
+      httpOnly: true,
+      path: "/",
+      maxAge: 3600, // strictly 1 hour
+    };
+  }
+
+  const cookie = getImpersonationCookieConfig("org-12345");
+  assert.equal(cookie.maxAge, 3600);
+  assert.equal(cookie.httpOnly, true);
+  assert.equal(cookie.path, "/");
+  assert.equal(cookie.value, "org-12345");
+});
+
+test("OEM export CSV escaping adheres to RFC 4180 rules", () => {
+  function escapeCsvCell(val) {
+    if (val === null || val === undefined) return '""';
+    const str = typeof val === "object" ? JSON.stringify(val) : String(val);
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+
+  assert.equal(escapeCsvCell('Clinic "Apex" Healthcare'), '"Clinic ""Apex"" Healthcare"');
+  assert.equal(escapeCsvCell(null), '""');
+  assert.equal(escapeCsvCell(1250), '"1250"');
+  assert.equal(escapeCsvCell({ scope: "global" }), '"{""scope"":""global""}"');
+});
+

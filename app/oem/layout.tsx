@@ -49,9 +49,17 @@ export default async function OemLayout({ children }: { children: React.ReactNod
               <CreditCard className="size-4 text-slate-400" />
               Operational Billing
             </Link>
-            <Link href="/oem/assets" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
-              <Box className="size-4 text-slate-400" />
-              Partner Assets
+            <Link href="/oem/alerts" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+              <ShieldAlert className="size-4 text-amber-400" />
+              Alert Center
+            </Link>
+            <Link href="/oem/rollout" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+              <Box className="size-4 text-blue-400" />
+              Rollout Controls
+            </Link>
+            <Link href="/oem/audit" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+              <Activity className="size-4 text-teal-400" />
+              Audit Trail
             </Link>
           </nav>
         </div>
