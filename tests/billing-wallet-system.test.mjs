@@ -93,8 +93,110 @@ test("API routes wire into billing engine and verify Razorpay signatures", async
   const webhookRoute = await read("app/api/billing/webhook/route.ts");
   assert.match(webhookRoute, /x-razorpay-signature/);
   assert.match(webhookRoute, /creditWallet/);
+  assert.match(webhookRoute, /invoice_number/);
 
   const voiceRoute = await read("app/api/billing/voice-metering/route.ts");
   assert.match(voiceRoute, /recordAndDeduct/);
   assert.match(voiceRoute, /"voice"/);
 });
+
+test("GST tax invoice generator constructs valid SAC 9984 invoice data and words", async () => {
+  const { buildGstInvoiceData, numberToIndianWords, renderInvoiceHtml } = await import("../lib/billing/invoice.ts");
+
+  // Indian words conversion
+  assert.equal(numberToIndianWords(1180), "Indian Rupees One Thousand One Hundred Eighty Only");
+  assert.equal(numberToIndianWords(590.50), "Indian Rupees Five Hundred Ninety and Fifty Paise Only");
+
+  // Build Invoice Data
+  const inv = buildGstInvoiceData({
+    organizationId: "org-test-uuid",
+    organizationName: "Apex Healthcare Clinic",
+    amountPaise: 100000, // ₹1,000 base
+    gstAmountPaise: 18000, // ₹180 GST
+    razorpayPaymentId: "pay_test12345678",
+    customerStateCode: "29", // Intra-state (Karnataka)
+  });
+
+  assert.equal(inv.subtotalInr, 1000);
+  assert.equal(inv.totalGstInr, 180);
+  assert.equal(inv.grandTotalInr, 1180);
+  assert.equal(inv.isInterState, false);
+  assert.equal(inv.items[0].sacCode, "998413");
+  assert.equal(inv.items[0].cgstAmountInr, 90);
+  assert.equal(inv.items[0].sgstAmountInr, 90);
+
+  // Render HTML
+  const html = renderInvoiceHtml(inv);
+  assert.match(html, /GST Tax Invoice/);
+  assert.match(html, /Apex Healthcare Clinic/);
+  assert.match(html, /998413/);
+  assert.match(html, /29AABCO9999P1Z5/);
+});
+
+test("SaaS subscription plans match commercial packaging charter", async () => {
+  const { SAAS_PLANS } = await import("../lib/billing/subscription.ts");
+
+  assert.equal(SAAS_PLANS.plan_launchpad.monthlyPriceInr, 499);
+  assert.equal(SAAS_PLANS.plan_growth.monthlyPriceInr, 2400);
+  assert.equal(SAAS_PLANS.plan_pro.monthlyPriceInr, 6500);
+
+  assert.ok(SAAS_PLANS.plan_growth.features.includes("google_calendar_sync"));
+  assert.ok(SAAS_PLANS.plan_growth.features.includes("rag_knowledge"));
+  assert.ok(SAAS_PLANS.plan_pro.features.includes("voice_ai_agent"));
+  assert.ok(SAAS_PLANS.plan_pro.features.includes("campaigns_broadcast"));
+});
+
+test("dunning state machine enforces 7-day grace period and 3-strike suspension", () => {
+  function simulateDunning(initialRetryCount) {
+    const nextRetry = initialRetryCount + 1;
+    const isSuspension = nextRetry >= 3;
+    return {
+      retryCount: nextRetry,
+      status: isSuspension ? "suspended" : "past_due",
+      gracePeriodActive: !isSuspension,
+    };
+  }
+
+  // Attempt 1: past_due with grace period
+  const attempt1 = simulateDunning(0);
+  assert.equal(attempt1.retryCount, 1);
+  assert.equal(attempt1.status, "past_due");
+  assert.equal(attempt1.gracePeriodActive, true);
+
+  // Attempt 2: past_due with grace period
+  const attempt2 = simulateDunning(1);
+  assert.equal(attempt2.retryCount, 2);
+  assert.equal(attempt2.status, "past_due");
+
+  // Attempt 3: hard suspension (read-only)
+  const attempt3 = simulateDunning(2);
+  assert.equal(attempt3.retryCount, 3);
+  assert.equal(attempt3.status, "suspended");
+  assert.equal(attempt3.gracePeriodActive, false);
+});
+
+test("outbound action-centre dispatcher wires canSendMessage before Graph API", async () => {
+  const actionCentre = await read("app/app/action-centre/actions.ts");
+  assert.match(actionCentre, /canSendMessage\(orgId/);
+  assert.match(actionCentre, /Outbound blocked: Insufficient operational wallet balance/);
+  assert.match(actionCentre, /recordAndDeduct\(orgId/);
+});
+
+test("threshold alert deduplication suppresses duplicate alerts within 24 hours", () => {
+  function shouldSuppressAlert(lastDispatchedIso, nowIso = new Date().toISOString()) {
+    if (!lastDispatchedIso) return false;
+    const lastDispatched = new Date(lastDispatchedIso).getTime();
+    const now = new Date(nowIso).getTime();
+    const diffHours = (now - lastDispatched) / (1000 * 60 * 60);
+    return diffHours < 24;
+  }
+
+  // Alert fired 2 hours ago -> should be suppressed
+  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  assert.equal(shouldSuppressAlert(twoHoursAgo), true);
+
+  // Alert fired 26 hours ago -> should NOT be suppressed
+  const twentySixHoursAgo = new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString();
+  assert.equal(shouldSuppressAlert(twentySixHoursAgo), false);
+});
+

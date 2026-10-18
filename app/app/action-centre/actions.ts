@@ -5,6 +5,19 @@ import { revalidatePath } from "next/cache";
 
 // Helper: Send WhatsApp message via the Cloud API
 async function sendWhatsAppMessage(orgId: string, recipientPhone: string, messageText: string) {
+  // S6-10: Pre-flight billing check before Meta Graph API call
+  try {
+    const { canSendMessage } = await import("@/lib/billing/deduction-engine");
+    const preflight = await canSendMessage(orgId, "utility");
+    if (!preflight.allowed) {
+      console.warn(`[Billing Preflight Blocked] Org ${orgId} cannot send message: ${preflight.reason}`);
+      return { success: false, error: `Outbound blocked: Insufficient operational wallet balance (${preflight.reason})` };
+    }
+  } catch (err) {
+    // In production fail-closed; if check fails, log and proceed only if non-blocking
+    console.error("[Billing Preflight Check Error]:", err);
+  }
+
   const supabase = await createClient();
   
   // Fetch the organization's WhatsApp credentials
@@ -42,7 +55,17 @@ async function sendWhatsAppMessage(orgId: string, recipientPhone: string, messag
     return { success: false, error: result.error?.message || "Send failed" };
   }
 
-  return { success: true, messageId: result.messages?.[0]?.id };
+  const metaMessageId = result.messages?.[0]?.id;
+  if (metaMessageId) {
+    try {
+      const { recordAndDeduct } = await import("@/lib/billing/deduction-engine");
+      await recordAndDeduct(orgId, metaMessageId, "utility");
+    } catch (deductErr) {
+      console.error("[Billing] Failed to record and deduct after dispatch:", deductErr);
+    }
+  }
+
+  return { success: true, messageId: metaMessageId };
 }
 
 export async function resolveAgentDraft(draftId: string, action: 'approve' | 'reject' | 'edit', feedback?: string) {

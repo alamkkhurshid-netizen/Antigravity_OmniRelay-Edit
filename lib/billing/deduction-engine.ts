@@ -103,6 +103,36 @@ export async function getMessageRate(
 }
 
 /**
+ * Retrieves the platform markup percentage for a tenant based on their active volume pricing tier.
+ * Tiers: Starter (25%), Growth (20%), Scale (15%), Enterprise (10%).
+ */
+export async function getMarkupRate(
+  organizationId: string,
+  category: MessageCategory = "utility"
+): Promise<{ tierName: string; markupPercentage: number }> {
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .schema("billing")
+    .from("tenant_pricing_tiers")
+    .select("tier_name, markup_percentage")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return {
+      tierName: "Starter",
+      markupPercentage: category === "marketing" ? 22.0 : 25.0,
+    };
+  }
+
+  return {
+    tierName: data.tier_name || "Starter",
+    markupPercentage: Number(data.markup_percentage) || 25.0,
+  };
+}
+
+/**
  * Block-Before-Send check.
  * Must be called immediately BEFORE Meta Graph API dispatch or Voice Call connect.
  * Enforces policy:
@@ -179,6 +209,22 @@ export async function recordAndDeduct(
   const res = typeof data === "string" ? JSON.parse(data) : data;
 
   const newBalPaise = res?.new_balance_paise ?? res?.balance_paise ?? 0;
+  const warningTriggered = !!res?.warning_triggered;
+  const criticalTriggered = !!res?.critical_triggered;
+
+  if (warningTriggered || criticalTriggered) {
+    try {
+      const { dispatchThresholdAlertIfNeeded } = await import("./alerts");
+      await dispatchThresholdAlertIfNeeded(
+        organizationId,
+        newBalPaise,
+        warningTriggered,
+        criticalTriggered
+      );
+    } catch (alertErr) {
+      console.error("[DeductionEngine] Failed to dispatch threshold alert:", alertErr);
+    }
+  }
 
   return {
     success: !!res?.success,
@@ -190,8 +236,8 @@ export async function recordAndDeduct(
     deductedInr: (res?.deducted_paise ?? 0) / 100,
     newBalancePaise: newBalPaise,
     newBalanceInr: newBalPaise / 100,
-    warningTriggered: !!res?.warning_triggered,
-    criticalTriggered: !!res?.critical_triggered,
+    warningTriggered,
+    criticalTriggered,
     unitsBilled: res?.units_billed ?? quantity,
     unitRatePaise: res?.unit_rate_paise,
   };

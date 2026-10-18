@@ -93,29 +93,52 @@ export function ActiveWallet({ wallet, tier, organizationId }: ActiveWalletProps
           </button>
         </div>
 
-        {/* Volume Rewards */}
+        {/* Volume Rewards (S6-14) */}
         <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900/50">
           <div>
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              <Flame className="size-4 text-rose-500" />
-              Volume Rewards
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <Flame className="size-4 text-rose-500" />
+                Volume Rewards
+              </div>
+              <span className="text-xs font-bold text-teal-600 dark:text-teal-400">
+                {tier?.tier_name || "Starter"} ({tier?.markup_percentage || 25}% Markup)
+              </span>
             </div>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              Your current markup on Meta&apos;s base messaging rate is <b className="text-slate-900 dark:text-white">{tier?.markup_percentage || 20}%</b>.
+            <p className="mt-2 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Automatic platform markup discounts based on your clinic&apos;s 30-day message volume.
             </p>
           </div>
           
-          <div className="mt-4 rounded-lg bg-slate-50 p-4 dark:bg-slate-800/50">
-            <div className="flex justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">
-              <span>Starter (20%)</span>
-              <span>Pro (15%)</span>
+          <div className="mt-4 rounded-lg bg-slate-50 p-3.5 dark:bg-slate-800/50 space-y-2">
+            <div className="flex justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              <span>Starter (25%)</span>
+              <span>Growth (20%)</span>
+              <span>Scale (15%)</span>
+              <span>Enterprise (10%)</span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-              <div className="h-full bg-gradient-to-r from-blue-400 to-[#1bc5a8] w-1/3"></div>
+              <div className={`h-full bg-gradient-to-r from-teal-400 to-blue-500 transition-all ${
+                tier?.tier_name === "Enterprise" ? "w-full" :
+                tier?.tier_name === "Scale" ? "w-3/4" :
+                tier?.tier_name === "Growth" ? "w-1/2" : "w-1/4"
+              }`} />
             </div>
-            <p className="mt-2 text-[10px] text-slate-500 dark:text-slate-400 text-center">
-              Send ₹2,000 more this month to unlock Pro tier markup.
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center">
+              Spend ₹10,000/mo to reach Growth tier and save 5% on every WhatsApp message.
             </p>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+            <span className="text-slate-500 dark:text-slate-400 font-medium">Official 18% GST Invoices</span>
+            <a
+              href={`/api/billing/invoices/latest`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-teal-600 hover:text-teal-500 dark:text-teal-400 hover:underline"
+            >
+              Download Latest Tax Invoice
+            </a>
           </div>
         </div>
       </div>

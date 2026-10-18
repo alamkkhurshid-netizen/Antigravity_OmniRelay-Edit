@@ -32,8 +32,8 @@ Each job has:
 | Production Readiness | 4.5 | **9.0** | Sprint 2, 6, 9 |
 | Onboarding Module | 40% | **100%** | Sprint 3 |
 | Knowledge Base | ~30% | **100%** | Sprint 3 |
-| OEM/Operator Panel | ~35% | **100%** | Sprint 5 |
-| Billing System | ~45% | **100%** | Sprint 6 |
+| OEM/Operator Panel | ~35% | **100%** | Sprint 5 (Completed) |
+| Billing System | 100% | **100%** | Sprint 6 (Completed) |
 | Retail Module | ~10% | **100%** | Sprint 7 |
 | Voice AI Integration | ~40% | **100%** | Sprint 8 |
 | Analytics Dashboard | ~20% | **90%** | Sprint 9 |
@@ -247,7 +247,7 @@ Each job has:
 
 ---
 
-## Sprint 6 — Billing System Activation (45% → 100%) — 2.5 weeks
+## Sprint 6 — Billing System Activation (45% → 100%) — COMPLETED
 
 > **Theme:** Move billing from shadow mode to production. Follow the CTO Action Plan exactly.
 

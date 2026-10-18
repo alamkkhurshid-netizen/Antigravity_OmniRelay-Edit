@@ -132,9 +132,22 @@ export async function POST(request: Request) {
       }
     );
 
+    const invoiceNumber = `INV-${new Date().getFullYear()}-${paymentId.slice(-8).toUpperCase()}`;
+
+    if (creditResult.transactionId) {
+      await adminSupabase
+        .schema("billing")
+        .from("wallet_transactions")
+        .update({
+          invoice_number: invoiceNumber,
+          status: "completed",
+        })
+        .eq("id", creditResult.transactionId);
+    }
+
     console.log(
       `[Billing Webhook] Wallet credit processed for org ${organizationId}: ` +
-      `credited=₹${basePaise / 100}, new_balance=₹${creditResult.balanceInr}, idempotent=${creditResult.alreadyProcessed}`
+      `credited=₹${basePaise / 100}, new_balance=₹${creditResult.balanceInr}, invoice=${invoiceNumber}, idempotent=${creditResult.alreadyProcessed}`
     );
 
     return NextResponse.json({
@@ -142,6 +155,8 @@ export async function POST(request: Request) {
       credited: !creditResult.alreadyProcessed,
       balance_inr: creditResult.balanceInr,
       organization_id: organizationId,
+      invoice_number: invoiceNumber,
+      invoice_url: `/api/billing/invoices/${creditResult.transactionId || invoiceNumber}`,
     });
 
   } catch (error: any) {
