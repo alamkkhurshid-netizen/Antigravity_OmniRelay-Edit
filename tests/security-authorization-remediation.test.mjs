@@ -42,6 +42,9 @@ const read = (path) => readFile(new URL(path, root), "utf8");
 
 // Set test secrets for deterministic verification
 const TEST_SECRET = "test-voice-secret-key-remediation-123";
+process.env.NODE_ENV = "test";
+process.env.ALLOW_IN_MEMORY_NONCE = "true";
+process.env.ORDER_LOOKUP_SECRET = "test-retail-secret-key-remediation-123";
 process.env.VOICE_SERVICE_SECRET = TEST_SECRET;
 process.env.VOICE_PHONE_PSEUDONYM_SALT = "test-managed-pseudonym-salt-2026";
 

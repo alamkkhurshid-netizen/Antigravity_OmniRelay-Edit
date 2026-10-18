@@ -9,10 +9,17 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: Request) {
   try {
-    // 1. Verify Vercel Cron Security Secret
+    // 1. Mandatory Vercel Cron Security Secret Verification
+    if (!process.env.CRON_SECRET) {
+      return NextResponse.json(
+        { error: "Server configuration error: CRON_SECRET is required to execute retention purge." },
+        { status: 500 }
+      );
+    }
+
     const authHeader = req.headers.get("authorization");
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: "Unauthorized: Invalid CRON_SECRET authorization." }, { status: 401 });
     }
 
     const admin = createAdminClient();

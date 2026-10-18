@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Package, Smartphone, Zap, Store, Sparkles, Building2, Users, TrendingUp, Megaphone, Workflow, Target, CalendarDays, Tag } from "lucide-react";
+import { ArrowRight, Package, Smartphone, Store, Sparkles, Building2, Users, TrendingUp, Megaphone, Workflow, Target, CalendarDays, Tag } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function RetailDashboard() {

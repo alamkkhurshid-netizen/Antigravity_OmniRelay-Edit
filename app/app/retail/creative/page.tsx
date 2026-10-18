@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { ArrowLeft, Sparkles, Play, Search, Video } from "lucide-react";
+import { ArrowLeft, Sparkles, Play, Video } from "lucide-react";
 import { getWorkspace } from "@/lib/workspace";
 import { GenerateForm } from "./generate-form";
 
 export default async function CreativeVelocityPage() {
-  const { supabase, organization } = await getWorkspace();
+  const { supabase } = await getWorkspace();
   
   // Fetch existing creatives
   const { data: creatives } = await supabase

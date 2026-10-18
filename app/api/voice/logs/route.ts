@@ -73,14 +73,30 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Audit every access to transcripts
+    // Append-Only Transcript Access Audit Logging (Compliance Requirement)
     if (canViewTranscripts && logs && logs.length > 0 && user) {
       const logIds = logs.map((l: Record<string, unknown>) => l.id).filter(Boolean);
       if (logIds.length > 0) {
+        const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+        const userAgent = req.headers.get("user-agent") || "unknown";
+        const nowIso = new Date().toISOString();
+
+        // 1. Insert immutable append-only audit entries
+        const auditRows = logIds.map((callLogId: unknown) => ({
+          call_log_id: String(callLogId),
+          organization_id: targetOrgId,
+          accessed_by: user.id,
+          accessed_at: nowIso,
+          client_ip: clientIp,
+          user_agent: userAgent,
+        }));
+        await admin.from("voice_transcript_access_audits").insert(auditRows);
+
+        // 2. Also update latest access timestamp on call logs
         await admin
           .from("voice_call_logs")
           .update({
-            transcript_accessed_at: new Date().toISOString(),
+            transcript_accessed_at: nowIso,
             transcript_accessed_by: user.id,
           })
           .in("id", logIds);

@@ -5,8 +5,8 @@ import {
   buildWhatsAppOrderStatusCard,
 } from "@/lib/retail/whatsapp-catalog";
 import { RetailOrder, extractOrderLookupQuery } from "@/lib/retail/orders";
-import { isFeatureEnabled } from "@/lib/feature-flags";
-import { verifySignedOrderToken, checkOrderLookupRateLimit } from "@/lib/retail/order-auth";
+import { isFeatureEnabledAsync } from "@/lib/feature-flags";
+import { verifySignedOrderToken, checkOrderLookupRateLimitAsync } from "@/lib/retail/order-auth";
 
 export interface RestrictedOrderProjection {
   id: string;
@@ -38,9 +38,9 @@ export async function GET(request: Request) {
       );
     }
 
-    // 2. Sliding-Window Rate Limiting to Prevent Enumeration
+    // 2. Durable Sliding-Window Rate Limiting to Prevent Enumeration
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anonymous";
-    const rateLimit = checkOrderLookupRateLimit(`${organizationId}:${ip}`, 10, 60000);
+    const rateLimit = await checkOrderLookupRateLimitAsync(`${organizationId}:${ip}`, 10, 60);
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: "Too many lookup attempts. Rate limit exceeded. Please try again later." },
@@ -48,8 +48,9 @@ export async function GET(request: Request) {
       );
     }
 
-    // 3. Feature flag check
-    if (!isFeatureEnabled("whatsapp_catalog_enabled", organizationId)) {
+    // 3. PostgreSQL-backed Feature flag check
+    const isRetailEnabled = await isFeatureEnabledAsync("whatsapp_catalog_enabled", organizationId);
+    if (!isRetailEnabled) {
       return NextResponse.json(
         { error: "Retail ordering module is currently disabled" },
         { status: 403 }

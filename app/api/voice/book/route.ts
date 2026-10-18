@@ -41,11 +41,26 @@ export async function POST(req: NextRequest) {
 
     const admin = createAdminClient();
 
-    // 1. Resolve Doctor / Resource
+    // 1. Resolve Doctor / Resource (Strictly Tenant-Bound)
     let resourceId = doctor_id;
     let doctorName = "Physician";
 
-    if (!resourceId) {
+    if (resourceId) {
+      const { data: doc } = await admin
+        .from("booking_resources")
+        .select("id, name")
+        .eq("id", resourceId)
+        .eq("organization_id", org_id)
+        .maybeSingle();
+
+      if (!doc) {
+        return NextResponse.json(
+          { error: `Doctor/resource not found or does not belong to organization: ${resourceId}` },
+          { status: 404 }
+        );
+      }
+      doctorName = doc.name;
+    } else {
       const { data: firstDoc } = await admin
         .from("booking_resources")
         .select("id, name")
@@ -58,18 +73,25 @@ export async function POST(req: NextRequest) {
         resourceId = firstDoc.id;
         doctorName = firstDoc.name;
       }
-    } else {
-      const { data: doc } = await admin
-        .from("booking_resources")
-        .select("id, name")
-        .eq("id", resourceId)
-        .maybeSingle();
-      if (doc) doctorName = doc.name;
     }
 
-    // 2. Resolve Service & Location defaults if not provided
+    // 2. Resolve Service & Location defaults (Strictly Tenant-Bound)
     let locId = location_id;
-    if (!locId) {
+    if (locId) {
+      const { data: loc } = await admin
+        .from("business_locations")
+        .select("id")
+        .eq("id", locId)
+        .eq("organization_id", org_id)
+        .maybeSingle();
+
+      if (!loc) {
+        return NextResponse.json(
+          { error: `Business location not found or does not belong to organization: ${locId}` },
+          { status: 404 }
+        );
+      }
+    } else {
       const { data: firstLoc } = await admin
         .from("business_locations")
         .select("id")
@@ -80,7 +102,21 @@ export async function POST(req: NextRequest) {
     }
 
     let srvId = service_id;
-    if (!srvId) {
+    if (srvId) {
+      const { data: srv } = await admin
+        .from("organization_services")
+        .select("id")
+        .eq("id", srvId)
+        .eq("organization_id", org_id)
+        .maybeSingle();
+
+      if (!srv) {
+        return NextResponse.json(
+          { error: `Organization service not found or does not belong to organization: ${srvId}` },
+          { status: 404 }
+        );
+      }
+    } else {
       const { data: firstSrv } = await admin
         .from("organization_services")
         .select("id")
@@ -226,7 +262,8 @@ export async function POST(req: NextRequest) {
           summary: `Appointment booked for ${patient_name} with Dr. ${doctorName} at ${startDate.toLocaleTimeString("en-IN")}.`,
           updated_at: new Date().toISOString(),
         })
-        .eq("exotel_call_sid", call_sid);
+        .eq("exotel_call_sid", call_sid)
+        .eq("org_id", org_id);
     }
 
 

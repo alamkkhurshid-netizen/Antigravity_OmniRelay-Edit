@@ -1,7 +1,16 @@
 {
   "schema_version": 1,
-  "latest_release": "2026-10-10-cto-remediation-voice-billing-reliability",
+  "latest_release": "2026-10-18-cto-closure-fail-closed-nonces-durable-controls",
   "releases": [
+    {
+      "id": "2026-10-18-cto-closure-fail-closed-nonces-durable-controls",
+      "record": "docs/knowledge/releases/2026-10-18-cto-closure-fail-closed-nonces-durable-controls.md",
+      "guide_reviewed_on": "2026-10-18",
+      "product_areas": ["Voice AI Telephony", "Replay Protection", "Durable Nonces", "PostgreSQL Feature Flags", "Retail Order Authentication", "Durable Rate Limiting", "Retention Governance", "Tenant Binding", "Audit Logging"],
+      "guide_articles": ["billing", "booking-concierge"],
+      "rag_impact": "guide_only",
+      "verified_by": ["CTO Final Closure Direction", "Automated test suite", "Disposable PostgreSQL 17 Concurrency Harness", "Atomic Nonce Storage RPC", "Unique Constraint 23505 Booking Idempotency", "Database Outage Fail-Closed Verification", "Retention Purge Stored Procedure Verification", "Cross-Tenant Resource Isolation Verification"]
+    },
     {
       "id": "2026-10-10-cto-remediation-voice-billing-reliability",
       "record": "docs/knowledge/releases/2026-10-10-cto-remediation-voice-billing-reliability.md",

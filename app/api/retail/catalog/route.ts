@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { isFeatureEnabled } from "@/lib/feature-flags";
+import { isFeatureEnabledAsync } from "@/lib/feature-flags";
 
 // Retail catalog feed requires feed secret token or internal service authentication
 export const dynamic = "force-dynamic";
@@ -21,8 +21,8 @@ export async function GET(req: Request) {
       return new NextResponse("Missing org_id parameter", { status: 400 });
     }
 
-    // 1. Feature flag gating - retail remains disabled by default
-    if (!isFeatureEnabled("whatsapp_catalog_enabled", orgId)) {
+    // 1. PostgreSQL-backed feature flag gating
+    if (!(await isFeatureEnabledAsync("whatsapp_catalog_enabled", orgId))) {
       return new NextResponse("Retail catalog feature is disabled for this organization", { status: 403 });
     }
 

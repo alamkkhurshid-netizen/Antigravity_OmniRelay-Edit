@@ -174,6 +174,83 @@ export function isFeatureEnabled(
 }
 
 /**
+ * Asynchronously evaluates a feature flag with PostgreSQL as the authoritative source of truth.
+ * Required by voice, retail, and security routes.
+ */
+export async function isFeatureEnabledAsync(
+  flagKey: string,
+  organizationId?: string | null
+): Promise<boolean> {
+  const definition = KNOWN_FEATURE_FLAGS[flagKey];
+  if (!definition) return false;
+
+  if (!organizationId) {
+    if (definition.envFallbackKey && process.env[definition.envFallbackKey] !== undefined) {
+      const envVal = process.env[definition.envFallbackKey]?.toLowerCase().trim();
+      return envVal === "true" || envVal === "1";
+    }
+    return definition.defaultValue;
+  }
+
+  // 1. Check coherent cache first
+  if (durableFlagCache.has(organizationId)) {
+    const entry = durableFlagCache.get(organizationId)!;
+    if (Date.now() - entry.timestamp < CACHE_TTL_MS) {
+      if (flagKey in entry.flags) {
+        return entry.flags[flagKey];
+      }
+    } else {
+      durableFlagCache.delete(organizationId);
+    }
+  }
+
+  // 2. Query authoritative PostgreSQL database
+  try {
+    const { createAdminClient } = await import("./supabase/admin.ts");
+    const admin = createAdminClient();
+    const { data: org, error } = await admin
+      .from("organizations")
+      .select("extra")
+      .eq("id", organizationId)
+      .maybeSingle();
+
+    if (!error && org?.extra) {
+      const extra = org.extra as Record<string, unknown>;
+      const featureFlags = (extra.feature_flags as Record<string, boolean>) || {};
+
+      // Update coherent cache
+      const cached = durableFlagCache.get(organizationId)?.flags || {};
+      durableFlagCache.set(organizationId, {
+        flags: { ...cached, ...featureFlags },
+        timestamp: Date.now(),
+      });
+
+      if (flagKey in featureFlags) {
+        return Boolean(featureFlags[flagKey]);
+      }
+    }
+  } catch {
+    // If database client cannot be created or is offline, check overrides
+  }
+
+  // 3. Fallback test overrides (for isolated tests)
+  if (tenantFlagOverrides.has(organizationId)) {
+    const orgOverrides = tenantFlagOverrides.get(organizationId)!;
+    if (orgOverrides.has(flagKey)) {
+      return orgOverrides.get(flagKey)!;
+    }
+  }
+
+  // 4. Environment variable override
+  if (definition.envFallbackKey && process.env[definition.envFallbackKey] !== undefined) {
+    const envVal = process.env[definition.envFallbackKey]?.toLowerCase().trim();
+    return envVal === "true" || envVal === "1";
+  }
+
+  return definition.defaultValue;
+}
+
+/**
  * Sets durable cache entry for an organization (called after DB write or on fetch)
  */
 export function setDurableFlagCache(organizationId: string, flags: Record<string, boolean>): void {

@@ -12,7 +12,7 @@
  */
 
 import crypto from "crypto";
-import { isFeatureEnabled } from "../feature-flags.ts";
+import { isFeatureEnabledAsync } from "../feature-flags.ts";
 import { createAdminClient } from "../supabase/admin.ts";
 
 export interface VoiceAuthResult {
@@ -21,6 +21,13 @@ export interface VoiceAuthResult {
   error?: string;
   requestId?: string;
   orgId?: string;
+}
+
+export interface NonceConsumptionResult {
+  success: boolean;
+  duplicate: boolean;
+  status: number;
+  error?: string;
 }
 
 const REPLAY_TOLERANCE_MS = 5 * 60 * 1000; // 5 minutes
@@ -42,41 +49,105 @@ function pruneLocalNonces() {
 
 /**
  * Atomically consumes a request nonce.
- * Rejects duplicates atomically.
+ * Fails closed on database errors (503 Service Unavailable).
+ * Rejects duplicate request IDs (409 Conflict).
+ * Local-memory fallback is permitted ONLY under an explicit local-test environment.
  */
 export async function consumeVoiceRequestNonce(
   requestId: string,
   orgId: string,
   expiresAt: Date
-): Promise<{ success: boolean; duplicate: boolean }> {
-  pruneLocalNonces();
+): Promise<NonceConsumptionResult> {
+  const isExplicitTestEnv =
+    (process.env.NODE_ENV === "test" || process.env.ALLOW_IN_MEMORY_NONCE === "true") &&
+    process.env.VERCEL_ENV !== "preview" &&
+    process.env.VERCEL_ENV !== "production" &&
+    process.env.NODE_ENV !== "production";
 
-  // 1. Check local synchronized nonce map
-  if (localConsumedNonces.has(requestId)) {
-    return { success: false, duplicate: true };
-  }
-  localConsumedNonces.set(requestId, { orgId, expiresAt: expiresAt.getTime() });
-
-  // 2. Persist to PostgreSQL durable storage if database client is available
+  // Check if PostgreSQL database is configured and reachable
+  let adminClient;
   try {
-    const admin = createAdminClient();
-    const { error } = await admin.rpc("consume_voice_request_nonce", {
+    adminClient = createAdminClient();
+  } catch (err: unknown) {
+    if (isExplicitTestEnv) {
+      // Local unit-test fallback when database secrets are unconfigured
+      pruneLocalNonces();
+      if (localConsumedNonces.has(requestId)) {
+        return {
+          success: false,
+          duplicate: true,
+          status: 409,
+          error: `Duplicate request: Request ID ${requestId} has already been consumed (replay attack rejected).`,
+        };
+      }
+      localConsumedNonces.set(requestId, { orgId, expiresAt: expiresAt.getTime() });
+      return { success: true, duplicate: false, status: 200 };
+    }
+
+    // Fail closed in production/staging when admin client cannot be created
+    const message = err instanceof Error ? err.message : "Unconfigured database credentials";
+    return {
+      success: false,
+      duplicate: false,
+      status: 503,
+      error: `Service Unavailable: Replay protection store is unconfigured: ${message}`,
+    };
+  }
+
+  // Authoritative PostgreSQL RPC execution
+  try {
+    const { data, error } = await adminClient.rpc("consume_voice_request_nonce", {
       p_request_id: requestId,
       p_org_id: orgId,
       p_expires_at: expiresAt.toISOString(),
     });
 
     if (error) {
-      // Check for unique_violation or failed RPC
-      if (error.code === "23505" || error.message?.includes("unique")) {
-        return { success: false, duplicate: true };
-      }
+      // Treat every RPC/database error as service unavailable (Fail Closed)
+      return {
+        success: false,
+        duplicate: false,
+        status: 503,
+        error: `Service Unavailable: Replay protection store failure: ${error.message}`,
+      };
     }
-  } catch {
-    // If Supabase environment is unavailable (e.g. offline unit test), in-memory map guarantees idempotency
-  }
 
-  return { success: true, duplicate: false };
+    // Require RPC data === true
+    if (data === true) {
+      return { success: true, duplicate: false, status: 200 };
+    }
+
+    // Treat data === false as HTTP 409 duplicate
+    return {
+      success: false,
+      duplicate: true,
+      status: 409,
+      error: `Duplicate request: Request ID ${requestId} has already been consumed (replay attack rejected).`,
+    };
+  } catch (err: unknown) {
+    if (isExplicitTestEnv && !process.env.SUPABASE_SECRET_KEY && !process.env.DATABASE_URL) {
+      // Local unit-test fallback when database is completely offline
+      pruneLocalNonces();
+      if (localConsumedNonces.has(requestId)) {
+        return {
+          success: false,
+          duplicate: true,
+          status: 409,
+          error: `Duplicate request: Request ID ${requestId} has already been consumed (replay attack rejected).`,
+        };
+      }
+      localConsumedNonces.set(requestId, { orgId, expiresAt: expiresAt.getTime() });
+      return { success: true, duplicate: false, status: 200 };
+    }
+
+    const message = err instanceof Error ? err.message : "Database connection failure";
+    return {
+      success: false,
+      duplicate: false,
+      status: 503,
+      error: `Service Unavailable: Replay protection storage error: ${message}`,
+    };
+  }
 }
 
 /**
@@ -201,19 +272,20 @@ export async function verifyVoiceServiceAuth(
     }
   }
 
-  // 5. Consume-Once Nonce Storage (Atomic Deduplication)
+  // 5. Consume-Once Nonce Storage (Fail-Closed Deduplication)
   const expiresAt = new Date(timestamp + REPLAY_TOLERANCE_MS);
   const nonceResult = await consumeVoiceRequestNonce(requestId, tenantHeader, expiresAt);
-  if (nonceResult.duplicate) {
+  if (!nonceResult.success) {
     return {
       authorized: false,
-      status: 409,
-      error: `Duplicate request: Request ID ${requestId} has already been consumed (replay attack rejected).`,
+      status: nonceResult.status,
+      error: nonceResult.error || "Authentication rejected: Replay protection failure.",
     };
   }
 
-  // 6. Tenant Feature Flag Gating
-  if (!isFeatureEnabled("voice_agent_enabled", tenantHeader)) {
+  // 6. Tenant Feature Flag Gating (PostgreSQL-backed asynchronous evaluation)
+  const isEnabled = await isFeatureEnabledAsync("voice_agent_enabled", tenantHeader);
+  if (!isEnabled) {
     return {
       authorized: false,
       status: 403,
