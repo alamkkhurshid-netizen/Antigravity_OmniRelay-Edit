@@ -40,7 +40,7 @@ export async function GET(req: Request) {
     const headers = ["id", "title", "description", "availability", "condition", "price", "link", "image_link", "brand", "inventory"];
     
     // Helper to safely escape CSV fields
-    const escapeCsv = (field: any) => {
+    const escapeCsv = (field: unknown) => {
       if (field === null || field === undefined) return "";
       const str = String(field).replace(/"/g, '""'); // Escape double quotes
       if (str.search(/("|,|\n)/g) >= 0) {
@@ -74,7 +74,7 @@ export async function GET(req: Request) {
       },
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Catalog API Error:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
   }

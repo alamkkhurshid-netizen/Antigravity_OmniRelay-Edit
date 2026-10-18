@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Package, Smartphone, Zap, Store, Sparkles, Building2, Users, TrendingUp, Megaphone, Workflow, Target, CalendarDays } from "lucide-react";
+import { ArrowRight, Package, Smartphone, Zap, Store, Sparkles, Building2, Users, TrendingUp, Megaphone, Workflow, Target, CalendarDays, Tag } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function RetailDashboard() {
@@ -48,7 +48,19 @@ export default async function RetailDashboard() {
       </section>
 
       {/* Quick Action Navigation */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 md:grid-cols-8">
+        <Link href="/app/retail/catalog" className="group flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:border-teal-300 hover:shadow-md">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-teal-50 text-teal-600 transition-colors group-hover:bg-teal-100">
+            <Store className="size-6" />
+          </div>
+          <span className="text-sm font-bold text-slate-700 group-hover:text-teal-600 text-center leading-tight">Catalog</span>
+        </Link>
+        <Link href="/app/retail/offers" className="group flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:border-amber-300 hover:shadow-md">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600 transition-colors group-hover:bg-amber-100">
+            <Tag className="size-6" />
+          </div>
+          <span className="text-sm font-bold text-slate-700 group-hover:text-amber-600 text-center leading-tight">Offers & Loyalty</span>
+        </Link>
         <Link href="/app/retail/marketing" className="group flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-1 hover:border-blue-300 hover:shadow-md">
           <div className="flex size-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-colors group-hover:bg-blue-100">
             <Target className="size-6" />
