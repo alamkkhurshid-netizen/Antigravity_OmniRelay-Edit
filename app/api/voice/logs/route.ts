@@ -3,6 +3,7 @@ import { getWorkspace } from "@/lib/workspace";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyVoiceServiceAuth } from "@/lib/voice/auth";
 import {
+  calculateRetentionExpiry,
   maskPhoneNumber,
   sanitizeTranscript,
   scrubPiiText,
@@ -52,10 +53,47 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Apply Zero-PII phone masking on returned logs
+    // Role-Based Transcript Access Control (Doctors and Owners only)
+    const { data: { user } } = await supabase.auth.getUser();
+    let canViewTranscripts = false;
+    if (user && targetOrgId) {
+      const { data: actor } = await supabase
+        .from("agents")
+        .select("extra")
+        .eq("organization_id", targetOrgId)
+        .eq("user_id", user.id)
+        .eq("ai", false)
+        .maybeSingle();
+
+      const actorExtra = (actor?.extra as Record<string, unknown>) || {};
+      const role = actorExtra.role;
+      const clinicRole = actorExtra.clinic_role;
+      if (role === "owner" || clinicRole === "doctor") {
+        canViewTranscripts = true;
+      }
+    }
+
+    // Audit every access to transcripts
+    if (canViewTranscripts && logs && logs.length > 0 && user) {
+      const logIds = logs.map((l: Record<string, unknown>) => l.id).filter(Boolean);
+      if (logIds.length > 0) {
+        await admin
+          .from("voice_call_logs")
+          .update({
+            transcript_accessed_at: new Date().toISOString(),
+            transcript_accessed_by: user.id,
+          })
+          .in("id", logIds);
+      }
+    }
+
+    // Apply Zero-PII phone masking and role-restricted transcript views
     const safeLogs = (logs || []).map((l: Record<string, unknown>) => ({
       ...l,
       contact_phone: maskPhoneNumber(String(l.contact_phone || "")),
+      transcript: canViewTranscripts
+        ? l.transcript
+        : [{ speaker: "system", text: "[TRANSCRIPT_RESTRICTED: Accessible only to clinical doctors and workspace owners]" }],
     }));
 
     return NextResponse.json({ logs: safeLogs });
@@ -64,6 +102,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
 
 export async function POST(req: NextRequest) {
   try {
@@ -132,6 +171,9 @@ export async function POST(req: NextRequest) {
             emergency_flag: Boolean(emergency_flag),
             emergency_reason: safeEmergencyReason || null,
             latency_metrics,
+            is_consented_recording: Boolean(consent_recorded),
+            retention_status: "active",
+            retention_expires_at: calculateRetentionExpiry(30),
             updated_at: new Date().toISOString(),
           })
           .eq("id", existing.id)
@@ -163,6 +205,9 @@ export async function POST(req: NextRequest) {
         emergency_flag: Boolean(emergency_flag),
         emergency_reason: safeEmergencyReason || null,
         latency_metrics,
+        is_consented_recording: Boolean(consent_recorded),
+        retention_status: "active",
+        retention_expires_at: calculateRetentionExpiry(30),
       })
       .select()
       .single();

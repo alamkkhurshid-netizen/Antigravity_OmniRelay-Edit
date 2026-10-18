@@ -104,11 +104,31 @@ export function satisfiesTier(
   return currentRank >= requiredRank;
 }
 
-// In-memory tenant override cache for fast evaluation
+// Durable tenant flag cache with explicit invalidation
+interface CacheEntry {
+  flags: Record<string, boolean>;
+  timestamp: number;
+}
+const durableFlagCache = new Map<string, CacheEntry>();
 const tenantFlagOverrides = new Map<string, Map<string, boolean>>();
+const CACHE_TTL_MS = 10 * 1000; // 10-second coherent window
 
 /**
- * Checks if a specific feature flag is active for a given organization/workspace
+ * Invalidates durable cache for a tenant when updated
+ */
+export function invalidateFeatureFlagCache(organizationId?: string): void {
+  if (organizationId) {
+    durableFlagCache.delete(organizationId);
+    tenantFlagOverrides.delete(organizationId);
+  } else {
+    durableFlagCache.clear();
+    tenantFlagOverrides.clear();
+  }
+}
+
+/**
+ * Checks if a specific feature flag is active for a given organization/workspace.
+ * PostgreSQL organization configuration is the authoritative source of truth.
  */
 export function isFeatureEnabled(
   flagKey: string,
@@ -118,12 +138,24 @@ export function isFeatureEnabled(
   const definition = KNOWN_FEATURE_FLAGS[flagKey];
   if (!definition) return false;
 
-  // 1. Check passed organization configuration from DB (durable source of truth)
+  // 1. Direct committed organization configuration passed from database
   if (orgConfig?.extra?.feature_flags && flagKey in orgConfig.extra.feature_flags) {
     return Boolean(orgConfig.extra.feature_flags[flagKey]);
   }
 
-  // 2. Check tenant in-memory override if organizationId is provided
+  // 2. Coherent cached durable flags for organization
+  if (organizationId && durableFlagCache.has(organizationId)) {
+    const entry = durableFlagCache.get(organizationId)!;
+    if (Date.now() - entry.timestamp < CACHE_TTL_MS) {
+      if (flagKey in entry.flags) {
+        return entry.flags[flagKey];
+      }
+    } else {
+      durableFlagCache.delete(organizationId);
+    }
+  }
+
+  // 3. Fallback in-memory overrides (for test isolation)
   if (organizationId && tenantFlagOverrides.has(organizationId)) {
     const orgOverrides = tenantFlagOverrides.get(organizationId)!;
     if (orgOverrides.has(flagKey)) {
@@ -131,28 +163,52 @@ export function isFeatureEnabled(
     }
   }
 
-  // 3. Check environment variable override
+  // 4. Environment variable override
   if (definition.envFallbackKey && process.env[definition.envFallbackKey] !== undefined) {
     const envVal = process.env[definition.envFallbackKey]?.toLowerCase().trim();
     return envVal === "true" || envVal === "1";
   }
 
-  // 4. Fallback to flag definition default (safe default)
+  // 5. Default value (safe defaults: false for unverified modules)
   return definition.defaultValue;
 }
 
+/**
+ * Sets durable cache entry for an organization (called after DB write or on fetch)
+ */
+export function setDurableFlagCache(organizationId: string, flags: Record<string, boolean>): void {
+  durableFlagCache.set(organizationId, {
+    flags,
+    timestamp: Date.now(),
+  });
+}
 
 /**
  * Returns all feature flags evaluated with active states for a tenant
  */
-export function getAllFeatureFlags(organizationId?: string | null): Array<
-  FeatureFlagDefinition & { isEnabled: boolean; isOverridden: boolean }
-> {
+export function getAllFeatureFlags(
+  organizationId?: string | null,
+  orgConfig?: { extra?: { feature_flags?: Record<string, boolean> } } | null
+): Array<FeatureFlagDefinition & { isEnabled: boolean; isOverridden: boolean }> {
+  const flagsMap = orgConfig?.extra?.feature_flags ||
+    (organizationId && durableFlagCache.has(organizationId) ? durableFlagCache.get(organizationId)!.flags : null);
+
   const orgOverrides = organizationId ? tenantFlagOverrides.get(organizationId) : null;
 
   return Object.values(KNOWN_FEATURE_FLAGS).map((def) => {
-    const isOverridden = Boolean(orgOverrides && orgOverrides.has(def.key));
-    const isEnabled = isFeatureEnabled(def.key, organizationId);
+    let isOverridden = false;
+    let isEnabled = def.defaultValue;
+
+    if (flagsMap && def.key in flagsMap) {
+      isEnabled = Boolean(flagsMap[def.key]);
+      isOverridden = true;
+    } else if (orgOverrides && orgOverrides.has(def.key)) {
+      isEnabled = orgOverrides.get(def.key)!;
+      isOverridden = true;
+    } else {
+      isEnabled = isFeatureEnabled(def.key, organizationId, orgConfig);
+    }
+
     return {
       ...def,
       isEnabled,
@@ -173,15 +229,19 @@ export function setFeatureFlagOverride(
     tenantFlagOverrides.set(organizationId, new Map());
   }
   tenantFlagOverrides.get(organizationId)!.set(flagKey, enabled);
+
+  // Also update coherent cache
+  const existing = durableFlagCache.get(organizationId)?.flags || {};
+  durableFlagCache.set(organizationId, {
+    flags: { ...existing, [flagKey]: enabled },
+    timestamp: Date.now(),
+  });
 }
 
 /**
  * Resets all overrides for testing or tenant reset
  */
 export function clearFeatureFlagOverrides(organizationId?: string): void {
-  if (organizationId) {
-    tenantFlagOverrides.delete(organizationId);
-  } else {
-    tenantFlagOverrides.clear();
-  }
+  invalidateFeatureFlagCache(organizationId);
 }
+

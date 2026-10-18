@@ -6,6 +6,7 @@ import {
 } from "@/lib/retail/whatsapp-catalog";
 import { RetailOrder, extractOrderLookupQuery } from "@/lib/retail/orders";
 import { isFeatureEnabled } from "@/lib/feature-flags";
+import { verifySignedOrderToken, checkOrderLookupRateLimit } from "@/lib/retail/order-auth";
 
 export interface RestrictedOrderProjection {
   id: string;
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
     const organizationId = searchParams.get("organization_id");
     const customerPhone = searchParams.get("phone")?.replace(/\D/g, "");
     const orderToken = searchParams.get("token");
+    const otp = searchParams.get("otp");
 
     // 1. Mandatory organization binding
     if (!organizationId) {
@@ -36,7 +38,17 @@ export async function GET(request: Request) {
       );
     }
 
-    // 2. Feature flag check
+    // 2. Sliding-Window Rate Limiting to Prevent Enumeration
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anonymous";
+    const rateLimit = checkOrderLookupRateLimit(`${organizationId}:${ip}`, 10, 60000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many lookup attempts. Rate limit exceeded. Please try again later." },
+        { status: 429 }
+      );
+    }
+
+    // 3. Feature flag check
     if (!isFeatureEnabled("whatsapp_catalog_enabled", organizationId)) {
       return NextResponse.json(
         { error: "Retail ordering module is currently disabled" },
@@ -56,7 +68,7 @@ export async function GET(request: Request) {
       );
     }
 
-    // 3. Determine if caller is an authenticated staff member
+    // 4. Determine if caller is an authenticated staff member
     let isStaffAuthenticated = false;
     try {
       const supabase = await createClient();
@@ -76,7 +88,7 @@ export async function GET(request: Request) {
       // In non-browser / service context, proceed to token/phone check
     }
 
-    // 4. Query order from database scoped strictly to organization_id
+    // 5. Query order from database scoped strictly to organization_id
     const admin = createAdminClient();
     let dbQuery = admin
       .from("retail_orders")
@@ -98,36 +110,41 @@ export async function GET(request: Request) {
 
     const order = orders[0] as RetailOrder;
 
-    // 5. Verification: requires valid staff session, matching phone, or matching signed order token
+    // 6. Strict Cryptographic & Customer Verification
     let isAuthorized = isStaffAuthenticated;
 
+    // A. Cryptographically HMAC-Signed Token Verification
+    if (!isAuthorized && orderToken) {
+      isAuthorized = verifySignedOrderToken(orderToken, order.id, organizationId);
+    }
+
+    // B. Full Phone Verification (strictly requires full 10+ digit match, never last-4 digits alone)
     if (!isAuthorized && customerPhone) {
       const orderPhoneNormalized = (order.customer_phone || "").replace(/\D/g, "");
       if (
-        orderPhoneNormalized &&
-        customerPhone.length >= 4 &&
-        (orderPhoneNormalized.endsWith(customerPhone) || customerPhone.endsWith(orderPhoneNormalized))
+        customerPhone.length >= 10 &&
+        orderPhoneNormalized.length >= 10 &&
+        (customerPhone === orderPhoneNormalized ||
+          (customerPhone.length === 10 && orderPhoneNormalized.endsWith(customerPhone)))
       ) {
         isAuthorized = true;
       }
     }
 
-    if (!isAuthorized && orderToken) {
-      // Validate order token (must match order id or tracking number hash)
-      const expectedToken = Buffer.from(`${order.id}:${order.created_at}`).toString("base64url");
-      if (orderToken === expectedToken || orderToken === order.id) {
-        isAuthorized = true;
-      }
+    // C. OTP Verification (if provided)
+    if (!isAuthorized && otp && (order as unknown as Record<string, unknown>).otp_code === otp) {
+      isAuthorized = true;
     }
 
     if (!isAuthorized) {
       return NextResponse.json(
         {
-          error: "Verification required: customer phone verification or signed order token is required to view order status",
+          error: "Verification required: valid HMAC-signed order token or full registered customer phone match is required to view order status",
         },
         { status: 401 }
       );
     }
+
 
     // 6. Return restricted status projection (Zero-PII disclosure)
     const restrictedProjection: RestrictedOrderProjection = {

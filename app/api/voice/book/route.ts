@@ -94,7 +94,28 @@ export async function POST(req: NextRequest) {
     const startDate = new Date(starts_at);
     const endDate = ends_at ? new Date(ends_at) : new Date(startDate.getTime() + 30 * 60 * 1000);
 
-    // 4. Check for overlapping appointment
+    const bookingIntentKey = String(call_sid || authResult.requestId || body.idempotency_key || "");
+
+    // 4. Database-Level Booking Idempotency Check
+    if (bookingIntentKey) {
+      const { data: existingAppt } = await admin
+        .from("appointments")
+        .select("*")
+        .eq("organization_id", org_id)
+        .filter("metadata->>voice_call_sid", "eq", bookingIntentKey)
+        .maybeSingle();
+
+      if (existingAppt) {
+        return NextResponse.json({
+          success: true,
+          idempotent: true,
+          appointment: existingAppt,
+          message: "Appointment already booked for this voice session (idempotent replay)",
+        });
+      }
+    }
+
+    // 5. Check for overlapping appointment slot conflicts
     if (resourceId) {
       const { data: conflict } = await admin
         .from("appointments")
@@ -114,7 +135,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 5. Find or create patient profile
+    // 6. Find or create patient profile
     let patientId: string | null = null;
     const { data: existingPatient } = await admin
       .from("patient_profiles")
@@ -139,7 +160,7 @@ export async function POST(req: NextRequest) {
       if (newPatient) patientId = newPatient.id;
     }
 
-    // 6. Insert Appointment with "Voice" Source Tag
+    // 7. Insert Appointment with "Voice" Source Tag and Idempotency Metadata
     const appointmentPayload: Record<string, unknown> = {
       organization_id: org_id,
       patient_id: patientId,
@@ -154,19 +175,49 @@ export async function POST(req: NextRequest) {
       source: "Voice",
       notes: notes || "Booked via Voice AI Assistant",
       payment_status: "pending",
+      metadata: {
+        voice_call_sid: bookingIntentKey || null,
+        voice_request_id: authResult.requestId || null,
+        booked_at: new Date().toISOString(),
+      },
     };
 
-    const { data: appointment, error: apptErr } = await admin
+    let appointment: Record<string, unknown> | null = null;
+    const { data: insertedAppt, error: apptErr } = await admin
       .from("appointments")
       .insert(appointmentPayload)
       .select()
       .single();
 
     if (apptErr) {
+      // Concurrency race guard: if duplicate key violated, fetch the winning concurrent appointment
+      if (
+        apptErr.code === "23505" ||
+        apptErr.message?.includes("voice_call_idempotency") ||
+        apptErr.message?.includes("unique")
+      ) {
+        const { data: raceAppt } = await admin
+          .from("appointments")
+          .select("*")
+          .eq("organization_id", org_id)
+          .filter("metadata->>voice_call_sid", "eq", bookingIntentKey)
+          .maybeSingle();
+
+        if (raceAppt) {
+          return NextResponse.json({
+            success: true,
+            idempotent: true,
+            appointment: raceAppt,
+            message: "Appointment already booked for this voice session (concurrency resolved)",
+          });
+        }
+      }
       return NextResponse.json({ error: apptErr.message }, { status: 500 });
     }
 
-    // 7. Update voice_call_logs if call_sid provided
+    appointment = insertedAppt;
+
+    // 8. Update voice_call_logs if call_sid provided
     if (call_sid) {
       await admin
         .from("voice_call_logs")
@@ -177,6 +228,7 @@ export async function POST(req: NextRequest) {
         })
         .eq("exotel_call_sid", call_sid);
     }
+
 
     // 8. Generate spoken confirmation response
     const readableDate = startDate.toLocaleDateString("en-IN", {

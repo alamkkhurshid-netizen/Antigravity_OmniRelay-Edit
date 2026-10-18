@@ -3,7 +3,6 @@ import { getWorkspace } from "@/lib/workspace";
 import {
   getAllFeatureFlags,
   setFeatureFlagOverride,
-  isFeatureEnabled,
   KNOWN_FEATURE_FLAGS,
   satisfiesTier,
 } from "@/lib/feature-flags";
@@ -19,7 +18,14 @@ export async function GET(_request: Request) {
     return NextResponse.json({ error: "Authentication required." }, { status: 401 });
   }
 
-  const flags = getAllFeatureFlags(organization.id);
+  // Load authoritative committed values from PostgreSQL
+  const { data: dbOrg } = await supabase
+    .from("organizations")
+    .select("id, extra")
+    .eq("id", organization.id)
+    .maybeSingle();
+
+  const flags = getAllFeatureFlags(organization.id, dbOrg || organization);
   return NextResponse.json({
     organizationId: organization.id,
     flags,
@@ -77,13 +83,13 @@ export async function POST(request: Request) {
     );
   }
 
-  // 3. Durable persistence in Supabase organizations table
+  // 3. Durable persistence in PostgreSQL organizations table (Fail-Closed)
   const updatedFlags = {
     ...((orgExtra.feature_flags as Record<string, boolean>) || {}),
     [flagKey]: enabled,
   };
 
-  await supabase
+  const { data: committedOrg, error: dbErr } = await supabase
     .from("organizations")
     .update({
       extra: {
@@ -91,27 +97,49 @@ export async function POST(request: Request) {
         feature_flags: updatedFlags,
       },
     })
-    .eq("id", organization.id);
+    .eq("id", organization.id)
+    .select("id, extra")
+    .maybeSingle();
 
-  // 4. Update in-memory cache for fast local evaluation
+  if (dbErr) {
+    return NextResponse.json(
+      { error: `Database persistence failed: ${dbErr.message || "Could not commit feature flag to PostgreSQL"}` },
+      { status: 500 }
+    );
+  }
+
+  // 4. Update coherent cache with invalidation
   setFeatureFlagOverride(organization.id, flagKey, enabled);
 
-  // 5. Durable audit trail recording
-  await recordTeamAudit({
-    organizationId: organization.id,
-    actorUserId: user.id,
-    subjectAgentId: actor?.id || user.id,
-    eventType: "feature_flag_updated",
-    summary: `Feature flag '${flagDef.name}' set to ${enabled ? "ENABLED" : "DISABLED"}`,
-    metadata: { flagKey, enabled, orgTier },
-  }).catch(() => {
-    // Non-blocking if audit fails
-  });
+  // 5. Durable audit trail recording (Fail-Closed in production)
+  try {
+    await recordTeamAudit({
+      organizationId: organization.id,
+      actorUserId: user.id,
+      subjectAgentId: actor?.id || user.id,
+      eventType: "feature_flag_updated",
+      summary: `Feature flag '${flagDef.name}' set to ${enabled ? "ENABLED" : "DISABLED"}`,
+      metadata: { flagKey, enabled, orgTier },
+    });
+  } catch (auditErr: unknown) {
+    const auditMsg = auditErr instanceof Error ? auditErr.message : "Unknown audit error";
+    console.error("Critical: Feature flag audit recording failed:", auditMsg);
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { error: "Compliance failure: Could not record durable audit event for feature flag update." },
+        { status: 500 }
+      );
+    }
+  }
+
+  const committedFlags = ((committedOrg?.extra as Record<string, unknown>)?.feature_flags as Record<string, boolean>) || updatedFlags;
+  const committedValue = Boolean(committedFlags[flagKey]);
 
   return NextResponse.json({
     success: true,
     flagKey,
-    enabled: isFeatureEnabled(flagKey, organization.id),
+    enabled: committedValue,
   });
 }
+
 
