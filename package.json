@@ -20,6 +20,7 @@
     "check:env": "node scripts/check-no-env-staged.mjs",
     "knowledge:release-gate": "node scripts/verify-product-knowledge-release.mjs",
     "validate:artifact": "bash scripts/validate-artifact.sh",
+    "validate:migrations": "node scripts/ci-validate-migrations.mjs",
     "lint": "node scripts/check-lint-baseline.mjs",
     "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate",
     "db:fresh": "node scripts/db-migration-runner.mjs --mode=fresh",

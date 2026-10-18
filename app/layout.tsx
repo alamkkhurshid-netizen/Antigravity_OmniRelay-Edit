@@ -47,6 +47,7 @@ export const metadata: Metadata = {
     ],
     shortcut: "/omnirelay-favicon-square-v5.png",
     apple: [
+      { url: "/pwa-assets/apple-icon-180.png", sizes: "180x180", type: "image/png" },
       { url: "/omnirelay-app-icon-v4.png", sizes: "512x512", type: "image/png" },
     ],
   },

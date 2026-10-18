@@ -35,6 +35,9 @@ jobs:
       - name: Lint application source
         run: npm run lint
 
+      - name: Validate Database Migrations (S9-09)
+        run: npm run validate:migrations
+
       - name: Verify Knowledge Release Gate
         run: npm run knowledge:release-gate
 

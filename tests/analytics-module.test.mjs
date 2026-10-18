@@ -152,7 +152,7 @@ test("analytics workspace hook validates supported time ranges", async () => {
 
 test("zero-PHI sanitizer strips all patient identifiers from payload", () => {
   function sanitizeForAi(rawMetrics) {
-    const { patient_names, phone_numbers, patient_records, ...sanitized } = rawMetrics;
+    const { patient_names: _patient_names, phone_numbers: _phone_numbers, patient_records: _patient_records, ...sanitized } = rawMetrics;
     return sanitized;
   }
 

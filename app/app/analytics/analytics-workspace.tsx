@@ -8,6 +8,7 @@ import { KpiMetricCards } from "@/components/analytics/kpi-metric-cards";
 import { FunnelAndAutomation } from "@/components/analytics/funnel-and-automation";
 import { DoctorPerformanceMatrix } from "@/components/analytics/doctor-performance-matrix";
 import { CareAndAlerts } from "@/components/analytics/care-and-alerts";
+import { WhatsAppAnalyticsCard } from "@/components/analytics/whatsapp-analytics-card";
 
 export function AnalyticsWorkspace({
   initialAnalytics,
@@ -18,7 +19,7 @@ export function AnalyticsWorkspace({
   initialWhatsappCounts,
 }: {
   initialAnalytics: ClinicAnalyticsResult;
-  initialAiPayload: any;
+  initialAiPayload: Record<string, unknown> | null;
   clinicName: string;
   doctors: DoctorResource[];
   organizationId: string;
@@ -53,6 +54,12 @@ export function AnalyticsWorkspace({
         queue={state.analytics.queueDelays}
         automation={state.analytics.automation}
         fin={state.analytics.financialAndCare}
+        doctorUtilizationRate={state.analytics.doctorUtilizationRate}
+      />
+
+      <WhatsAppAnalyticsCard
+        initialCounts={initialWhatsappCounts}
+        automation={state.analytics.automation}
       />
 
       <FunnelAndAutomation

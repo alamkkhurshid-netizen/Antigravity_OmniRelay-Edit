@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 test("Billing Concurrency & Idempotency: 20 simultaneous callbacks for one call", async () => {
   const migration = readFileSync(new URL("../supabase/migrations/20261010000006_billing_concurrency_and_oauth_nonces.sql", import.meta.url), "utf8");
   const deductionEngine = readFileSync(new URL("../lib/billing/deduction-engine.ts", import.meta.url), "utf8");
+  assert.ok(deductionEngine.length > 0, "Deduction engine file must exist");
 
   // 1. Verify RPC concurrency locking and idempotency return in SQL
   assert.match(migration, /pg_advisory_xact_lock/, "Must use pg_advisory_xact_lock to serialize concurrent requests for same message");
