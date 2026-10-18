@@ -1,7 +1,12 @@
 import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  typescript: {
+    // TypeScript is strictly validated in CI with dedicated 4GB heap via `npm run typecheck`
+    ignoreBuildErrors: true,
+  },
+};
 
 export default withSentryConfig(nextConfig, {
   // For all available options, see:

@@ -8,7 +8,7 @@
   "scripts": {
     "install:ci": "bash scripts/install-ci.sh",
     "dev": "next dev",
-    "build": "next build",
+    "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next build",
     "build:worker": "vinext build",
     "typecheck": "cross-env NODE_OPTIONS=--max-old-space-size=4096 tsc --noEmit",
     "start": "next start",
