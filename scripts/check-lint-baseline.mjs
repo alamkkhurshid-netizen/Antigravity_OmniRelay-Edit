@@ -15,7 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "..");
 
 // Recorded baseline for warnings on remediation/cto-pilot-readiness branch
-const MAX_ALLOWED_WARNINGS = 203;
+const MAX_ALLOWED_WARNINGS = 201;
 
 console.log(`[Lint Ratchet] Verifying code quality against baseline (max warnings: ${MAX_ALLOWED_WARNINGS})...`);
 
@@ -89,6 +89,16 @@ child.on("close", (_code) => {
 
   if (totalErrors > 0) {
     console.error(`❌ [Lint Ratchet] BLOCKED: Found ${totalErrors} lint error(s). 0 errors required.`);
+    for (const file of results) {
+      if (file.errorCount > 0) {
+        console.error(`File: ${file.filePath}`);
+        for (const msg of file.messages) {
+          if (msg.severity === 2) {
+            console.error(`  Line ${msg.line}:${msg.column} [${msg.ruleId}] ${msg.message}`);
+          }
+        }
+      }
+    }
     process.exit(1);
   }
 

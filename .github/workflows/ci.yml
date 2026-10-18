@@ -30,7 +30,7 @@ jobs:
         run: npm ci
 
       - name: Type Check
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Lint application source
         run: npm run lint
@@ -40,6 +40,15 @@ jobs:
 
       - name: Run Tests
         run: npm test
+
+      - name: Verify Concurrency Load Tests (S4-16, S4-17)
+        run: npm run test:load
+
+      - name: Generate Test Coverage Report (S4-18)
+        run: npm run test:coverage
+
+      - name: Verify Playwright E2E Suite (S4-01)
+        run: npm run test:e2e:list
 
       - name: Build Next.js Application
         run: npm run build

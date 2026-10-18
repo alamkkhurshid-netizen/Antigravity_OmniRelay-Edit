@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { getWorkspace } from "@/lib/workspace";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { apiSuccess, apiError } from "@/lib/api-response";
@@ -21,8 +20,9 @@ export async function GET() {
     if (error) return apiError(error.message, 400);
 
     return apiSuccess({ items: items ?? [] });
-  } catch (err: any) {
-    return apiError(err.message || "Failed to load knowledge items", 500);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to load knowledge items";
+    return apiError(message, 500);
   }
 }
 
@@ -65,8 +65,9 @@ export async function POST(request: Request) {
     if (error) return apiError(error.message, 400);
 
     return apiSuccess({ item: data }, 201);
-  } catch (err: any) {
-    return apiError(err.message || "Failed to save knowledge item", 500);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to save knowledge item";
+    return apiError(message, 500);
   }
 }
 
@@ -95,7 +96,8 @@ export async function DELETE(request: Request) {
     if (error) return apiError(error.message, 400);
 
     return apiSuccess({ deleted: true });
-  } catch (err: any) {
-    return apiError(err.message || "Failed to delete knowledge item", 500);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to delete knowledge item";
+    return apiError(message, 500);
   }
 }

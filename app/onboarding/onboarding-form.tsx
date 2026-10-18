@@ -18,15 +18,27 @@ const categories = [
   ["Other", "Custom business model", false],
 ] as const;
 
+function getDraftField(field: "name" | "primaryDoctorName" | "locations" | "clinicMode", fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const saved = localStorage.getItem("omnirelay_onboarding_draft");
+    if (!saved) return fallback;
+    const parsed = JSON.parse(saved);
+    return parsed[field] || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export function OnboardingForm() {
   const [step, setStep] = useState(1);
   const [tier, setTier] = useState<"standard" | "premium">("standard");
 
   const [category, setCategory] = useState("Healthcare");
-  const [name, setName] = useState("");
-  const [locations, setLocations] = useState("1");
-  const [clinicMode, setClinicMode] = useState("solo_practitioner");
-  const [primaryDoctorName, setPrimaryDoctorName] = useState("");
+  const [name, setName] = useState(() => getDraftField("name", ""));
+  const [locations, setLocations] = useState(() => getDraftField("locations", "1"));
+  const [clinicMode, setClinicMode] = useState(() => getDraftField("clinicMode", "solo_practitioner"));
+  const [primaryDoctorName, setPrimaryDoctorName] = useState(() => getDraftField("primaryDoctorName", ""));
   
   // Double-confirmation gate states
   const [confirmHealthcare, setConfirmHealthcare] = useState(false);
@@ -35,21 +47,6 @@ export function OnboardingForm() {
   const [waitlistNotice, setWaitlistNotice] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("omnirelay_onboarding_draft");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.name) setName(parsed.name);
-        if (parsed.primaryDoctorName) setPrimaryDoctorName(parsed.primaryDoctorName);
-        if (parsed.locations) setLocations(parsed.locations);
-        if (parsed.clinicMode) setClinicMode(parsed.clinicMode);
-      }
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
 
   useEffect(() => {
     try {

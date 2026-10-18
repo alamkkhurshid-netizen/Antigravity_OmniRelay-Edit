@@ -44,6 +44,9 @@ const eslintConfig = defineConfig([
     // Supabase Edge Functions run in Deno and are verified by their dedicated
     // integration tests; the Next.js ESLint runtime is not their type/runtime.
     "supabase/functions/**",
+    // Playwright E2E tests and configurations
+    "e2e/**",
+    "playwright.config.ts",
   ]),
 ]);
 

@@ -10,13 +10,8 @@ import {
   Sparkles, 
   CheckCircle2, 
   Clock, 
-  AlertCircle, 
-  FileText, 
   Send, 
-  HelpCircle, 
-  ShieldAlert,
-  DownloadCloud,
-  FileCheck
+  DownloadCloud
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +63,7 @@ const CLINIC_STARTER_PACK = [
 
 export function KnowledgeWorkspace({
   initialItems,
-  organizationName,
+  organizationName: _organizationName,
 }: {
   initialItems: KnowledgeItem[];
   organizationName: string;
@@ -133,8 +128,8 @@ export function KnowledgeWorkspace({
       setNewContent("");
       setActiveTab("library");
       setIndexFeedback("Document saved! Click 'Sync & Index' to vectorize for AI concierge.");
-    } catch (err: any) {
-      setFormError(err.message || "Failed to save knowledge item");
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : "Failed to save knowledge item");
     } finally {
       setSubmitting(false);
     }
@@ -165,8 +160,8 @@ export function KnowledgeWorkspace({
       setItems((prev) =>
         prev.map((i) => ({ ...i, embedding_status: "indexed" as const }))
       );
-    } catch (err: any) {
-      setIndexFeedback(`Indexing error: ${err.message}`);
+    } catch (err: unknown) {
+      setIndexFeedback(err instanceof Error ? `Indexing error: ${err.message}` : "Indexing error");
     } finally {
       setIndexing(false);
     }
@@ -210,9 +205,9 @@ export function KnowledgeWorkspace({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Search preview failed");
       setTestResult(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setTestResult({
-        answer: `Error running preview: ${err.message}`,
+        answer: `Error running preview: ${err instanceof Error ? err.message : "Preview error"}`,
         confidence: "error",
       });
     } finally {
@@ -455,7 +450,7 @@ export function KnowledgeWorkspace({
                 <select
                   className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-900 outline-none focus:border-[#18bfc5] focus:ring-4 focus:ring-[#18bfc5]/10"
                   value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value as any)}
+                  onChange={(e) => setNewCategory(e.target.value as KnowledgeItem["source_type"])}
                 >
                   <option value="faq">Patient FAQ</option>
                   <option value="policy">Clinic Policy & Terms</option>
