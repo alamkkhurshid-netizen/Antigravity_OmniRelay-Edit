@@ -1,11 +1,7 @@
 import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  typescript: {
-    ignoreBuildErrors: true, // CI pipeline handles type checking
-  },
-};
+const nextConfig: NextConfig = {};
 
 export default withSentryConfig(nextConfig, {
   // For all available options, see:

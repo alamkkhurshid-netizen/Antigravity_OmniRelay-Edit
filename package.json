@@ -12,6 +12,7 @@
     "build:worker": "vinext build",
     "start": "next start",
     "test": "npm run build:worker && node --test tests/*.test.mjs",
+    "check:env": "node scripts/check-no-env-staged.mjs",
     "knowledge:release-gate": "node scripts/verify-product-knowledge-release.mjs",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "node scripts/check-lint-baseline.mjs",
