@@ -251,7 +251,7 @@ BEGIN
             'warning',
             jsonb_build_object('control_key', p_control_key, 'actor_id', coalesce(v_caller_id::text, 'service_role'), 'reason', 'unallowed_control_key')
         );
-        RAISE EXCEPTION 'Control key % is not in the allowed runtime controls list.' USING ERRCODE = '22023';
+        RAISE EXCEPTION 'Control key % is not in the allowed runtime controls list.', p_control_key USING ERRCODE = '22023';
     END IF;
 
     -- 2. Scope-Specific Authorization

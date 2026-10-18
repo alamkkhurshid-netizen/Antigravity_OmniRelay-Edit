@@ -60,6 +60,21 @@ ALTER TABLE public.retail_products
 CREATE INDEX IF NOT EXISTS idx_retail_products_cat ON public.retail_products(organization_id, category_id);
 
 -- 3. Extend Retail Orders Status Constraint & Fulfillment Metadata
+CREATE TABLE IF NOT EXISTS public.retail_orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+    customer_name TEXT NOT NULL,
+    customer_phone TEXT NOT NULL,
+    customer_address TEXT,
+    status TEXT NOT NULL DEFAULT 'new',
+    payment_status TEXT NOT NULL DEFAULT 'pending' CHECK (payment_status IN ('pending', 'paid', 'cod')),
+    total_amount NUMERIC NOT NULL DEFAULT 0 CHECK (total_amount >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.retail_orders ENABLE ROW LEVEL SECURITY;
+
 ALTER TABLE public.retail_orders
     DROP CONSTRAINT IF EXISTS retail_orders_status_check;
 

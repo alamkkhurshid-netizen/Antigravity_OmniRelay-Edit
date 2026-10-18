@@ -47,7 +47,9 @@ export function getKnownProdProjectRefs() {
 
 export function getKnownStagingProjectRefs() {
   const envRefs = process.env.STAGING_PROJECT_REFS || "";
-  return envRefs.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const defaults = ["sqcprlkhsnfbydgzpsml"]; // Isolated staging project ref
+  const parsed = envRefs.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  return Array.from(new Set([...defaults, ...parsed]));
 }
 
 /**
