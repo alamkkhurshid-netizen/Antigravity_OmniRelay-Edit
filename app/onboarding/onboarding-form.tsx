@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import { ArrowRight, Building2, CheckCircle2, Lock, MapPin, ShieldAlert, Sparkles, Stethoscope } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { TierSelectionStep } from "./tier-selection-step";
@@ -35,6 +35,34 @@ export function OnboardingForm() {
   const [waitlistNotice, setWaitlistNotice] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("omnirelay_onboarding_draft");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.name) setName(parsed.name);
+        if (parsed.primaryDoctorName) setPrimaryDoctorName(parsed.primaryDoctorName);
+        if (parsed.locations) setLocations(parsed.locations);
+        if (parsed.clinicMode) setClinicMode(parsed.clinicMode);
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("omnirelay_onboarding_draft", JSON.stringify({
+        name,
+        primaryDoctorName,
+        locations,
+        clinicMode,
+      }));
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [name, primaryDoctorName, locations, clinicMode]);
 
   function handleCategoryClick(catName: string, isAvailable: boolean) {
     if (!isAvailable) {
@@ -90,6 +118,10 @@ export function OnboardingForm() {
       setStep(1); // Go back if it fails
       return;
     }
+
+    try {
+      localStorage.removeItem("omnirelay_onboarding_draft");
+    } catch {}
 
     window.location.assign("/app");
   }

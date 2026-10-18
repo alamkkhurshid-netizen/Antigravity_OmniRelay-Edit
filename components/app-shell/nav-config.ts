@@ -1,5 +1,6 @@
 import {
   BellRing,
+  BookOpen,
   BookOpenCheck,
   Bot,
   Building2,
@@ -65,6 +66,7 @@ export const navGroups: ReadonlyArray<NavGroup> = [
     items: [
       ["Care reminders", "/app/automations", BellRing],
       ["Campaigns", "/app/campaigns", Megaphone],
+      ["Knowledge base", "/app/knowledge", BookOpen],
       ["Integrations", "/app/integrations", PlugZap],
       ["AI agents", "/app/agents", Bot],
     ],
