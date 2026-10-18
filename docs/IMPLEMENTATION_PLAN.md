@@ -35,7 +35,7 @@ Each job has:
 | OEM/Operator Panel | ~35% | **100%** | Sprint 5 (Completed) |
 | Billing System | 100% | **100%** | Sprint 6 (Completed) |
 | Retail Module | 100% | **100%** | Sprint 7 (Completed) |
-| Voice AI Integration | ~40% | **100%** | Sprint 8 |
+| Voice AI Integration | 100% | **100%** | Sprint 8 (Completed) |
 | Analytics Dashboard | ~20% | **90%** | Sprint 9 |
 
 ---
@@ -340,7 +340,7 @@ Each job has:
 
 ---
 
-## Sprint 8 — Voice AI Integration (40% → 100%) — 2 weeks
+## Sprint 8 — Voice AI Integration (40% → 100%) — COMPLETED
 
 > **Theme:** Connect the live Voice AI microservice to OmniRelay's main platform.
 
