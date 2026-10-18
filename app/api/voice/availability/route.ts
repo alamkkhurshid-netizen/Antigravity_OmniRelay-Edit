@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyVoiceServiceAuth } from "@/lib/voice/auth";
 import {
   generateDaySlots,
   filterAvailableSlots,
@@ -17,6 +18,12 @@ export async function GET(req: NextRequest) {
 
     if (!orgId) {
       return NextResponse.json({ error: "Missing required parameter: org_id" }, { status: 400 });
+    }
+
+    // Strict Service-to-Service HMAC, Replay Prevention, and Tenant Boundary Authentication
+    const authResult = await verifyVoiceServiceAuth(req, "", orgId);
+    if (!authResult.authorized) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
     const admin = createAdminClient();

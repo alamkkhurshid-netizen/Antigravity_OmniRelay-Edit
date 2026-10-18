@@ -1,23 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyVoiceServiceAuth } from "@/lib/voice/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const {
-      org_id,
-      caller_phone,
-      patient_name,
-      doctor_id,
-      starts_at,
-      ends_at,
-      notes,
-      service_id,
-      location_id,
-      call_sid,
-    } = body;
+    const rawBody = await req.text();
+    let body: Record<string, unknown> = {};
+    try {
+      body = rawBody ? (JSON.parse(rawBody) as Record<string, unknown>) : {};
+    } catch {
+      return NextResponse.json({ error: "Malformed JSON payload" }, { status: 400 });
+    }
+
+    const org_id = body.org_id ? String(body.org_id) : undefined;
+    const caller_phone = body.caller_phone ? String(body.caller_phone) : undefined;
+    const patient_name = body.patient_name ? String(body.patient_name) : undefined;
+    const doctor_id = body.doctor_id ? String(body.doctor_id) : undefined;
+    const starts_at = body.starts_at ? String(body.starts_at) : undefined;
+    const ends_at = body.ends_at ? String(body.ends_at) : undefined;
+    const notes = body.notes ? String(body.notes) : undefined;
+    const service_id = body.service_id ? String(body.service_id) : undefined;
+    const location_id = body.location_id ? String(body.location_id) : undefined;
+    const call_sid = body.call_sid ? String(body.call_sid) : undefined;
+
+
+    // Strict Service-to-Service HMAC, Replay Prevention, and Tenant Boundary Authentication
+    const authResult = await verifyVoiceServiceAuth(req, rawBody, org_id);
+    if (!authResult.authorized) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
 
     if (!org_id || !caller_phone || !patient_name || !starts_at) {
       return NextResponse.json(

@@ -14,12 +14,29 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const format = searchParams.get("format") || "json"; // "json" | "html"
-  const month = searchParams.get("month") || new Date().toLocaleString("en-US", { month: "long", year: "numeric" });
+  const monthParam = searchParams.get("month");
+  const month = monthParam || new Date().toLocaleString("en-US", { month: "long", year: "numeric" });
 
-  // Fetch month aggregate data
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  startOfMonth.setHours(0, 0, 0, 0);
+  // Calculate accurate start and end timestamps for the requested reporting month
+  let startOfMonth: Date;
+  let endOfMonth: Date;
+
+  if (monthParam) {
+    const candidate = monthParam.includes(" ") ? `1 ${monthParam}` : `${monthParam}-01`;
+    const parsed = new Date(Date.parse(candidate));
+    if (!isNaN(parsed.getTime())) {
+      startOfMonth = new Date(parsed.getFullYear(), parsed.getMonth(), 1, 0, 0, 0, 0);
+      endOfMonth = new Date(parsed.getFullYear(), parsed.getMonth() + 1, 1, 0, 0, 0, 0);
+    } else {
+      const now = new Date();
+      startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+    }
+  } else {
+    const now = new Date();
+    startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+  }
 
   const [
     { data: appointments },
@@ -30,17 +47,20 @@ export async function GET(request: Request) {
       .from("appointments")
       .select("id,status,payment:appointment_payments(amount_paise,status,payment_mode)")
       .eq("organization_id", organization.id)
-      .gte("starts_at", startOfMonth.toISOString()),
+      .gte("starts_at", startOfMonth.toISOString())
+      .lt("starts_at", endOfMonth.toISOString()),
     supabase
       .from("appointment_reminders")
       .select("id,status")
       .eq("organization_id", organization.id)
-      .gte("created_at", startOfMonth.toISOString()),
+      .gte("created_at", startOfMonth.toISOString())
+      .lt("created_at", endOfMonth.toISOString()),
     supabase
       .from("patient_queue")
       .select("arrived_at,called_at")
       .eq("organization_id", organization.id)
-      .gte("arrived_at", startOfMonth.toISOString()),
+      .gte("arrived_at", startOfMonth.toISOString())
+      .lt("arrived_at", endOfMonth.toISOString()),
   ]);
 
   const apps = appointments || [];
@@ -77,7 +97,7 @@ export async function GET(request: Request) {
     if (r.status === "read") remindersRead++;
   }
 
-  // Calculate wait times
+  // Calculate wait times honestly: return null if no queue records exist (no fabricated defaults)
   const queues = queueEntries || [];
   let totalWait = 0;
   let count = 0;
@@ -88,7 +108,8 @@ export async function GET(request: Request) {
       count++;
     }
   }
-  const avgWaitMinutes = count > 0 ? Math.round(totalWait / count) : 14;
+  const avgWaitMinutes: number | null = count > 0 ? Math.round(totalWait / count) : null;
+
 
   const metrics = buildMonthlyReportMetrics({
     organizationId: organization.id,

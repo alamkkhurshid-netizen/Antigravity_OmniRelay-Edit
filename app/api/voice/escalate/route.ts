@@ -1,12 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyVoiceServiceAuth } from "@/lib/voice/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const { org_id, call_sid, caller_phone, reason = "Caller requested front desk" } = body;
+    const rawBody = await req.text();
+    let body: Record<string, unknown> = {};
+    try {
+      body = rawBody ? (JSON.parse(rawBody) as Record<string, unknown>) : {};
+    } catch {
+      return NextResponse.json({ error: "Malformed JSON payload" }, { status: 400 });
+    }
+
+    const org_id = body.org_id ? String(body.org_id) : undefined;
+    const call_sid = body.call_sid ? String(body.call_sid) : undefined;
+    const caller_phone = body.caller_phone ? String(body.caller_phone) : undefined;
+    const reason = body.reason ? String(body.reason) : "Caller requested front desk";
+
+
+    // Strict Service-to-Service HMAC, Replay Prevention, and Tenant Boundary Authentication
+    const authResult = await verifyVoiceServiceAuth(req, rawBody, org_id);
+    if (!authResult.authorized) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
 
     if (!org_id) {
       return NextResponse.json({ error: "Missing required parameter: org_id" }, { status: 400 });

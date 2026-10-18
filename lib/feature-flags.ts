@@ -19,7 +19,7 @@ export const KNOWN_FEATURE_FLAGS: Record<string, FeatureFlagDefinition> = {
     name: "Voice AI Inbound Receptionist",
     description: "Enables Exotel/SIP voice call processing, slot lookups, and telephone booking.",
     category: "voice",
-    defaultValue: true,
+    defaultValue: false, // Default OFF until controlled trial passes verification
     envFallbackKey: "FEATURE_VOICE_AGENT_ENABLED",
     requiresTier: "growth",
   },
@@ -28,16 +28,18 @@ export const KNOWN_FEATURE_FLAGS: Record<string, FeatureFlagDefinition> = {
     name: "Interactive WhatsApp Retail Catalog",
     description: "Allows customers to browse products, view variant matrices, and place orders via WhatsApp.",
     category: "retail",
-    defaultValue: true,
+    defaultValue: false, // Retail disabled by default for healthcare core MVP
     envFallbackKey: "FEATURE_WHATSAPP_CATALOG_ENABLED",
+    requiresTier: "growth",
   },
   abandoned_cart_recovery_enabled: {
     key: "abandoned_cart_recovery_enabled",
     name: "Abandoned Cart Recovery Bot",
     description: "Dispatches automated recovery notifications for unpaid checkouts with coupon incentives.",
     category: "retail",
-    defaultValue: true,
+    defaultValue: false, // Retail disabled by default
     envFallbackKey: "FEATURE_CART_RECOVERY_ENABLED",
+    requiresTier: "growth",
   },
   ai_insights_narration_enabled: {
     key: "ai_insights_narration_enabled",
@@ -54,14 +56,16 @@ export const KNOWN_FEATURE_FLAGS: Record<string, FeatureFlagDefinition> = {
     category: "clinic",
     defaultValue: false,
     envFallbackKey: "FEATURE_DEPOSIT_ENFORCEMENT_ENABLED",
+    requiresTier: "growth",
   },
   loyalty_rewards_enabled: {
     key: "loyalty_rewards_enabled",
     name: "Tiered Customer Loyalty Program",
     description: "Calculates customer reward points, tier progression (Bronze to Platinum), and auto-discounts.",
     category: "retail",
-    defaultValue: true,
+    defaultValue: false, // Retail disabled by default
     envFallbackKey: "FEATURE_LOYALTY_REWARDS_ENABLED",
+    requiresTier: "growth",
   },
   offline_pwa_sync_enabled: {
     key: "offline_pwa_sync_enabled",
@@ -81,17 +85,45 @@ export const KNOWN_FEATURE_FLAGS: Record<string, FeatureFlagDefinition> = {
   },
 };
 
+export const TIER_RANKS: Record<string, number> = {
+  starter: 1,
+  growth: 2,
+  enterprise: 3,
+};
+
+/**
+ * Checks whether an organization tier satisfies the required tier
+ */
+export function satisfiesTier(
+  currentTier: string = "starter",
+  requiredTier?: "starter" | "growth" | "enterprise"
+): boolean {
+  if (!requiredTier) return true;
+  const currentRank = TIER_RANKS[currentTier.toLowerCase()] ?? 1;
+  const requiredRank = TIER_RANKS[requiredTier.toLowerCase()] ?? 1;
+  return currentRank >= requiredRank;
+}
+
 // In-memory tenant override cache for fast evaluation
 const tenantFlagOverrides = new Map<string, Map<string, boolean>>();
 
 /**
  * Checks if a specific feature flag is active for a given organization/workspace
  */
-export function isFeatureEnabled(flagKey: string, organizationId?: string | null): boolean {
+export function isFeatureEnabled(
+  flagKey: string,
+  organizationId?: string | null,
+  orgConfig?: { extra?: { feature_flags?: Record<string, boolean>; plan_tier?: string; tier?: string } } | null
+): boolean {
   const definition = KNOWN_FEATURE_FLAGS[flagKey];
   if (!definition) return false;
 
-  // 1. Check tenant override if organizationId is provided
+  // 1. Check passed organization configuration from DB (durable source of truth)
+  if (orgConfig?.extra?.feature_flags && flagKey in orgConfig.extra.feature_flags) {
+    return Boolean(orgConfig.extra.feature_flags[flagKey]);
+  }
+
+  // 2. Check tenant in-memory override if organizationId is provided
   if (organizationId && tenantFlagOverrides.has(organizationId)) {
     const orgOverrides = tenantFlagOverrides.get(organizationId)!;
     if (orgOverrides.has(flagKey)) {
@@ -99,15 +131,16 @@ export function isFeatureEnabled(flagKey: string, organizationId?: string | null
     }
   }
 
-  // 2. Check environment variable override
+  // 3. Check environment variable override
   if (definition.envFallbackKey && process.env[definition.envFallbackKey] !== undefined) {
     const envVal = process.env[definition.envFallbackKey]?.toLowerCase().trim();
     return envVal === "true" || envVal === "1";
   }
 
-  // 3. Fallback to flag definition default
+  // 4. Fallback to flag definition default (safe default)
   return definition.defaultValue;
 }
+
 
 /**
  * Returns all feature flags evaluated with active states for a tenant

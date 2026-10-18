@@ -33,8 +33,8 @@ export interface MonthlyReportMetrics {
 
   // Operational Queues
   operations: {
-    avgWaitMinutes: number;
-    maxWaitMinutes: number;
+    avgWaitMinutes: number | null;
+    maxWaitMinutes: number | null;
     doctorUtilizationRate: number;
   };
 
@@ -65,7 +65,7 @@ export function buildMonthlyReportMetrics(params: {
   remindersDispatched: number;
   remindersDelivered: number;
   remindersRead: number;
-  avgWaitMinutes: number;
+  avgWaitMinutes: number | null;
   grossRevenuePaise: number;
   onlineRevenuePaise: number;
   doctorUtilizationRate?: number;
@@ -90,11 +90,16 @@ export function buildMonthlyReportMetrics(params: {
       `Patient no-show rate was ${noShowRate}%. We recommend enabling interactive 2-hour WhatsApp confirmation prompts.`
     );
   }
-  if (params.avgWaitMinutes > 20) {
+  if (params.avgWaitMinutes !== null && params.avgWaitMinutes > 20) {
     operationalRecommendations.push(
       `Average waiting time was ${params.avgWaitMinutes} minutes. Consider staggering token call-in windows for high-volume doctors.`
     );
+  } else if (params.avgWaitMinutes === null) {
+    operationalRecommendations.push(
+      "Queue wait time metrics unavailable: insufficient patient queue check-in timestamps recorded for this period."
+    );
   }
+
   if (operationalRecommendations.length === 0) {
     operationalRecommendations.push(
       "All core operational indicators are within target benchmarks. Doctor capacity and patient wait times are balanced."
@@ -124,7 +129,7 @@ export function buildMonthlyReportMetrics(params: {
     },
     operations: {
       avgWaitMinutes: params.avgWaitMinutes,
-      maxWaitMinutes: Math.round(params.avgWaitMinutes * 2.2),
+      maxWaitMinutes: params.avgWaitMinutes !== null ? Math.round(params.avgWaitMinutes * 2.2) : null,
       doctorUtilizationRate: params.doctorUtilizationRate || 82,
     },
     financials: {
@@ -137,6 +142,7 @@ export function buildMonthlyReportMetrics(params: {
     operationalRecommendations,
   };
 }
+
 
 /**
  * Generates print/PDF-ready HTML report
@@ -198,8 +204,8 @@ export function generateMonthlyReportHtml(metrics: MonthlyReportMetrics): string
     </div>
     <div class="card">
       <div class="card-label">Avg Wait Time</div>
-      <div class="card-value">${metrics.operations.avgWaitMinutes} mins</div>
-      <div class="card-sub">Queue pacing</div>
+      <div class="card-value">${metrics.operations.avgWaitMinutes !== null ? `${metrics.operations.avgWaitMinutes} mins` : "N/A"}</div>
+      <div class="card-sub">${metrics.operations.avgWaitMinutes !== null ? "Queue pacing" : "Insufficient queue data"}</div>
     </div>
     <div class="card">
       <div class="card-label">Gross Collected Revenue</div>
@@ -315,7 +321,7 @@ Summary Highlights:
 - Completed Consultations: ${metrics.funnel.completed} (${metrics.funnel.completionRate}% completion rate)
 - Staff Hours Saved via WhatsApp: ${metrics.automation.staffHoursSaved} hours
 - Patient No-Show Rate: ${metrics.funnel.noShowRate}%
-- Average Waiting Time: ${metrics.operations.avgWaitMinutes} minutes
+- Average Waiting Time: ${metrics.operations.avgWaitMinutes !== null ? `${metrics.operations.avgWaitMinutes} minutes` : "Insufficient queue data"}
 - Total Gross Collections: ₹${grossInr}
 
 Operational Recommendations:
@@ -334,7 +340,7 @@ Log in to your OmniRelay dashboard at /app/analytics to inspect interactive char
       <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px 0;">Completed Consultations</td><td style="text-align: right; font-weight: bold;">${metrics.funnel.completed} (${metrics.funnel.completionRate}%)</td></tr>
       <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px 0;">Staff Hours Saved</td><td style="text-align: right; font-weight: bold; color: #0f766e;">${metrics.automation.staffHoursSaved} hrs</td></tr>
       <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px 0;">No-Show Rate</td><td style="text-align: right; font-weight: bold;">${metrics.funnel.noShowRate}%</td></tr>
-      <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px 0;">Avg Wait Time</td><td style="text-align: right; font-weight: bold;">${metrics.operations.avgWaitMinutes} mins</td></tr>
+      <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px 0;">Avg Wait Time</td><td style="text-align: right; font-weight: bold;">${metrics.operations.avgWaitMinutes !== null ? `${metrics.operations.avgWaitMinutes} mins` : "Insufficient Data"}</td></tr>
       <tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px 0;">Gross Collections</td><td style="text-align: right; font-weight: bold;">₹${grossInr}</td></tr>
     </table>
     <h4 style="font-size: 13px; text-transform: uppercase; color: #64748b; margin-top: 20px;">Priorities for Next Month</h4>

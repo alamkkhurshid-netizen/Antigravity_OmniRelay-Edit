@@ -216,9 +216,11 @@ test("S9-09: All database migrations pass format, timestamp uniqueness, and safe
 test("S9-10: Feature flag engine evaluates typed defaults and respects tenant overrides", () => {
   clearFeatureFlagOverrides();
 
-  // Test default states
-  assert.equal(isFeatureEnabled("voice_agent_enabled"), true);
+  // Test default states (voice agent is disabled by default for rollout safety)
+  assert.equal(isFeatureEnabled("voice_agent_enabled"), false, "Voice AI must default to disabled for safety");
+  assert.equal(isFeatureEnabled("ai_insights_narration_enabled"), true, "Core AI narration defaults to true");
   assert.equal(isFeatureEnabled("deposit_enforcement_enabled"), false);
+
 
   const allFlags = getAllFeatureFlags("org-tenant-a");
   assert.ok(allFlags.length >= 6, "Must define at least 6 core feature flags");

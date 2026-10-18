@@ -7,13 +7,26 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const { organization } = await getWorkspace();
+    const { supabase, organization } = await getWorkspace();
     const { searchParams } = new URL(req.url);
-    const targetOrgId = searchParams.get("org_id") || organization?.id;
-    const days = Math.min(Number(searchParams.get("days") || 30), 90);
+    const requestedOrgId = searchParams.get("org_id");
+    const days = Math.min(90, Math.max(1, parseInt(searchParams.get("days") || "7", 10)));
+    let targetOrgId = organization?.id;
+
+    if (requestedOrgId && requestedOrgId !== targetOrgId) {
+      // Check if caller is a verified platform operator
+      const { data: isOperator } = await supabase.rpc("is_oem_operator");
+      if (!isOperator) {
+        return NextResponse.json(
+          { error: "Forbidden: Cross-tenant analytics access denied." },
+          { status: 403 }
+        );
+      }
+      targetOrgId = requestedOrgId;
+    }
 
     if (!targetOrgId) {
-      return NextResponse.json({ error: "Missing organization context" }, { status: 400 });
+      return NextResponse.json({ error: "Authentication required: Missing organization context" }, { status: 401 });
     }
 
     const admin = createAdminClient();
