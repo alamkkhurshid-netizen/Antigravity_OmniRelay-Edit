@@ -16,7 +16,7 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({
             request,
           });
@@ -55,12 +55,12 @@ export async function middleware(request: NextRequest) {
   // Security Headers & Content Security Policy (S2-08, S2-09)
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://checkout.razorpay.com https://va.vercel-scripts.com;
+    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://checkout.razorpay.com https://va.vercel-scripts.com https://connect.facebook.net;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com data:;
     img-src 'self' data: blob: https:;
-    connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://*.vercel-insights.com;
-    frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com;
+    connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://*.vercel-insights.com https://graph.facebook.com https://*.facebook.com;
+    frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.facebook.com https://web.facebook.com;
     object-src 'none';
     base-uri 'self';
     form-action 'self';

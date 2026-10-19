@@ -112,14 +112,84 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
   }, []);
 
   useEffect(() => {
-    if (!configurationId) return;
-    window.fbAsyncInit = () => {
-      window.FB?.init({ appId, cookie: true, xfbml: false, version: "v25.0" });
-      setSdkReady(true);
+    if (!appId || !configurationId) return;
+
+    let timeoutTimer: number | null = null;
+
+    const initSdk = () => {
+      try {
+        window.FB?.init({ appId, cookie: true, xfbml: false, version: "v25.0" });
+        setSdkReady(true);
+        setState((current) => (current === "error" ? "idle" : current));
+        setMessage((current) => (current.includes("Meta SDK") ? "" : current));
+      } catch (err) {
+        console.error("Meta SDK initialization failed", err);
+        setSdkReady(false);
+        setState("error");
+        setMessage("Meta SDK initialization failed. Please check browser privacy or extension settings.");
+      }
     };
-    if (document.getElementById("facebook-jssdk")) {
-      window.fbAsyncInit();
+
+    if (window.FB) {
+      initSdk();
       return;
+    }
+
+    window.fbAsyncInit = () => {
+      if (timeoutTimer !== null) {
+        window.clearTimeout(timeoutTimer);
+        timeoutTimer = null;
+      }
+      initSdk();
+    };
+
+    const existing = document.getElementById("facebook-jssdk") as HTMLScriptElement | null;
+    if (existing) {
+      if (window.FB) {
+        initSdk();
+      }
+    } else {
+      const script = document.createElement("script");
+      script.id = "facebook-jssdk";
+      script.async = true;
+      script.defer = true;
+      script.crossOrigin = "anonymous";
+      script.src = "https://connect.facebook.net/en_US/sdk.js";
+
+      script.onerror = () => {
+        if (timeoutTimer !== null) {
+          window.clearTimeout(timeoutTimer);
+          timeoutTimer = null;
+        }
+        setSdkReady(false);
+        setState("error");
+        setMessage("Failed to load Meta SDK (check network or Content Security Policy).");
+      };
+
+      document.body.appendChild(script);
+    }
+
+    timeoutTimer = window.setTimeout(() => {
+      if (!window.FB) {
+        setSdkReady(false);
+        setState("error");
+        setMessage("Timed out while loading Meta SDK. Please check your network connection or refresh.");
+      }
+    }, 10000);
+
+    return () => {
+      if (timeoutTimer !== null) {
+        window.clearTimeout(timeoutTimer);
+      }
+    };
+  }, [appId, configurationId]);
+
+  function retryLoadSdk() {
+    setState("idle");
+    setMessage("Retrying Meta SDK connection…");
+    const existing = document.getElementById("facebook-jssdk");
+    if (existing) {
+      existing.remove();
     }
     const script = document.createElement("script");
     script.id = "facebook-jssdk";
@@ -127,8 +197,25 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
     script.defer = true;
     script.crossOrigin = "anonymous";
     script.src = "https://connect.facebook.net/en_US/sdk.js";
+    script.onerror = () => {
+      setSdkReady(false);
+      setState("error");
+      setMessage("Failed to load Meta SDK (check network or Content Security Policy).");
+    };
+    window.fbAsyncInit = () => {
+      try {
+        window.FB?.init({ appId, cookie: true, xfbml: false, version: "v25.0" });
+        setSdkReady(true);
+        setState("idle");
+        setMessage("");
+      } catch {
+        setSdkReady(false);
+        setState("error");
+        setMessage("Meta SDK initialization failed.");
+      }
+    };
     document.body.appendChild(script);
-  }, [appId, configurationId]);
+  }
 
   async function completeMetaLogin(response: { authResponse?: { code?: string } }) {
     const code = response.authResponse?.code;
@@ -212,8 +299,46 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
     const coexistence=onboardingMode==="existing_phone_number";
     return <div className="embedded-signup connected"><div><span>CONNECTED NUMBER</span><b>{displayAddress || "WhatsApp Business"}</b><small>{coexistence?"Coexistence active: WhatsApp Business app and OmniRelay inbox can work with this number.":"Cloud API active: webhooks and tenant routing are ready."}</small><p className="connect-message done">This connection is tenant-scoped. Only the workspace owner can change it. Disconnecting an existing Business app number requires a guided support action so the clinic does not lose service.</p></div><i>{coexistence?"COEXISTENCE":"LIVE"}</i></div>;
   }
-  if (!configurationId) {
-    return <div className="embedded-signup pending"><div><span>EMBEDDED SIGNUP + COEXISTENCE</span><b>Meta Configuration ID required</b><small>The secure onboarding flow is installed. Add the approved Meta configuration to let clinics connect an existing WhatsApp Business app number without losing the app workflow.</small></div><button disabled>Connect WhatsApp</button></div>;
+  if (!appId || !configurationId) {
+    const missingLabel = !appId && !configurationId
+      ? "Meta App ID & Configuration ID required"
+      : !appId
+      ? "Meta App ID required"
+      : "Meta Configuration ID required";
+    const missingDetail = !appId && !configurationId
+      ? "Neither META_APP_ID nor META_EMBEDDED_SIGNUP_CONFIG_ID is configured in the environment. Self-service WhatsApp connection is unavailable until both are set."
+      : !appId
+      ? "META_APP_ID environment variable is missing on the server. Please configure it to enable Meta Embedded Signup."
+      : "META_EMBEDDED_SIGNUP_CONFIG_ID environment variable is missing on the server. Please configure it to enable Meta Embedded Signup.";
+    return (
+      <div className="embedded-signup pending">
+        <div>
+          <span>EMBEDDED SIGNUP + COEXISTENCE</span>
+          <b>{missingLabel}</b>
+          <small>{missingDetail}</small>
+        </div>
+        <button disabled>Connect WhatsApp</button>
+      </div>
+    );
   }
-  return <div className="embedded-signup"><div><span>SELF-SERVICE CONNECTION</span><b>Connect WhatsApp Business</b><small>Recommended: keep the existing WhatsApp Business app through Meta Coexistence. Meta will show the eligible connection choices and the business owner grants permission directly.</small>{message && <p className={`connect-message ${state}`}>{message}</p>}</div><button onClick={connect} disabled={!sdkReady || !["idle", "error"].includes(state)}>{state === "idle" || state === "error" ? "Connect with Meta →" : "Connecting…"}</button></div>;
+  return (
+    <div className="embedded-signup">
+      <div>
+        <span>SELF-SERVICE CONNECTION</span>
+        <b>Connect WhatsApp Business</b>
+        <small>Recommended: keep the existing WhatsApp Business app through Meta Coexistence. Meta will show the eligible connection choices and the business owner grants permission directly.</small>
+        {message && <p className={`connect-message ${state}`}>{message}</p>}
+      </div>
+      <button
+        onClick={!sdkReady && state === "error" ? retryLoadSdk : connect}
+        disabled={(!sdkReady && state !== "error") || !["idle", "error"].includes(state)}
+      >
+        {!sdkReady && state === "error"
+          ? "Retry Meta SDK"
+          : state === "idle" || state === "error"
+          ? "Connect with Meta →"
+          : "Connecting…"}
+      </button>
+    </div>
+  );
 }
