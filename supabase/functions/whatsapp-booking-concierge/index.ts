@@ -19,7 +19,22 @@ const inr=(paise:number|null|undefined)=>`₹${Math.max(0,Number(paise??0))/100}
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if ((req.headers.get("authorization") ?? "") !== `Bearer ${serviceKey}`) return json({ error: "Unauthorized" }, 401);
+  const authHeader = req.headers.get("authorization") ?? "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+
+  let isServiceAuthorized = Boolean(token && token === serviceKey);
+  if (!isServiceAuthorized && token?.startsWith("eyJ")) {
+    try {
+      const parts = token.split(".");
+      if (parts.length >= 2) {
+        const payload = JSON.parse(atob(parts[1]));
+        isServiceAuthorized = payload.role === "service_role";
+      }
+    } catch {
+      isServiceAuthorized = false;
+    }
+  }
+  if (!isServiceAuthorized) return json({ error: "Unauthorized" }, 401);
   const { message_id, dry_run, organization_id, input, patient_name } = await req.json();
   const db = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey, { auth: { persistSession: false } });
 

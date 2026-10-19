@@ -47,6 +47,7 @@ next-env.d.ts
 /backups/
 *.backup.age
 *.backup.sha256
+staging_owner_login.json
 
 .vercel
 .env*

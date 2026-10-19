@@ -106,8 +106,20 @@ async function reconcile(connection: Connection, address?: Address) {
 }
 
 Deno.serve(async (request) => {
-  const token = request.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token || token !== serviceKey) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
+  let isServiceAuthorized = Boolean(token && token === serviceKey);
+  if (!isServiceAuthorized && token?.startsWith("eyJ")) {
+    try {
+      const parts = token.split(".");
+      if (parts.length >= 2) {
+        const payload = JSON.parse(atob(parts[1]));
+        isServiceAuthorized = payload.role === "service_role";
+      }
+    } catch {
+      isServiceAuthorized = false;
+    }
+  }
+  if (!isServiceAuthorized) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data: connections, error } = await db.from("channel_connections")
     .select("id,organization_id,status,external_phone_number_id,last_verified_at,capabilities")
