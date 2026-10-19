@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getWorkspace } from "@/lib/workspace";
 import { supabaseUrl } from "@/lib/supabase/config";
 
+const STAGING_PROJECT_REF = "sqcprlkhsnfbydgzpsml";
+
 type SignupPayload = {
   token?: string;
   code?: string;
@@ -12,6 +14,25 @@ type SignupPayload = {
 };
 
 export async function POST(request: Request) {
+  // Fail closed unless the target environment and Supabase project are explicitly staging.
+  let parsedHostname = "";
+  try {
+    parsedHostname = new URL(supabaseUrl).hostname.toLowerCase();
+  } catch {
+    parsedHostname = "";
+  }
+  const isStagingProject = parsedHostname === `${STAGING_PROJECT_REF}.supabase.co`;
+  const targetEnv = (process.env.TARGET_ENV || process.env.VERCEL_ENV || "").toLowerCase();
+  const isProduction = process.env.VERCEL_ENV === "production" || targetEnv === "production";
+  const isStagingEnv = targetEnv === "staging" || targetEnv === "preview";
+
+  if (!isStagingProject || !isStagingEnv || isProduction) {
+    return NextResponse.json(
+      { error: "WhatsApp onboarding is strictly restricted to the staging environment." },
+      { status: 403 }
+    );
+  }
+
   const { supabase, organization } = await getWorkspace();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });

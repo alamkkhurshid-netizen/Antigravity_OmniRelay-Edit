@@ -4,8 +4,8 @@ import { createUnsecureClient } from "../_shared/supabase_client.ts";
 import { whatsappToMarkdown } from "../_shared/markdown.ts";
 import type { MetaWebhookPayload } from "../_shared/types/whatsapp_webhook_payload_types.ts";
 
-const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN") || Deno.env.get("META_VERIFY_TOKEN") || "omnirelay_verify_token";
-const APP_SECRET = Deno.env.get("WHATSAPP_APP_SECRET") || Deno.env.get("META_APP_SECRET") || "omnirelay_app_secret";
+const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN") || Deno.env.get("META_VERIFY_TOKEN");
+const APP_SECRET = Deno.env.get("WHATSAPP_APP_SECRET") || Deno.env.get("META_APP_SECRET");
 const MAX_PAYLOAD_BYTES = 1024 * 1024; // 1 MB payload bound
 
 /**
@@ -25,6 +25,14 @@ function constantTimeEqual(a: string, b: string): boolean {
  * Boundary 1: Meta GET verification
  */
 function handleGetVerification(request: Request): Response {
+  if (!VERIFY_TOKEN) {
+    log.error("Meta webhook GET verification unavailable: verify token not configured");
+    return new Response("Service Unavailable: Verify token not configured", {
+      status: 503,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
+
   const url = new URL(request.url);
   const mode = url.searchParams.get("hub.mode");
   const token = url.searchParams.get("hub.verify_token");
@@ -432,6 +440,15 @@ async function processStatusReconciliation(
  * Main Webhook Handler
  */
 Deno.serve(async (request: Request) => {
+  // Fail-closed guard: refuse processing and return 503 when secrets are absent
+  if (!VERIFY_TOKEN || !APP_SECRET) {
+    log.error("WhatsApp webhook service unavailable: WHATSAPP_VERIFY_TOKEN or WHATSAPP_APP_SECRET is not configured");
+    return new Response("Service Unavailable: Webhook secrets not configured", {
+      status: 503,
+      headers: { "Content-Type": "text/plain" },
+    });
+  }
+
   // Boundary 1: Meta GET verification
   if (request.method === "GET") {
     return handleGetVerification(request);

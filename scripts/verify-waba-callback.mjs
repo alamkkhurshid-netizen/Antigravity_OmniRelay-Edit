@@ -5,17 +5,29 @@
  * points strictly to the staging Supabase Edge Function:
  * https://sqcprlkhsnfbydgzpsml.supabase.co/functions/v1/whatsapp-webhook
  *
+ * Security: Reads access token strictly from META_ACCESS_TOKEN environment variable.
+ * Never pass access tokens as command line arguments or log them in terminal output.
+ *
  * Usage:
- *   node scripts/verify-waba-callback.mjs <waba_id> <access_token>
- * Or reads from staging database for the currently connected WABA.
+ *   $env:META_ACCESS_TOKEN="<token>"  # (or export META_ACCESS_TOKEN="<token>")
+ *   node scripts/verify-waba-callback.mjs <waba_id>
  */
 
 const EXPECTED_CALLBACK_URL = "https://sqcprlkhsnfbydgzpsml.supabase.co/functions/v1/whatsapp-webhook";
 const GRAPH_VERSION = process.env.WHATSAPP_CLOUD_API_VERSION || "v24.0";
 
-async function verifyWabaCallback(wabaId, accessToken) {
-  if (!wabaId || !accessToken) {
-    console.error("Usage: node scripts/verify-waba-callback.mjs <waba_id> <access_token>");
+async function verifyWabaCallback(wabaId) {
+  const accessToken = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_SYSTEM_TOKEN;
+  if (!accessToken) {
+    console.error("❌ Error: META_ACCESS_TOKEN environment variable is not set.");
+    console.error("   Please set it in your environment before running this script:");
+    console.error('   $env:META_ACCESS_TOKEN="<your_token>" (PowerShell) or export META_ACCESS_TOKEN="<your_token>" (Bash)');
+    console.error("   Never pass access tokens as CLI arguments.");
+    process.exit(1);
+  }
+
+  if (!wabaId) {
+    console.error("Usage: node scripts/verify-waba-callback.mjs <waba_id>");
     process.exit(1);
   }
 
@@ -30,14 +42,11 @@ async function verifyWabaCallback(wabaId, accessToken) {
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      console.error(`❌ Meta Graph API returned HTTP ${res.status}: ${err}`);
+      console.error(`❌ Meta Graph API returned HTTP ${res.status}.`);
       process.exit(1);
     }
 
     const json = await res.json();
-    console.log("Subscribed Apps Response:", JSON.stringify(json, null, 2));
-
     const apps = json.data || [];
     let matched = false;
     for (const app of apps) {
@@ -47,7 +56,7 @@ async function verifyWabaCallback(wabaId, accessToken) {
         console.log(`   ${callback}`);
         matched = true;
       } else if (callback) {
-        console.warn(`⚠️ Warning: override_callback_uri is pointing to: ${callback} (Expected: ${EXPECTED_CALLBACK_URL})`);
+        console.warn(`⚠️ Warning: override_callback_uri points to another target (Expected: ${EXPECTED_CALLBACK_URL})`);
       }
     }
 
@@ -57,15 +66,24 @@ async function verifyWabaCallback(wabaId, accessToken) {
     }
 
     console.log("🎉 Staging WABA callback override verification PASSED.");
-  } catch (err) {
-    console.error("Network or verification error:", err);
+  } catch {
+    console.error("Network or verification error encountered during check.");
     process.exit(1);
   }
 }
 
-const [,, wabaId, accessToken] = process.argv;
-if (wabaId && accessToken) {
-  verifyWabaCallback(wabaId, accessToken);
+const args = process.argv.slice(2);
+if (args.length > 1) {
+  console.error("❌ Error: Access tokens must never be passed in command arguments.");
+  console.error("   Set the META_ACCESS_TOKEN environment variable instead.");
+  console.error("   Usage: node scripts/verify-waba-callback.mjs <waba_id>");
+  process.exit(1);
+}
+
+const [wabaId] = args;
+if (wabaId) {
+  verifyWabaCallback(wabaId);
 } else {
-  console.log("Helper script ready. Pass <waba_id> and <access_token> to execute live check.");
+  console.log("Usage: node scripts/verify-waba-callback.mjs <waba_id>");
+  console.log("Ensure META_ACCESS_TOKEN is set in your environment.");
 }

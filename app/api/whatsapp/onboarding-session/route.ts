@@ -5,11 +5,16 @@ const STAGING_PROJECT_REF = "sqcprlkhsnfbydgzpsml";
 const STAGING_CALLBACK_URL = `https://${STAGING_PROJECT_REF}.supabase.co/functions/v1/whatsapp-webhook`;
 
 export async function POST() {
-  // 4. Fail closed unless the target environment and Supabase project are explicitly staging.
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+  let parsedHostname = "";
+  try {
+    parsedHostname = new URL(supabaseUrl).hostname.toLowerCase();
+  } catch {
+    parsedHostname = "";
+  }
+  const isStagingProject = parsedHostname === `${STAGING_PROJECT_REF}.supabase.co`;
   const targetEnv = (process.env.TARGET_ENV || process.env.VERCEL_ENV || "").toLowerCase();
   const isProduction = process.env.VERCEL_ENV === "production" || targetEnv === "production";
-  const isStagingProject = supabaseUrl.includes(STAGING_PROJECT_REF);
   const isStagingEnv = targetEnv === "staging" || targetEnv === "preview";
 
   if (!isStagingProject || !isStagingEnv || isProduction) {

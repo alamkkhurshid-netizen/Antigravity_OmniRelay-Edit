@@ -29,7 +29,7 @@ export async function runSystemHealthChecks(): Promise<SystemHealthReport> {
 
   // 1. Safe Real Read-Only Probe: Supabase Database
   const dbStart = Date.now();
-  let dbStatus: SubsystemHealth = {
+  const dbStatus: SubsystemHealth = {
     name: "Supabase Database (PostgreSQL)",
     status: "down",
     latencyMs: 0,
@@ -82,7 +82,7 @@ export async function runSystemHealthChecks(): Promise<SystemHealthReport> {
 
   // 2. Safe Real Probe: Voice AI Microservice
   const voiceStart = Date.now();
-  let voiceStatus: SubsystemHealth = {
+  const voiceStatus: SubsystemHealth = {
     name: "Voice AI Runtime",
     status: "down",
     latencyMs: 0,

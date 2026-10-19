@@ -1,7 +1,6 @@
 import crypto from "crypto";
 import { spawn, spawnSync } from "child_process";
 import fs from "fs";
-import path from "path";
 
 // Generate cryptographically secure replacement secrets in memory
 function generateSecret(bytes = 32) {
@@ -99,28 +98,6 @@ async function syncSecretsToOCI() {
   if (!fs.existsSync(keyPath)) {
     throw new Error(`SSH key not found at ${keyPath}`);
   }
-
-  // Construct environment update block
-  const envUpdateScript = `
-#!/usr/bin/env bash
-set -euo pipefail
-
-# 1. Update /home/ubuntu/omnirelay-voice/.env
-if [ -f "/home/ubuntu/omnirelay-voice/.env" ]; then
-    # Ensure keys exist or update them
-    touch /home/ubuntu/omnirelay-voice/.env
-    for KEY in OMNIRELAY_API_KEY VOICE_ENGINE_API_KEY OMNIRELAY_WEBHOOK_SECRET VOICE_WEBHOOK_SECRET PATIENT_PSEUDONYM_SALT VOICE_PHONE_PSEUDONYM_SALT VOICE_SERVICE_SECRET; do
-        grep -q "^\\\${KEY}=" /home/ubuntu/omnirelay-voice/.env && sed -i "s/^\\\${KEY}=.*/\\\${KEY}=__\\\${KEY}__/" /home/ubuntu/omnirelay-voice/.env || echo "\\\${KEY}=__\\\${KEY}__" >> /home/ubuntu/omnirelay-voice/.env
-    done
-fi
-
-# 2. Update /etc/omnirelay/voice-credentials.env
-if [ -f "/etc/omnirelay/voice-credentials.env" ]; then
-    for KEY in OMNIRELAY_API_KEY VOICE_ENGINE_API_KEY OMNIRELAY_WEBHOOK_SECRET VOICE_WEBHOOK_SECRET PATIENT_PSEUDONYM_SALT VOICE_PHONE_PSEUDONYM_SALT VOICE_SERVICE_SECRET; do
-        sudo grep -q "^\\\${KEY}=" /etc/omnirelay/voice-credentials.env && sudo sed -i "s/^\\\${KEY}=.*/\\\${KEY}=__\\\${KEY}__/" /etc/omnirelay/voice-credentials.env || echo "\\\${KEY}=__\\\${KEY}__" | sudo tee -a /etc/omnirelay/voice-credentials.env > /dev/null
-    done
-fi
-`;
 
   // We write the replacement values via python script on OCI reading directly from stdin to avoid any command-line/bash history exposure
   const pythonUpdater = `

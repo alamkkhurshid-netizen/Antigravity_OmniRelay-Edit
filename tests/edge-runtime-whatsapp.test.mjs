@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 
-const APP_SECRET = "omnirelay_app_secret";
-const VERIFY_TOKEN = "omnirelay_verify_token";
+const APP_SECRET = process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET || "test_app_secret";
+const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || process.env.META_VERIFY_TOKEN || "test_verify_token";
 
 function invokeEdgeRuntime({ method = "GET", path, headers = {}, body = null, bodyFile = null }) {
   const args = [
