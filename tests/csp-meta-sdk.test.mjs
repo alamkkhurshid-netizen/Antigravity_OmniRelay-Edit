@@ -64,6 +64,10 @@ test("middleware defines a strict Content Security Policy allowing Meta SDK and 
     "connect-src must include https://*.facebook.com"
   );
   assert.ok(
+    directives["connect-src"].includes("https://connect.facebook.net"),
+    "connect-src must include https://connect.facebook.net"
+  );
+  assert.ok(
     !directives["connect-src"].includes("*"),
     "connect-src must not allow blanket wildcard origins"
   );
