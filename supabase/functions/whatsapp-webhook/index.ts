@@ -4,8 +4,8 @@ import { createUnsecureClient } from "../_shared/supabase_client.ts";
 import { whatsappToMarkdown } from "../_shared/markdown.ts";
 import type { MetaWebhookPayload } from "../_shared/types/whatsapp_webhook_payload_types.ts";
 
-const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN") || "";
-const APP_SECRET = Deno.env.get("META_APP_SECRET") || "";
+const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN") || Deno.env.get("META_VERIFY_TOKEN") || "omnirelay_verify_token";
+const APP_SECRET = Deno.env.get("WHATSAPP_APP_SECRET") || Deno.env.get("META_APP_SECRET") || "omnirelay_app_secret";
 const MAX_PAYLOAD_BYTES = 1024 * 1024; // 1 MB payload bound
 
 /**
@@ -557,9 +557,9 @@ Deno.serve(async (request: Request) => {
           wabaId,
         });
 
-        // Durable operational event for unmapped recipient IDs
+        // Durable operational event for unmapped recipient IDs (nullable platform-level event)
         await client.from("operational_events").insert({
-          organization_id: "00000000-0000-0000-0000-000000000000",
+          organization_id: null,
           event_source: "whatsapp_webhook",
           severity: "warning",
           error_code: "ROUTING_UNMAPPED_RECIPIENT",

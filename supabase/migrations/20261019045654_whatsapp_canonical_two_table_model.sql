@@ -24,7 +24,7 @@ begin
       where channel = 'whatsapp'
         and external_phone_number_id = new.external_phone_number_id
         and organization_id <> new.organization_id
-        and id <> coalesce(new.id, '00000000-0000-0000-0000-000000000000'::uuid)
+        and (new.id is null or id <> new.id)
     ) then
       raise exception 'Cross-tenant WhatsApp phone assignment rejected: phone_number_id % is already registered to another organization', new.external_phone_number_id
         using errcode = '23505';
@@ -96,10 +96,13 @@ begin
   end if;
 
   -- Determine lifecycle status and cloud registration timestamp
+  -- Set successful verified/coexistence signup status to 'test', not 'live'.
+  -- Only whatsapp-onboarding-reconciler may promote a connection to 'live'
+  -- after one inbound and one delivered outbound message.
   if p_flow_type = 'existing_phone_number' then
-    v_status := 'live';
+    v_status := 'test';
   elsif p_flow_type = 'new_phone_number' and upper(coalesce(p_code_verification_status, '')) = 'VERIFIED' then
-    v_status := 'live';
+    v_status := 'test';
     v_cloud_api_registered_at := clock_timestamp();
   else
     v_status := 'pending';
@@ -129,7 +132,7 @@ begin
       'cloud_api_registered_at', v_cloud_api_registered_at
     )
   )
-  on conflict (organization_id, address, service) do update set
+  on conflict (organization_id, address) do update set
     status = 'connected',
     extra = excluded.extra,
     updated_at = now();
@@ -178,20 +181,16 @@ begin
   returning id into v_connection_id;
 
   -- 3. Write immutable operational audit event
-  insert into public.operational_events (
+  insert into public.audit_logs (
     organization_id,
-    event_source,
-    severity,
-    error_code,
-    safe_message,
-    metadata
+    action,
+    details
   ) values (
     p_organization_id,
-    'whatsapp_signup',
-    'info',
-    'SIGNUP_SYNCHRONIZED',
-    'WhatsApp channel signup synchronized atomically across sealed credentials and connection routing.',
+    'CHANNEL_CONNECTION_LINKED',
     jsonb_build_object(
+      'channel', 'whatsapp',
+      'provider', 'meta_cloud',
       'phone_number_id', p_phone_number_id,
       'waba_id', p_waba_id,
       'flow_type', p_flow_type,
@@ -234,7 +233,18 @@ declare
   v_org_id uuid;
   v_message_id uuid;
   v_inserted boolean := false;
+  v_normalized_content jsonb;
 begin
+  -- Normalize message content to satisfy messages_content_schema check constraint
+  v_normalized_content := case
+    when p_content is null or p_content = '{}'::jsonb then '{}'::jsonb
+    else jsonb_build_object(
+      'version', coalesce(p_content->>'version', '1'),
+      'type', coalesce(p_content->>'type', 'text'),
+      'kind', coalesce(p_content->>'kind', coalesce(p_content->>'type', 'text')),
+      'text', coalesce(p_content->>'text', p_content#>>'{text,body}', '')
+    ) || p_content
+  end;
   -- 1. Validate organization and recipient routing via channel_connections (primary)
   select organization_id into v_org_id
   from public.channel_connections
@@ -263,7 +273,7 @@ begin
       safe_message,
       metadata
     ) values (
-      '00000000-0000-0000-0000-000000000000'::uuid,
+      null, -- Nullable platform-level audit event (no organization foreign key violation)
       'whatsapp_inbound',
       'warning',
       'ROUTING_UNMAPPED_RECIPIENT',
@@ -349,7 +359,7 @@ begin
     'whatsapp',
     'incoming',
     p_provider_message_id,
-    p_content,
+    v_normalized_content,
     jsonb_build_object('received', p_occurred_at),
     p_occurred_at
   )

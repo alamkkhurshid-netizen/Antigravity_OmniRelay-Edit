@@ -112,6 +112,13 @@ test("Atomic signup synchronization RPC satisfies all security boundaries", asyn
   assert.match(migration, /insert into public\.channel_connections/);
   assert.match(migration, /insert into public\.operational_events/);
 
+  // PK conflict target on organizations_addresses must be (organization_id, address)
+  assert.match(migration, /on conflict \(organization_id, address\) do update set/);
+
+  // Status must be initialized to 'test', not 'live' (reconciler promotes after inbound+outbound)
+  assert.match(migration, /v_status := 'test'/);
+  assert.doesNotMatch(migration, /v_status := 'live'/, "Must never initialize connection to live");
+
   // Sealed credentials vs connection UI separation
   assert.match(migration, /'access_token', p_access_token/);
   assert.doesNotMatch(
@@ -151,6 +158,11 @@ test("Atomic inbound ingestion RPC satisfies all message ingestion boundaries", 
   // Unmapped recipient handling
   assert.match(migration, /ROUTING_UNMAPPED_RECIPIENT/);
   assert.match(migration, /'reason', 'unmapped_recipient'/);
+  assert.doesNotMatch(
+    migration,
+    /'00000000-0000-0000-0000-000000000000'[\s\S]*ROUTING_UNMAPPED_RECIPIENT/,
+    "Unmapped recipient must NOT use all-zero UUID in operational_events"
+  );
 
   // Service role permission restriction
   assert.match(migration, /revoke all on function public\.ingest_inbound_whatsapp_message.*from public, anon, authenticated/);
