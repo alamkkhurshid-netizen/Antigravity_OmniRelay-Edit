@@ -20,24 +20,45 @@ async function sendWhatsAppMessage(orgId: string, recipientPhone: string, messag
 
   const supabase = await createClient();
   
-  // Fetch the organization's WhatsApp credentials
+  // Fetch the organization's WhatsApp connection and sealed credentials
   const { data: connection } = await supabase
-    .from("whatsapp_connections")
-    .select("phone_number_id, access_token")
+    .from("channel_connections")
+    .select("external_phone_number_id, status")
     .eq("organization_id", orgId)
+    .eq("channel", "whatsapp")
+    .in("status", ["live", "test"])
     .maybeSingle();
 
-  if (!connection?.phone_number_id || !connection?.access_token) {
-    console.error("[WhatsApp Send] No credentials found for org:", orgId);
+  if (!connection?.external_phone_number_id) {
+    console.error("[WhatsApp Send] No active WhatsApp connection found for org:", orgId);
     return { success: false, error: "WhatsApp credentials not configured" };
   }
 
-  const url = `https://graph.facebook.com/v19.0/${connection.phone_number_id}/messages`;
+  // Fetch sealed provider credentials via admin client from organizations_addresses
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const adminClient = createAdminClient();
+  const { data: addressRow } = await adminClient
+    .from("organizations_addresses")
+    .select("extra")
+    .eq("organization_id", orgId)
+    .eq("address", connection.external_phone_number_id)
+    .eq("service", "whatsapp")
+    .maybeSingle();
+
+  const extra = addressRow?.extra as { access_token?: string } | null;
+  const accessToken = extra?.access_token || process.env.META_SYSTEM_USER_ACCESS_TOKEN;
+
+  if (!accessToken) {
+    console.error("[WhatsApp Send] No sealed credentials found for org:", orgId);
+    return { success: false, error: "WhatsApp credentials not configured" };
+  }
+
+  const url = `https://graph.facebook.com/v19.0/${connection.external_phone_number_id}/messages`;
   
   const response = await fetch(url, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${connection.access_token}`,
+      "Authorization": `Bearer ${accessToken}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({

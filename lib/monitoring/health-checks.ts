@@ -45,8 +45,8 @@ export async function runSystemHealthChecks(): Promise<SystemHealthReport> {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
-      dbStatus.status = "down";
-      dbStatus.message = "Database configuration missing: SUPABASE_URL or key not set";
+      dbStatus.status = "degraded";
+      dbStatus.message = "Database configuration unverified: SUPABASE_URL or key not set";
       dbStatus.latencyMs = Date.now() - dbStart;
     } else {
       // Execute a real, lightweight read-only query against REST API

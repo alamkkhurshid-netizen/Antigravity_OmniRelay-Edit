@@ -35,10 +35,10 @@ test("WORKER_ENABLED and granular worker switches: static code invariants", () =
   assert.match(runtimeControlsSource, /CACHE_TTL_MS = 5000/, "Must enforce 5-second in-memory cache TTL");
 
   // 3. Verify Complete Worker Coverage Across All 11 Claim Boundaries
-  // 3a. WhatsApp Inbound
-  assert.match(webhookSource, /isWorkerPaused\("whatsapp_inbound"/, "Webhook must evaluate whatsapp_inbound worker pause");
-  assert.match(webhookSource, /status: "queued"/, "Must preserve message in queued state during pause");
-  assert.match(webhookSource, /recordWorkerPauseAudit\("whatsapp_inbound"/, "Must record pause audit to operational_events");
+  // 3a. WhatsApp Inbound: Next.js webhook is tombstoned (410 Gone); canonical inbound is the Supabase Edge Function
+  assert.match(webhookSource, /status:\s*410/, "Next.js inbound webhook must be tombstoned per CTO direction");
+  assert.match(webhookSource, /TOMBSTONE_PAYLOAD/, "Must define tombstone payload");
+  assert.match(webhookSource, /canonical_endpoint/, "Must point to canonical Edge Function");
 
   // 3b. Appointment Reminders Edge Function
   assert.match(appointmentEdgeSource, /WORKER_ENABLED/, "Appointment edge function must evaluate WORKER_ENABLED before claiming runs");
