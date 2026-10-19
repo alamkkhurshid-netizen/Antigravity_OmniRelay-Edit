@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export function LoginForm() {
@@ -8,6 +8,20 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const showGoogleAuth = process.env.NEXT_PUBLIC_ENABLE_GOOGLE_AUTH === "true" || process.env.NODE_ENV === "test";
+
+  useEffect(() => {
+    // If redirected with an access token in the hash, establish session and redirect
+    if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
+      const supabase = createClient();
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) {
+          const nextUrl = new URLSearchParams(window.location.search).get("next") || "/app/integrations";
+          window.location.assign(nextUrl);
+        }
+      });
+    }
+  }, []);
 
   async function signIn(e: FormEvent) {
     e.preventDefault();
@@ -53,19 +67,23 @@ export function LoginForm() {
         Use your work account to open the clinic workspace.
       </p>
       
-      <button 
-        onClick={googleSignIn} 
-        disabled={busy}
-        className="inline-flex min-h-[48px] w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 transition-all shadow-sm"
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/google-g.png" alt="" className="w-5 h-5 object-contain" aria-hidden="true" /> 
-        Continue with Google
-      </button>
-      
-      <div className="my-8 flex items-center gap-4 text-xs font-medium text-slate-400 uppercase tracking-widest before:h-px before:flex-1 before:bg-slate-100 after:h-px after:flex-1 after:bg-slate-100">
-        or
-      </div>
+      {showGoogleAuth && (
+        <>
+          <button 
+            onClick={googleSignIn} 
+            disabled={busy}
+            className="inline-flex min-h-[48px] w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 transition-all shadow-sm"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/google-g.png" alt="" className="w-5 h-5 object-contain" aria-hidden="true" /> 
+            Continue with Google
+          </button>
+          
+          <div className="my-8 flex items-center gap-4 text-xs font-medium text-slate-400 uppercase tracking-widest before:h-px before:flex-1 before:bg-slate-100 after:h-px after:flex-1 after:bg-slate-100">
+            or
+          </div>
+        </>
+      )}
       
       <div className="rounded-xl bg-[#087fb9]/5 border border-[#087fb9]/10 p-4 mb-6">
         <p className="text-xs leading-relaxed text-[#087fb9]">
