@@ -19,7 +19,6 @@ type CheckoutOrder={key_id:string;order_id:string;amount:number;currency:string;
 type RazorpayResult={razorpay_order_id:string;razorpay_payment_id:string;razorpay_signature:string};
 type PatientRelationship="self"|"child"|"parent"|"spouse"|"relative"|"other";
 type BookingDetails={name:string;phone:string;email:string;notes:string;age:string;healthConcern:string;locality:string;pincode:string;summary:string;careConsent:boolean;marketingConsent:boolean;contactName:string;contactPhone:string;relationship:PatientRelationship;dateOfBirth:string};
-type RazorpayOptions={key:string;amount:number;currency:string;order_id:string;name:string;description:string;prefill:{name:string;email:string;contact:string};theme:{color:string};handler:(result:RazorpayResult)=>void;modal:{ondismiss:()=>void}};
 type InitialSelection={serviceId:string;locationId:string;resourceId:string;date:string;slot:string;source:string;handoffToken?:string;patientName?:string;bookingContactName?:string;bookingContactPhone?:string;relationship?:PatientRelationship};
 type OtpStatus={available:boolean};
 

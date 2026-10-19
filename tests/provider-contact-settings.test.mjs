@@ -2,18 +2,21 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 
-const source=await readFile(new URL("../app/app/settings/workspace-form.tsx",import.meta.url),"utf8");
+const form = await readFile(new URL("../app/app/settings/workspace-form.tsx", import.meta.url), "utf8");
+const editor = await readFile(new URL("../components/settings/provider-identity-editor.tsx", import.meta.url), "utf8");
+const hook = await readFile(new URL("../app/app/settings/use-workspace-settings.ts", import.meta.url), "utf8");
+const source = form + "\n" + editor + "\n" + hook;
 
 test("provider editor separates medical registration from WhatsApp contact",()=>{
   assert.match(source,/Medical registration number/);
   assert.match(source,/Doctor WhatsApp number/);
   assert.match(source,/Do not enter a phone number here/);
-  assert.match(source,/contact_phone:item\.contact_phone/);
+  assert.match(source,/contact_phone:\s*item\.contact_phone/);
 });
 
 test("all edited provider profiles are retained and saved independently",()=>{
   assert.match(source,/const \[providers, setProviders\]/);
-  assert.match(source,/providers\.map\(\(item\)=>supabase\.from\("provider_profiles"\)\.upsert/);
+  assert.match(source,/providers\.map\(\(item\)\s*=>\s*supabase\.from\("provider_profiles"\)\.upsert/);
   assert.match(source,/provider-specific settings/i);
 });
 

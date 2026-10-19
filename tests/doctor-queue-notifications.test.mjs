@@ -9,7 +9,10 @@ const route=readFileSync(new URL("../app/api/clinic-operations/doctor-queue/rout
 const consentLedger=readFileSync(new URL("../supabase/migrations/20260816150000_doctor_queue_consent_ledger.sql",import.meta.url),"utf8");
 const rateLimits=readFileSync(new URL("../supabase/migrations/20260822171500_register_clinic_operations_rate_limit_buckets.sql",import.meta.url),"utf8");
 const phonePermission=readFileSync(new URL("../supabase/migrations/20260822174500_allow_authenticated_phone_normalization.sql",import.meta.url),"utf8");
-const workspace=readFileSync(new URL("../app/app/clinic-operations/workspace.tsx",import.meta.url),"utf8");
+const workspaceFile=readFileSync(new URL("../app/app/clinic-operations/workspace.tsx",import.meta.url),"utf8");
+const hookFile=readFileSync(new URL("../app/app/clinic-operations/use-clinic-operations.ts",import.meta.url),"utf8");
+const liveRosterFile=readFileSync(new URL("../components/clinic-operations/live-roster.tsx",import.meta.url),"utf8");
+const workspace = workspaceFile + "\n" + hookFile + "\n" + liveRosterFile;
 const templateHealth=readFileSync(new URL("../app/app/integrations/template-readiness.tsx",import.meta.url),"utf8");
 
 test("doctor queue requires explicit consent and a valid phone",()=>{

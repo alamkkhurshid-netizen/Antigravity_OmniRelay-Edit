@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { ArrowLeft, Sparkles, Play, Search, Video } from "lucide-react";
+import { ArrowLeft, Sparkles, Play, Video } from "lucide-react";
 import { getWorkspace } from "@/lib/workspace";
 import { GenerateForm } from "./generate-form";
 
 export default async function CreativeVelocityPage() {
-  const { supabase, organization } = await getWorkspace();
+  const { supabase } = await getWorkspace();
   
   // Fetch existing creatives
   const { data: creatives } = await supabase
@@ -63,7 +63,7 @@ export default async function CreativeVelocityPage() {
               </div>
               <div className="p-4 flex flex-col gap-2">
                 <p className="text-xs font-medium text-slate-700 line-clamp-3">
-                  "{creative.hook_script}"
+                  &quot;{creative.hook_script}&quot;
                 </p>
                 <div className="mt-2 flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase">
                   <span>Product:</span>

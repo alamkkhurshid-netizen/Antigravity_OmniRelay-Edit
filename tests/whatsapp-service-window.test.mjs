@@ -14,8 +14,11 @@ test("free-form WhatsApp replies are blocked after the customer service window",
 
 test("the inbox replaces a closed free-form composer with a template action", async () => {
   const workspace = await readFile(new URL("app/app/conversations/conversation-workspace.tsx", root), "utf8");
-  assert.match(workspace, /24-hour reply window closed/);
-  assert.match(workspace, /Send approved template/);
-  assert.match(workspace, /serviceWindowOpen/);
-  assert.match(workspace, /defaultValue=\{templateTarget\?\.phone/);
+  const threadView = await readFile(new URL("components/conversations/thread-view.tsx", root), "utf8");
+  const modal = await readFile(new URL("components/conversations/new-conversation-modal.tsx", root), "utf8");
+  const combined = workspace + "\n" + threadView + "\n" + modal;
+  assert.match(combined, /24-hour reply window closed/);
+  assert.match(combined, /Send approved template/);
+  assert.match(combined, /serviceWindowOpen/);
+  assert.match(combined, /defaultValue=\{templateTarget\?\.phone/);
 });

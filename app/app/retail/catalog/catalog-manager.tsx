@@ -29,7 +29,7 @@ export function CatalogManager({ initialProducts, organizationId }: { initialPro
     
     // Generate a unique path for the image
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+    const fileName = `${crypto.randomUUID()}.${fileExt}`;
     const filePath = `${organizationId}/${fileName}`;
     
     const { error: uploadError } = await supabase.storage

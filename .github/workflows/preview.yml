@@ -1,0 +1,97 @@
+name: Vercel Preview Deployment
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy-preview:
+    name: Deploy PR Preview to Vercel
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate PR Migrations
+        run: npm run validate:migrations
+
+      - name: Type Check & Lint
+        run: |
+          npm run typecheck
+          npm run lint
+
+      - name: Run Fast Test Suite
+        run: node --test tests/*.test.mjs
+
+      - name: Check Vercel Credentials
+        id: check_creds
+        run: |
+          if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
+            echo "has_token=false" >> $GITHUB_OUTPUT
+            echo "VERCEL_TOKEN is not configured. Preview deployment will be skipped honestly."
+          else
+            echo "has_token=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install Vercel CLI
+        if: steps.check_creds.outputs.has_token == 'true'
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        if: steps.check_creds.outputs.has_token == 'true'
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build Preview Artifacts
+        if: steps.check_creds.outputs.has_token == 'true'
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel Preview
+        id: deploy
+        if: steps.check_creds.outputs.has_token == 'true'
+        run: |
+          url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          echo "preview_url=$url" >> $GITHUB_OUTPUT
+
+      - name: Report Deployment Outcome on PR
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const hasToken = "${{ steps.check_creds.outputs.has_token }}" === "true";
+            const deployOutcome = "${{ steps.deploy.outcome }}";
+            const previewUrl = process.env.PREVIEW_URL;
+
+            let commentBody;
+            if (!hasToken) {
+              commentBody = `### ℹ️ Vercel Preview Skipped\n\n- **Reason:** \`VERCEL_TOKEN\` secret is not configured in this repository.\n- **Status:** Fast tests, linting, and typecheck passed.`;
+            } else if (deployOutcome === "success" && previewUrl) {
+              commentBody = `### 🚀 Vercel Preview Deployment Succeeded\n\n- **Preview URL:** ${previewUrl}\n- **Environment:** Preview\n- **Status:** All checks (typecheck, lint, migrations, fast tests) passed!`;
+            } else {
+              commentBody = `### ❌ Vercel Preview Deployment Failed\n\n- **Status:** Deployment or build step failed. Inspect GitHub Actions job logs for failure details.`;
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+

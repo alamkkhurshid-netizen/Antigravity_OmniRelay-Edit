@@ -5,7 +5,9 @@ import test from "node:test";
 const root = new URL("../", import.meta.url);
 
 test("the inbox observes Realtime status and recovers safely when the channel is unavailable", async () => {
-  const workspace = await readFile(new URL("app/app/conversations/conversation-workspace.tsx", root), "utf8");
+  const workspaceFile = await readFile(new URL("app/app/conversations/conversation-workspace.tsx", root), "utf8");
+  const hookFile = await readFile(new URL("app/app/conversations/use-realtime-messages.ts", root), "utf8");
+  const workspace = workspaceFile + "\n" + hookFile;
 
   assert.match(workspace, /\.subscribe\(\(status\) =>/);
   assert.match(workspace, /status === "SUBSCRIBED"/);

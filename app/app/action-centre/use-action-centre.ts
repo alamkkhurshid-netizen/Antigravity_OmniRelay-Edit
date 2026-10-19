@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   CareRun, AppointmentRun, Task, Deployment, BookingRequest, WaitlistItem,
-  Disruption, EmergencyRecipient, Assignment, ReadinessCheck, PilotControl, AiDraft, ExceptionItem
+  Disruption, EmergencyRecipient, Assignment, ReadinessCheck, PilotControl, AiDraft, CarrierRecoveryEvent, ExceptionItem
 } from "./types";
 
 const when = (value:string) => new Intl.DateTimeFormat("en-IN", { day:"numeric", month:"short", hour:"numeric", minute:"2-digit", timeZone:"Asia/Kolkata" }).format(new Date(value));
@@ -10,11 +10,12 @@ const clinicDay = (value:string) => new Intl.DateTimeFormat("en-CA", { timeZone:
 
 export function useActionCentre({
   careRuns, appointmentRuns, tasks, deployments, bookingRequests, waitlist, disruptions, emergencyRecipients,
-  assignments, readinessChecks, pilotControl, aiDrafts, currentUserId, nowIso
+  assignments, readinessChecks, pilotControl, aiDrafts, carrierRecoveryEvents = [], currentUserId, nowIso
 }: {
   careRuns:CareRun[]; appointmentRuns:AppointmentRun[]; tasks:Task[]; deployments:Deployment[];
   bookingRequests:BookingRequest[]; waitlist:WaitlistItem[]; disruptions:Disruption[]; emergencyRecipients:EmergencyRecipient[];
   assignments:Assignment[]; readinessChecks:ReadinessCheck[]; pilotControl:PilotControl|null; aiDrafts:AiDraft[];
+  carrierRecoveryEvents?:CarrierRecoveryEvent[];
   currentUserId:string; nowIso:string;
 }) {
   const router=useRouter();
@@ -25,11 +26,7 @@ export function useActionCentre({
   const [result,setResult]=useState<{deployed_count:number;automatic_count:number;exception_count:number}|null>(null);
   
   const isDemo = aiDrafts.some(d => (d.draft_payload as any)?.metadata?.demo === true);
-  const [runTour, setRunTour] = useState(false);
-  
-  useEffect(() => {
-    if (isDemo) setRunTour(true);
-  }, [isDemo]);
+  const [runTour, setRunTour] = useState(() => isDemo);
 
   const now=new Date(nowIso).getTime();
   const dueCare=careRuns.filter(r=>new Date(r.scheduled_for).getTime()<=now);
@@ -52,6 +49,24 @@ export function useActionCentre({
     ...bookingRequests.map(r=>withOwner({id:r.id,kind:"booking_approval" as const,type:"Booking approval required",name:r.patient_name,detail:`${r.service?.name??"Appointment"} · ${r.location?.name??"Clinic"} · ${r.resource?.name??"Provider"} · ${when(r.starts_at)}`,priority:"urgent",rank:100,href:"/app/booking-concierge#booking-requests"})),
     ...disruptions.map(r=>withOwner({id:r.id,kind:"schedule_disruption" as const,type:`${r.exception_type.replaceAll("_"," ")} disruption`,name:r.resource?.name??"Clinic schedule",detail:`${r.location?.name??"All locations"} · ${when(r.starts_at)} · ${r.reason}`,priority:"urgent",rank:95,href:"/app/appointments"})),
     ...emergencyRecipients.map(r=>withOwner({id:r.id,kind:"blocked" as const,type:"Emergency notice needs manual contact",name:r.patient?.full_name??"Patient",detail:r.failure_reason??"WhatsApp emergency notice was not delivered. Call the patient and record the outcome.",priority:"urgent",rank:94,href:"/app/campaigns"})),
+    ...carrierRecoveryEvents.map(r => {
+      const attemptsCount = r.metadata?.attempts?.length ?? 0;
+      const destination = r.metadata?.destination ?? "Patient";
+      const expiresAt = r.metadata?.expires_at;
+      const expiryText = expiresAt ? ` · Expires: ${when(expiresAt)}` : "";
+      return withOwner({
+        id: r.id,
+        kind: "carrier_recovery" as const,
+        type: `Carrier Exhaustion (${attemptsCount} attempts failed)`,
+        name: r.metadata?.patient_pseudonym ?? destination,
+        detail: `${destination ? `Target: ${destination} · ` : ""}${r.safe_message}${expiryText}`,
+        priority: "urgent",
+        rank: 97,
+        href: "/app/action-centre#priority-review-queue",
+        status: r.metadata?.action_centre_status ?? "pending_manual_intervention",
+        draft_payload: r.metadata as Record<string, unknown>
+      });
+    }),
     ...waitlist.map(r=>withOwner({id:r.id,kind:"waitlist" as const,type:"Waitlist follow-up",name:r.patient_name,detail:`${r.service?.name??"Appointment"} · ${r.location?.name??"Clinic"} · preferred ${r.preferred_date}`,priority:r.status==="offered"?"urgent":"high",rank:r.status==="offered"?90:70,href:"/app/booking-concierge#waitlist"})),
     ...careExceptions.map(r=>withOwner({id:r.id,kind:r.status==="failed"?"care_retry" as const:"blocked" as const,type:r.status==="failed"?"Care reminder failed":"Reminder blocked",name:r.patient?.full_name??"Patient",detail:r.failure_reason??(!r.patient?.care_communications_consent?"Care communication consent is missing.":"Patient mobile number is missing."),priority:"high",rank:65,href:r.status==="failed"?"/app/operations":"/app/automations"})),
     ...appointmentExceptions.map(r=>withOwner({id:r.id,kind:"appointment_retry" as const,type:"Appointment message failed",name:r.appointment?.customer_name??"Patient",detail:r.failure_reason??"Delivery requires review.",priority:"high",rank:60,href:"/app/operations"})),
@@ -146,9 +161,39 @@ export function useActionCentre({
     setWorking(null);
   }
 
+  async function resolveCarrierRecovery(item: ExceptionItem, action: "resolve" | "retry") {
+    const promptMsg = action === "resolve" 
+      ? "Enter notes before closing this recovery task (e.g., patient contacted by phone manually):"
+      : "Enter reason for queuing an automated retry:";
+    const defaultMsg = action === "resolve" ? "Patient contacted manually by receptionist" : "Carrier outage cleared, retrying automated call";
+    const reason = window.prompt(promptMsg, defaultMsg);
+    if (!reason) return;
+
+    const response = await fetch("/api/action-centre/carrier-recovery", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: item.id,
+        action,
+        reason,
+        expectedVersion: (item.draft_payload as Record<string, unknown> | undefined)?.version ?? null,
+      }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setError(body.error ?? `Carrier recovery task could not be ${action}d.`);
+    } else {
+      setNotice(action === "resolve" ? "Carrier recovery task marked resolved and closed." : "Automated retry requested for carrier recovery.");
+      router.refresh();
+    }
+    setWorking(null);
+  }
+
   return {
     busy, error, notice, working, result, runTour,
     deployable, automaticCare, automaticAppointments, exceptions, routine,
-    deploy, updateTask, retry, coordinate, testMobileAlert, archiveHistoricalAlerts, resolveDraft
+    deploy, updateTask, retry, coordinate, testMobileAlert, archiveHistoricalAlerts, resolveDraft,
+    resolveCarrierRecovery
   };
 }
+

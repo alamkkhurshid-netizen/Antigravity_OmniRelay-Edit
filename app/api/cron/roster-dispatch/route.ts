@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isWorkerPaused, recordWorkerPauseAudit } from "@/lib/runtime-controls";
 import {
   buildDailyRosterData,
   generateDailyRosterCsv,
@@ -8,6 +9,17 @@ import {
 } from "@/lib/daily-roster";
 
 export async function GET(request: Request) {
+  // Worker Guard: Check if roster dispatch worker is paused
+  const pauseCheck = await isWorkerPaused("roster_dispatch");
+  if (pauseCheck.paused) {
+    console.warn(`[Roster Dispatch Cron] Worker is paused: ${pauseCheck.reason}`);
+    await recordWorkerPauseAudit("roster_dispatch", {
+      controlKey: pauseCheck.controlKey || "WORKER_ENABLED",
+      message: `Daily roster dispatch skipped: ${pauseCheck.reason}`
+    });
+    return NextResponse.json({ status: "paused", message: pauseCheck.reason });
+  }
+
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
 

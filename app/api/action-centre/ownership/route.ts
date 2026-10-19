@@ -1,7 +1,7 @@
 import {NextResponse} from "next/server";
 import {getWorkspace} from "@/lib/workspace";
 
-const kinds=new Set(["booking_approval","waitlist","schedule_disruption","care_retry","appointment_retry","care_task"]);
+const kinds=new Set(["booking_approval","waitlist","schedule_disruption","care_retry","appointment_retry","care_task","carrier_recovery"]);
 const actions=new Set(["claim","review","release"]);
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

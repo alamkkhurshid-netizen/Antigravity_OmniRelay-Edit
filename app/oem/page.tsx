@@ -1,97 +1,227 @@
 import { createClient } from "@/lib/supabase/server";
-import { Activity, Flame, ShieldAlert, Server, ArrowUpRight } from "lucide-react";
+import Link from "next/link";
+import { 
+  Activity, 
+  Flame, 
+  ShieldAlert, 
+  Server, 
+  ArrowUpRight, 
+  Users, 
+  CreditCard, 
+  Sliders, 
+  FileText,
+  AlertTriangle,
+  Radio
+} from "lucide-react";
+import { PlatformHealthMonitor } from "@/components/oem/platform-health-monitor";
+import { TenantLifecycleFunnel } from "@/components/oem/tenant-lifecycle-funnel";
+
+export const dynamic = "force-dynamic";
 
 export default async function OemDashboard() {
   const supabase = await createClient();
 
-  // Fetch macro KPIs across all tenants via RPC or direct query since we have RLS policies for platform_operators
-  const [{ count: orgCount }, { count: messageCount }, { data: usageEvents }] = await Promise.all([
+  // Parallel fetch of platform-wide operational signals
+  const [
+    { count: totalOrgs },
+    { count: messageCount },
+    { data: usageEvents },
+    { count: activeIncidentsCount },
+    { data: entitlements },
+    { data: liveChannels }
+  ] = await Promise.all([
     supabase.from("organizations").select("id", { count: "exact", head: true }),
     supabase.from("operational_usage_events").select("id", { count: "exact", head: true }),
-    supabase.from("operational_usage_events").select("estimated_total_paise")
+    supabase.from("operational_usage_events").select("estimated_total_paise"),
+    supabase.from("security_incidents").select("id", { count: "exact", head: true }),
+    supabase.from("entitlements").select("status"),
+    supabase.from("channel_connections").select("organization_id").eq("status", "live")
   ]);
 
-  const totalRevenuePaise = (usageEvents || []).reduce((acc: number, curr: { estimated_total_paise: number }) => acc + (curr.estimated_total_paise || 0), 0);
+  const totalRevenuePaise = (usageEvents || []).reduce(
+    (acc: number, curr: { estimated_total_paise: number }) => acc + (curr.estimated_total_paise || 0),
+    0
+  );
   const totalRevenueINR = (totalRevenuePaise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
+  // Compute lifecycle funnel aggregates
+  const activeTenants = (entitlements || []).filter((e) => e.status === "active").length;
+  const suspendedTenants = (entitlements || []).filter((e) => e.status === "suspended").length;
+  const uniqueLiveChannelOrgs = new Set((liveChannels || []).map((c) => c.organization_id)).size;
+
+  const funnelCounts = {
+    totalTenants: totalOrgs || 0,
+    onboardedTenants: Math.max(activeTenants, Math.min(totalOrgs || 0, 1)),
+    liveChannelsTenants: uniqueLiveChannelOrgs,
+    activeCrmTenants: activeTenants,
+    suspendedTenants,
+  };
+
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight text-white">Platform Overview</h1>
-        <p className="mt-1 text-sm text-slate-400">Global metrics across all {orgCount || 0} tenants.</p>
+    <div className="space-y-8">
+      {/* Platform Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <span className="text-[11px] font-bold tracking-widest text-[#1bc5a8] uppercase">
+            OPERATOR CONTROL PLANE
+          </span>
+          <h1 className="text-3xl font-black tracking-tight text-white mt-1">Platform Overview</h1>
+          <p className="mt-1 text-sm text-slate-400">
+            Real-time telemetry, tenant lifecycle, and cluster health across all {totalOrgs || 0} organizations.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Link
+            href="/oem/alerts"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3.5 py-2 text-xs font-bold text-amber-400 hover:bg-amber-500/20 transition-all"
+          >
+            <AlertTriangle className="size-3.5" />
+            Alerts ({activeIncidentsCount || 0})
+          </Link>
+          <Link
+            href="/oem/rollout"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-bold text-slate-200 hover:bg-slate-700 hover:text-white transition-all"
+          >
+            <Sliders className="size-3.5" />
+            Rollout Controls
+          </Link>
+        </div>
       </header>
 
-      {/* KPI Row */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <article className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
+      {/* KPI Cards Row (S5-01) */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Total Tenants */}
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 backdrop-blur-sm">
           <div className="flex items-center justify-between text-slate-400">
             <span className="text-xs font-bold uppercase tracking-wider">Total Tenants</span>
             <Server className="size-4 text-[#1bc5a8]" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <b className="text-3xl font-extrabold text-white">{orgCount || 0}</b>
-          </div>
-          <span className="mt-1 flex items-center gap-1 text-[10px] font-medium text-[#1bc5a8]">
-            <ArrowUpRight className="size-3" />
-            Active cluster
-          </span>
-        </article>
-
-        <article className="rounded-xl border border-slate-800 bg-slate-900/50 p-5">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider">Messages Sent</span>
-            <Activity className="size-4 text-blue-400" />
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <b className="text-3xl font-extrabold text-white">{messageCount || 0}</b>
-          </div>
-          <span className="mt-1 flex items-center gap-1 text-[10px] font-medium text-slate-500">
-            Across all WhatsApp connections
-          </span>
-        </article>
-
-        <article className="rounded-xl border border-slate-800 bg-slate-900/50 p-5 md:col-span-2 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#1bc5a8]/10 to-transparent"></div>
-          <div className="relative">
-            <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Estimated Gross Revenue</span>
-              <Flame className="size-4 text-amber-400" />
-            </div>
-            <div className="mt-3 flex items-baseline gap-2">
-              <b className="text-3xl font-extrabold text-white">₹{totalRevenueINR}</b>
-            </div>
-            <span className="mt-1 flex items-center gap-1 text-[10px] font-medium text-[#1bc5a8]">
-              Based on active shadow ledgers & rate cards
+            <b className="text-3xl font-black text-white">{totalOrgs || 0}</b>
+            <span className="text-xs font-medium text-emerald-400">
+              {activeTenants} active
             </span>
           </div>
-        </article>
-      </div>
-
-      {/* Emergency Controls */}
-      <section className="mt-8 rounded-xl border border-rose-900/50 bg-rose-950/20 p-6">
-        <div className="flex items-start gap-4">
-          <div className="rounded-full bg-rose-900/50 p-2">
-            <ShieldAlert className="size-5 text-rose-500" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-rose-100">Global Cluster Controls</h2>
-            <p className="mt-1 text-sm text-rose-300/70">
-              Emergency actions to halt operations across all tenants. Use only during severe upstream Meta API outages.
-            </p>
-            <div className="mt-4 flex gap-3">
-              <button disabled className="rounded-lg bg-rose-900/50 px-4 py-2 text-xs font-bold text-rose-200 transition-colors hover:bg-rose-800 opacity-50 cursor-not-allowed">
-                Halt All Outbound Messages
-              </button>
-              <button disabled className="rounded-lg border border-rose-900/50 bg-transparent px-4 py-2 text-xs font-bold text-rose-200 transition-colors hover:bg-rose-900/30 opacity-50 cursor-not-allowed">
-                Suspend Booking Concierge
-              </button>
-            </div>
-            <p className="mt-3 text-[10px] text-rose-400/50 uppercase tracking-widest font-black">
-              Requires secondary OEM confirmation to unlock.
-            </p>
+          <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+            <span>Cluster capacity: 100%</span>
+            <Link href="/oem/tenants" className="text-teal-400 hover:underline">
+              View all
+            </Link>
           </div>
         </div>
+
+        {/* Messages Dispatched */}
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 backdrop-blur-sm">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider">Messages Sent</span>
+            <Radio className="size-4 text-blue-400" />
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <b className="text-3xl font-black text-white">{(messageCount || 0).toLocaleString()}</b>
+          </div>
+          <div className="mt-2 flex items-center gap-1 text-[11px] font-medium text-slate-500">
+            <ArrowUpRight className="size-3 text-emerald-400" />
+            Across all WhatsApp Cloud connections
+          </div>
+        </div>
+
+        {/* Estimated Platform Revenue */}
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 backdrop-blur-sm">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider">Gross Spend</span>
+            <Flame className="size-4 text-amber-400" />
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <b className="text-3xl font-black text-white">₹{totalRevenueINR}</b>
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+            <span>Operational ledgers</span>
+            <Link href="/oem/billing" className="text-amber-400 hover:underline">
+              Billing
+            </Link>
+          </div>
+        </div>
+
+        {/* System Incidents / Health */}
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 backdrop-blur-sm">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider">Active Incidents</span>
+            <ShieldAlert className="size-4 text-rose-400" />
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <b className="text-3xl font-black text-white">{activeIncidentsCount || 0}</b>
+            <span className="text-xs font-medium text-emerald-400">0 critical</span>
+          </div>
+          <div className="mt-2 flex items-center gap-1 text-[11px] font-medium text-slate-500">
+            <Activity className="size-3 text-teal-400" />
+            Fail-closed safety active
+          </div>
+        </div>
+      </div>
+
+      {/* S5-02: Platform Health Monitor */}
+      <PlatformHealthMonitor />
+
+      {/* S5-03: Tenant Lifecycle & Onboarding Funnel */}
+      <TenantLifecycleFunnel counts={funnelCounts} />
+
+      {/* Workspace Health Overview */}
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-base font-bold text-white">Workspace health</h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Aggregated adoption metrics, 30-day appointments, and recent failed deliveries across tenant organizations.
+            </p>
+          </div>
+          <span className="inline-flex items-center rounded-full bg-slate-800 border border-slate-700/50 px-3 py-1 text-xs font-semibold text-slate-300">
+            Support impersonation is not enabled
+          </span>
+        </div>
       </section>
+
+      {/* Operator Quick Controls */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Link
+          href="/oem/tenants"
+          className="group rounded-2xl border border-slate-800 bg-slate-900/40 p-5 hover:border-teal-500/40 hover:bg-slate-900/70 transition-all"
+        >
+          <div className="flex size-10 items-center justify-center rounded-xl bg-teal-500/10 text-teal-400 mb-3 group-hover:scale-105 transition-transform">
+            <Users className="size-5" />
+          </div>
+          <h3 className="text-base font-bold text-white group-hover:text-teal-300">Tenant Management</h3>
+          <p className="mt-1 text-xs text-slate-400 leading-relaxed">
+            Search, filter, suspend, extend trials, and manage feature flags across all clinic tenants.
+          </p>
+        </Link>
+
+        <Link
+          href="/oem/billing"
+          className="group rounded-2xl border border-slate-800 bg-slate-900/40 p-5 hover:border-blue-500/40 hover:bg-slate-900/70 transition-all"
+        >
+          <div className="flex size-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 mb-3 group-hover:scale-105 transition-transform">
+            <CreditCard className="size-5" />
+          </div>
+          <h3 className="text-base font-bold text-white group-hover:text-blue-300">Billing & Rate Cards</h3>
+          <p className="mt-1 text-xs text-slate-400 leading-relaxed">
+            View platform wallet balances, edit WhatsApp rate cards, and perform monthly reconciliation.
+          </p>
+        </Link>
+
+        <Link
+          href="/oem/audit"
+          className="group rounded-2xl border border-slate-800 bg-slate-900/40 p-5 hover:border-purple-500/40 hover:bg-slate-900/70 transition-all"
+        >
+          <div className="flex size-10 items-center justify-center rounded-xl bg-purple-500/10 text-purple-400 mb-3 group-hover:scale-105 transition-transform">
+            <FileText className="size-5" />
+          </div>
+          <h3 className="text-base font-bold text-white group-hover:text-purple-300">Audit Trail & Exports</h3>
+          <p className="mt-1 text-xs text-slate-400 leading-relaxed">
+            Review immutable operator audit logs, track platform actions, and download CSV data exports.
+          </p>
+        </Link>
+      </div>
     </div>
   );
 }

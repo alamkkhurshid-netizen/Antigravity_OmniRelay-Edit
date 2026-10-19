@@ -33,19 +33,21 @@ test("emergency notices require a doctor-specific scope before sending", async (
 });
 
 test("emergency creation scopes one doctor, preserves arrived visits and retains human exceptions", async () => {
-  const [route, workspace, actionCentre, migration] = await Promise.all([
+  const [route, workspace, actionWorkspace, actionHook, migration] = await Promise.all([
     readFile(new URL("app/api/campaigns/route.ts", root), "utf8"),
     readFile(new URL("app/app/campaigns/campaign-workspace.tsx", root), "utf8"),
     readFile(new URL("app/app/action-centre/workspace.tsx", root), "utf8"),
+    readFile(new URL("app/app/action-centre/use-action-centre.ts", root), "utf8"),
     readFile(new URL("supabase/migrations/20260912044009_doctor_specific_emergency_notices.sql", root), "utf8"),
   ]);
+  const actionCentre = actionWorkspace + "\n" + actionHook;
   assert.match(route, /b\.resourceId/);
   assert.match(route, /reschedule_required/);
   assert.match(route, /status!=="arrived"/);
   assert.match(route, /Emergency contact required/);
   assert.match(workspace, /Doctor-specific emergency only/);
   assert.match(workspace, /Patient message preview/);
-  assert.match(workspace, /resource_id===f\.resourceId/);
+  assert.match(workspace, /resource_id\s*===\s*f\.resourceId/);
   assert.match(actionCentre, /Emergency notice needs manual contact/);
   assert.match(migration, /campaigns_emergency_doctor_scope_check/);
   assert.match(migration, /resource_id/);

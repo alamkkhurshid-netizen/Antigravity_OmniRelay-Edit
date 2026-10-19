@@ -27,6 +27,8 @@ export interface DeductionResult {
   newBalanceInr: number;
   warningTriggered: boolean;
   criticalTriggered: boolean;
+  unitsBilled?: number;
+  unitRatePaise?: number;
 }
 
 export interface GstBreakdown {
@@ -97,6 +99,36 @@ export async function getMessageRate(
     baseRatePaise: data.base_rate_paise,
     baseRateInr: data.base_rate_paise / 100,
     currency: data.currency,
+  };
+}
+
+/**
+ * Retrieves the platform markup percentage for a tenant based on their active volume pricing tier.
+ * Tiers: Starter (25%), Growth (20%), Scale (15%), Enterprise (10%).
+ */
+export async function getMarkupRate(
+  organizationId: string,
+  category: MessageCategory = "utility"
+): Promise<{ tierName: string; markupPercentage: number }> {
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .schema("billing")
+    .from("tenant_pricing_tiers")
+    .select("tier_name, markup_percentage")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return {
+      tierName: "Starter",
+      markupPercentage: category === "marketing" ? 22.0 : 25.0,
+    };
+  }
+
+  return {
+    tierName: data.tier_name || "Starter",
+    markupPercentage: Number(data.markup_percentage) || 25.0,
   };
 }
 
@@ -176,6 +208,24 @@ export async function recordAndDeduct(
 
   const res = typeof data === "string" ? JSON.parse(data) : data;
 
+  const newBalPaise = res?.new_balance_paise ?? res?.balance_paise ?? 0;
+  const warningTriggered = !!res?.warning_triggered;
+  const criticalTriggered = !!res?.critical_triggered;
+
+  if (warningTriggered || criticalTriggered) {
+    try {
+      const { dispatchThresholdAlertIfNeeded } = await import("./alerts");
+      await dispatchThresholdAlertIfNeeded(
+        organizationId,
+        newBalPaise,
+        warningTriggered,
+        criticalTriggered
+      );
+    } catch (alertErr) {
+      console.error("[DeductionEngine] Failed to dispatch threshold alert:", alertErr);
+    }
+  }
+
   return {
     success: !!res?.success,
     alreadyDeducted: !!res?.already_deducted,
@@ -184,9 +234,11 @@ export async function recordAndDeduct(
     ledgerId: res?.ledger_id,
     deductedPaise: res?.deducted_paise ?? 0,
     deductedInr: (res?.deducted_paise ?? 0) / 100,
-    newBalancePaise: res?.new_balance_paise ?? 0,
-    newBalanceInr: (res?.new_balance_paise ?? 0) / 100,
-    warningTriggered: !!res?.warning_triggered,
-    criticalTriggered: !!res?.critical_triggered,
+    newBalancePaise: newBalPaise,
+    newBalanceInr: newBalPaise / 100,
+    warningTriggered,
+    criticalTriggered,
+    unitsBilled: res?.units_billed ?? quantity,
+    unitRatePaise: res?.unit_rate_paise,
   };
 }

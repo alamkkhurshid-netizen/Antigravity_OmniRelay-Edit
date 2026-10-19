@@ -11,7 +11,7 @@ export function useAnalyticsWorkspace(
   const [analytics, setAnalytics] = useState<ClinicAnalyticsResult>(initialAnalytics);
   const [aiPayload, setAiPayload] = useState<any>(initialAiPayload);
   const [aiInsights, setAiInsights] = useState<AiInsights | null>(null);
-  const [loadingAi, setLoadingAi] = useState(false);
+  const [loadingAi, setLoadingAi] = useState(Boolean(initialAiPayload));
   const [isPending, startTransition] = useTransition();
 
   async function fetchAiInsights(payloadToAnalyze = aiPayload) {
@@ -52,8 +52,31 @@ export function useAnalyticsWorkspace(
   }
 
   useEffect(() => {
-    fetchAiInsights(initialAiPayload);
-  }, []);
+    let ignore = false;
+    async function load() {
+      try {
+        const res = await fetch("/api/analytics/ai-insights", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ metrics: initialAiPayload }),
+        });
+        if (res.ok && !ignore) {
+          const data = await res.json();
+          setAiInsights(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch AI insights:", err);
+      } finally {
+        if (!ignore) {
+          setLoadingAi(false);
+        }
+      }
+    }
+    load();
+    return () => {
+      ignore = true;
+    };
+  }, [initialAiPayload]);
 
   function handleRangeChange(newRange: DateRangeKey) {
     setRange(newRange);

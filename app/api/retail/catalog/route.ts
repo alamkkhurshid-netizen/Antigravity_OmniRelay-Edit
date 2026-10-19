@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isFeatureEnabledAsync } from "@/lib/feature-flags";
 
-// We use the service role key here to allow external platforms (like Facebook) to pull the feed
-// without needing user authentication. Instead, we use an API token query param or just organization_id.
-// Note: In production, consider adding a feed-specific secret token.
-
+// Retail catalog feed requires feed secret token or internal service authentication
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
@@ -15,14 +13,32 @@ export async function GET(req: Request) {
     if (!supabaseUrl || !supabaseServiceKey) {
       return new NextResponse("Server configuration missing", { status: 500 });
     }
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     const { searchParams } = new URL(req.url);
     const orgId = searchParams.get("org_id");
 
     if (!orgId) {
       return new NextResponse("Missing org_id parameter", { status: 400 });
     }
+
+    // 1. PostgreSQL-backed feature flag gating
+    if (!(await isFeatureEnabledAsync("whatsapp_catalog_enabled", orgId))) {
+      return new NextResponse("Retail catalog feature is disabled for this organization", { status: 403 });
+    }
+
+    // 2. Feed secret authentication
+    const feedSecret = searchParams.get("secret") || req.headers.get("x-feed-secret");
+    const authHeader = req.headers.get("authorization");
+    const bearerSecret = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    const providedSecret = feedSecret || bearerSecret;
+
+    const expectedSecret = process.env.RETAIL_CATALOG_FEED_SECRET || process.env.INTERNAL_SERVICE_KEY;
+
+    if (!expectedSecret || !providedSecret || providedSecret !== expectedSecret) {
+      return new NextResponse("Unauthorized: valid catalog feed secret is required", { status: 401 });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Fetch all products for this organization
     const { data: products, error } = await supabase
@@ -40,7 +56,7 @@ export async function GET(req: Request) {
     const headers = ["id", "title", "description", "availability", "condition", "price", "link", "image_link", "brand", "inventory"];
     
     // Helper to safely escape CSV fields
-    const escapeCsv = (field: any) => {
+    const escapeCsv = (field: unknown) => {
       if (field === null || field === undefined) return "";
       const str = String(field).replace(/"/g, '""'); // Escape double quotes
       if (str.search(/("|,|\n)/g) >= 0) {
@@ -49,13 +65,28 @@ export async function GET(req: Request) {
       return str;
     };
 
-    const csvRows = products.map((p) => {
+    interface CatalogItemRow {
+      sku: string;
+      title: string;
+      description?: string | null;
+      availability: string;
+      condition: string;
+      price: number | string;
+      currency: string;
+      link: string;
+      image_link: string;
+      brand?: string | null;
+      inventory_count: number;
+    }
+
+    const csvRows = ((products || []) as unknown as CatalogItemRow[]).map((p) => {
       return [
         p.sku, // Facebook uses 'id' which maps to our SKU
         p.title,
         p.description || "",
         p.availability,
         p.condition,
+
         `${p.price} ${p.currency}`, // Format: 9.99 USD
         p.link,
         p.image_link,
@@ -74,7 +105,7 @@ export async function GET(req: Request) {
       },
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Catalog API Error:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
   }

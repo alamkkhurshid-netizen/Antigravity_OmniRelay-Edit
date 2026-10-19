@@ -83,7 +83,7 @@ export function ChamberScheduleEditor({organizationId,resources,locations,servic
         p_services:serviceRows,p_sessions:sessions.map(({weekday,start_time,end_time,slot_interval_minutes})=>({weekday,start_time,end_time,slot_interval_minutes}))
       });
       if(error) throw error;
-      if(!data) throw new Error(`The ${category==="Healthcare"?"chamber":"location"} schedule was not confirmed. Please try again.`);
+      if(!data) throw new Error("The chamber schedule was not confirmed. Please try again.");
       setMessage(`${category==="Healthcare"?"Chamber":"Location"} schedule saved. Your details remain on screen, and public booking now uses these dates, services, fees and sessions.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : `Unable to save the ${category==="Healthcare"?"chamber":"location"} schedule.`);

@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 
 const migration=readFileSync(new URL("../supabase/migrations/20260823180000_multi_doctor_department_foundation.sql",import.meta.url),"utf8");
-const form=readFileSync(new URL("../app/app/settings/workspace-form.tsx",import.meta.url),"utf8");
+const formFile=readFileSync(new URL("../app/app/settings/workspace-form.tsx",import.meta.url),"utf8");
+const modelFile=readFileSync(new URL("../components/settings/clinic-operating-model.tsx",import.meta.url),"utf8");
+const providerFile=readFileSync(new URL("../components/settings/provider-identity-editor.tsx",import.meta.url),"utf8");
+const form = formFile + "\n" + modelFile + "\n" + providerFile;
 const page=readFileSync(new URL("../app/app/settings/page.tsx",import.meta.url),"utf8");
 
 test("clinic mode explicitly separates solo and multi-doctor booking",()=>{

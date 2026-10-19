@@ -2,7 +2,7 @@ name: OmniRelay CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "remediation/**"]
   pull_request:
     branches: [main]
 
@@ -30,13 +30,28 @@ jobs:
         run: npm ci
 
       - name: Type Check
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Lint application source
         run: npm run lint
 
+      - name: Validate Database Migrations (S9-09)
+        run: npm run validate:migrations
+
+      - name: Verify Knowledge Release Gate
+        run: npm run knowledge:release-gate
+
       - name: Run Tests
-        run: npm test || echo "No tests configured yet"
+        run: npm test
+
+      - name: Verify Concurrency Load Tests (S4-16, S4-17)
+        run: npm run test:load
+
+      - name: Generate Test Coverage Report (S4-18)
+        run: npm run test:coverage
+
+      - name: Verify Playwright E2E Suite (S4-01)
+        run: npm run test:e2e:list
 
       - name: Build Next.js Application
         run: npm run build
