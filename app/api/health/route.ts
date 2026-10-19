@@ -5,7 +5,13 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const healthReport = await runSystemHealthChecks();
-  const statusCode = healthReport.status === "down" ? 503 : healthReport.status === "degraded" ? 200 : 200;
+
+  // Return 503 when required dependencies fail or status is down
+  const requiredFailed = Object.values(healthReport.subsystems).some(
+    (s) => s.required && s.status !== "healthy"
+  );
+
+  const statusCode = requiredFailed || healthReport.status === "down" ? 503 : 200;
 
   return NextResponse.json(healthReport, {
     status: statusCode,
