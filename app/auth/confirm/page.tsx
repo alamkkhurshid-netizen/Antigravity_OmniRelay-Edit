@@ -32,6 +32,24 @@ export default function AuthConfirmPage() {
       return;
     }
 
+    // 1b. Check if access_token & refresh_token are in the hash fragment (Supabase redirect)
+    if (typeof window !== "undefined" && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      if (accessToken && refreshToken) {
+        supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(({ data, error: setErr }) => {
+          if (!active) return;
+          if (setErr) {
+            setError(setErr.message);
+          } else if (data.session) {
+            window.location.assign(nextUrl);
+          }
+        });
+        return;
+      }
+    }
+
     // 2. Listen to auth state changes (captures access_token parsed from hash by createBrowserClient)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!active) return;
