@@ -1,23 +1,9 @@
 import { NextResponse } from "next/server";
 import { getWorkspace } from "@/lib/workspace";
-
-const STAGING_PROJECT_REF = "sqcprlkhsnfbydgzpsml";
-const STAGING_CALLBACK_URL = `https://${STAGING_PROJECT_REF}.supabase.co/functions/v1/whatsapp-webhook`;
+import { isWhatsAppStagingAllowed, STAGING_CALLBACK_URL } from "@/lib/whatsapp-staging-guard";
 
 export async function POST() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
-  let parsedHostname = "";
-  try {
-    parsedHostname = new URL(supabaseUrl).hostname.toLowerCase();
-  } catch {
-    parsedHostname = "";
-  }
-  const isStagingProject = parsedHostname === `${STAGING_PROJECT_REF}.supabase.co`;
-  const targetEnv = (process.env.TARGET_ENV || process.env.VERCEL_ENV || "").toLowerCase();
-  const isProduction = process.env.VERCEL_ENV === "production" || targetEnv === "production";
-  const isStagingEnv = targetEnv === "staging" || targetEnv === "preview";
-
-  if (!isStagingProject || !isStagingEnv || isProduction) {
+  if (!isWhatsAppStagingAllowed()) {
     return NextResponse.json(
       { error: "WhatsApp onboarding is strictly restricted to the staging environment." },
       { status: 403 }
