@@ -104,21 +104,21 @@ export async function POST(request: Request) {
           const metaStatus = String(metaData.status || "").toUpperCase();
           const metaVerify = String(metaData.code_verification_status || "").toUpperCase();
           if (metaStatus === "CONNECTED" || metaVerify === "VERIFIED") {
-            initialStatus = "live";
+            initialStatus = "connected";
           } else {
-            initialStatus = "test";
+            initialStatus = "pending_verification";
           }
         } else {
-          initialStatus = "test";
+          initialStatus = "pending_verification";
         }
       } else {
-        initialStatus = "test";
+        initialStatus = "pending_verification";
       }
     } catch {
-      initialStatus = "test";
+      initialStatus = "pending_verification";
     }
   } else {
-    // new_phone_number must complete two-step PIN registration before becoming live
+    // new_phone_number must complete two-step PIN registration before becoming connected
     initialStatus = "pending_registration";
   }
 

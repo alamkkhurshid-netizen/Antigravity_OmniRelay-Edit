@@ -114,8 +114,8 @@ test("Meta status confirmation: new numbers require registration and only become
   // For coexistence, embedded signup confirms Meta status before marking live
   assert.match(signupRoute, /metaStatus\s*===\s*"CONNECTED"\s*\|\|\s*metaVerify\s*===\s*"VERIFIED"/);
 
-  // Register route verifies metaStatus === "CONNECTED" before setting live
-  assert.match(registerRoute, /if\s*\(metaStatus\s*===\s*"CONNECTED"\)\s*\{[\s\S]*status:\s*"live"/);
+  // Register route verifies metaStatus === "CONNECTED" before setting connected
+  assert.match(registerRoute, /if\s*\(metaStatus\s*===\s*"CONNECTED"\)\s*\{[\s\S]*status:\s*"connected"/);
   assert.match(registerRoute, /success:\s*false,\s*status:\s*"pending_registration"/);
 });
 

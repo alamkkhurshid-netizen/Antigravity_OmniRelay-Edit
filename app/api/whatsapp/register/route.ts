@@ -19,7 +19,39 @@ export async function POST(request: Request) {
     );
   }
 
-  // 2. Authenticate user and verify owner role
+  // 2. Same-origin / CSRF protection: verify request origin and referer
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+  const secFetchSite = request.headers.get("sec-fetch-site");
+
+  if (secFetchSite && secFetchSite === "cross-site") {
+    return NextResponse.json(
+      { error: "Cross-origin request rejected." },
+      { status: 403 }
+    );
+  }
+
+  if (origin) {
+    try {
+      const originUrl = new URL(origin);
+      const isAllowedHost =
+        (host && originUrl.host === host) ||
+        originUrl.host.includes("omnirelay-staging.vercel.app") ||
+        originUrl.host.includes("localhost") ||
+        originUrl.host.includes("127.0.0.1");
+
+      if (!isAllowedHost) {
+        return NextResponse.json(
+          { error: "Cross-origin request rejected." },
+          { status: 403 }
+        );
+      }
+    } catch {
+      return NextResponse.json({ error: "Invalid origin header." }, { status: 403 });
+    }
+  }
+
+  // 3. Authenticate user and verify workspace owner role
   const { supabase, organization } = await getWorkspace();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -43,7 +75,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // 3. Parse and validate PIN
+  // 4. Parse and validate PIN
   let payload: RegisterPayload;
   try {
     payload = await request.json() as RegisterPayload;
@@ -59,7 +91,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // 4. Locate the existing connection scoped to this workspace and phone number ID
+  // 5. Locate the existing connection scoped to this workspace and exact phone number ID
   let connQuery = supabase
     .from("channel_connections")
     .select("*")
@@ -81,8 +113,25 @@ export async function POST(request: Request) {
 
   const targetPhoneId = connection.external_phone_number_id;
 
-  // 5. Rate limiting and cooldown check
+  // Phase 5 separation: Coexistence / existing_phone_number flows must NEVER call new-number /register
   const capabilities = (connection.capabilities || {}) as Record<string, unknown>;
+  const onboardingMode = capabilities.flow_type || capabilities.onboarding_mode;
+  if (onboardingMode === "existing_phone_number") {
+    return NextResponse.json(
+      { error: "Two-step PIN registration cannot be used for Coexistence accounts." },
+      { status: 400 }
+    );
+  }
+
+  // Display and allow registration only for pending_registration status
+  if (connection.status !== "pending_registration") {
+    return NextResponse.json(
+      { error: `Registration only allowed for pending_registration status (current: ${connection.status}).` },
+      { status: 400 }
+    );
+  }
+
+  // 6. Rate limiting and cooldown check (30 seconds)
   const lastAttemptIso = typeof capabilities.last_registration_attempt_at === "string"
     ? capabilities.last_registration_attempt_at
     : null;
@@ -131,10 +180,10 @@ export async function POST(request: Request) {
     },
   });
 
-  // 6. Retrieve access token securely from Supabase Vault (server-only encrypted storage)
+  // 7. Retrieve access token securely from Supabase Vault (server-only encrypted storage)
   let accessToken: string | null = null;
+  const adminClient = createAdminClient();
   try {
-    const adminClient = createAdminClient();
     const { data: vaultToken, error: vaultError } = await adminClient.rpc(
       "get_whatsapp_access_token",
       {
@@ -158,7 +207,7 @@ export async function POST(request: Request) {
 
   const graphVersion = process.env.WHATSAPP_CLOUD_API_VERSION || "v24.0";
 
-  // 7. Send POST /<PHONE_NUMBER_ID>/register securely to Meta Cloud API
+  // 8. Send POST /<PHONE_NUMBER_ID>/register securely to Meta Cloud API
   // IMPORTANT: rawPin is sent only in HTTPS request body; NEVER logged, returned or stored.
   try {
     const registerResponse = await fetch(
@@ -176,6 +225,8 @@ export async function POST(request: Request) {
       }
     );
 
+    let isRegistrationAccepted = registerResponse.ok;
+
     if (!registerResponse.ok) {
       const errPayload = await registerResponse.json().catch(() => ({})) as { error?: Record<string, unknown> };
       const metaErr = errPayload.error || {};
@@ -187,44 +238,66 @@ export async function POST(request: Request) {
         fbtrace_id: typeof metaErr.fbtrace_id === "string" ? metaErr.fbtrace_id : undefined,
       };
 
-      // Keep status as pending_registration, record sanitized error for retry
-      await supabase
-        .from("channel_connections")
-        .update({
-          status: "pending_registration",
-          last_error: sanitizedError.message,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("organization_id", organization.id)
-        .eq("channel", "whatsapp")
-        .eq("provider", "meta_cloud")
-        .eq("external_phone_number_id", targetPhoneId);
+      // Already-registered idempotency: if Meta reports code 131037 / subcode 2388001 / already registered,
+      // verify current status directly with Meta instead of failing blindly.
+      const isAlreadyRegistered =
+        sanitizedError.code === 131037 ||
+        sanitizedError.error_subcode === 2388001 ||
+        /already registered/i.test(sanitizedError.message);
 
-      await supabase.from("audit_logs").insert({
-        organization_id: organization.id,
-        actor_id: user.id,
-        action: "WHATSAPP_REGISTRATION_FAILED",
-        details: {
-          channel: "whatsapp",
-          provider: "meta_cloud",
-          phone_number_id: targetPhoneId,
-          error: sanitizedError.message,
-          code: sanitizedError.code,
-        },
-      });
+      if (!isAlreadyRegistered) {
+        // Keep status as pending_registration, record sanitized error for safe retry
+        await supabase
+          .from("channel_connections")
+          .update({
+            status: "pending_registration",
+            last_error: sanitizedError.message,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("organization_id", organization.id)
+          .eq("channel", "whatsapp")
+          .eq("provider", "meta_cloud")
+          .eq("external_phone_number_id", targetPhoneId);
 
-      return NextResponse.json(
-        {
-          error: sanitizedError.message,
-          sanitizedError,
-          status: "pending_registration",
-          allowRetry: true,
-        },
-        { status: 400 }
-      );
+        await adminClient
+          .from("whatsapp_onboarding_runs")
+          .update({
+            status: "failed_recoverable",
+            sanitized_error: sanitizedError,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("organization_id", organization.id)
+          .eq("phone_number_id", targetPhoneId);
+
+        await supabase.from("audit_logs").insert({
+          organization_id: organization.id,
+          actor_id: user.id,
+          action: "WHATSAPP_REGISTRATION_FAILED",
+          details: {
+            channel: "whatsapp",
+            provider: "meta_cloud",
+            phone_number_id: targetPhoneId,
+            error: sanitizedError.message,
+            code: sanitizedError.code,
+          },
+        });
+
+        return NextResponse.json(
+          {
+            error: sanitizedError.message,
+            sanitizedError,
+            status: "pending_registration",
+            allowRetry: true,
+          },
+          { status: 400 }
+        );
+      }
+
+      // If already registered, treat registration call as accepted and verify Meta status
+      isRegistrationAccepted = true;
     }
 
-    // 8. Registration call succeeded. Query Meta to verify that status is CONNECTED
+    // 9. Query Meta to verify that status is CONNECTED
     const metaCheckResponse = await fetch(
       `https://graph.facebook.com/${graphVersion}/${encodeURIComponent(targetPhoneId)}?fields=status,code_verification_status,quality_rating,name_status`,
       {
@@ -241,14 +314,15 @@ export async function POST(request: Request) {
     };
     const metaStatus = String(metaPhone.status || "").toUpperCase();
 
+    // 10. Mark exact phone connection connected ONLY when Meta reports CONNECTED
     if (metaStatus === "CONNECTED") {
       const nowIso = new Date().toISOString();
 
-      // Check database update result: update channel_connections
+      // Check database update result: update channel_connections to 'connected' (NOT 'live' until round trip acceptance)
       const { data: updatedConns, error: updateConnError } = await supabase
         .from("channel_connections")
         .update({
-          status: "live",
+          status: "connected",
           last_verified_at: nowIso,
           last_error: null,
           updated_at: nowIso,
@@ -259,7 +333,7 @@ export async function POST(request: Request) {
         .eq("external_phone_number_id", targetPhoneId)
         .select();
 
-      // If Meta connects but database synchronization fails, return reconciliation state and alert
+      // If Meta connects but database synchronization fails, record reconciliation incident
       if (updateConnError || !updatedConns || updatedConns.length === 0) {
         await supabase.from("logs").insert({
           organization_id: organization.id,
@@ -269,6 +343,31 @@ export async function POST(request: Request) {
           level: "error",
           message: "Meta registration succeeded and reported CONNECTED, but channel_connections update failed.",
         });
+
+        await adminClient.from("operational_events").insert({
+          organization_id: organization.id,
+          event_source: "whatsapp_registration",
+          severity: "critical",
+          error_code: "RECONCILIATION_DB_SYNC_FAILED",
+          safe_message: "Meta registration succeeded and reported CONNECTED, but channel_connections update failed.",
+          metadata: {
+            phone_number_id: targetPhoneId,
+            meta_status: "CONNECTED",
+          },
+        });
+
+        await adminClient
+          .from("whatsapp_onboarding_runs")
+          .update({
+            status: "failed_recoverable",
+            sanitized_error: {
+              step: "database_sync",
+              message: "Meta registered CONNECTED, but database update failed.",
+            },
+            updated_at: nowIso,
+          })
+          .eq("organization_id", organization.id)
+          .eq("phone_number_id", targetPhoneId);
 
         return NextResponse.json(
           {
@@ -282,6 +381,16 @@ export async function POST(request: Request) {
           { status: 500 }
         );
       }
+
+      // Update whatsapp_onboarding_runs to 'connected'
+      await adminClient
+        .from("whatsapp_onboarding_runs")
+        .update({
+          status: "connected",
+          updated_at: nowIso,
+        })
+        .eq("organization_id", organization.id)
+        .eq("phone_number_id", targetPhoneId);
 
       // Update organizations_addresses status (WITHOUT storing tokens)
       const { data: updatedAddrs, error: updateAddrError } = await supabase
@@ -333,7 +442,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         success: true,
-        status: "live",
+        status: "connected",
         metaStatus: "CONNECTED",
         phoneNumberId: targetPhoneId,
         codeVerificationStatus: metaPhone.code_verification_status,

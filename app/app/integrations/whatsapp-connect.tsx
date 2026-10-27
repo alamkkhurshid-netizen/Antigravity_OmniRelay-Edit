@@ -393,9 +393,37 @@ export function WhatsAppConnect({
     );
   }
 
+  if (connectionStatus === "connected" || connectionStatus === "acceptance_testing") {
+    return (
+      <div className="embedded-signup connected">
+        <div>
+          <span style={{ color: "#10b981" }}>CONNECTED · AWAITING INBOUND TEST MESSAGE</span>
+          <b>{displayAddress || phoneNumberId || "WhatsApp Business"}</b>
+          <small>
+            Meta registration completed with status CONNECTED. Send a signed test message from WhatsApp to complete acceptance testing and mark this channel LIVE.
+          </small>
+          <p className="connect-message done">
+            Inbound webhook verifies tenant routing and automatically promotes status to live.
+          </p>
+        </div>
+        <i style={{ background: "#059669", color: "#fff" }}>CONNECTED</i>
+      </div>
+    );
+  }
+
   if (connected) {
-    const coexistence=onboardingMode==="existing_phone_number";
-    return <div className="embedded-signup connected"><div><span>CONNECTED NUMBER</span><b>{displayAddress || "WhatsApp Business"}</b><small>{coexistence?"Coexistence active: WhatsApp Business app and OmniRelay inbox can work with this number.":"Cloud API active: webhooks and tenant routing are ready."}</small><p className="connect-message done">This connection is tenant-scoped. Only the workspace owner can change it. Disconnecting an existing Business app number requires a guided support action so the clinic does not lose service.</p></div><i>{coexistence?"COEXISTENCE":"LIVE"}</i></div>;
+    const coexistence = onboardingMode === "existing_phone_number";
+    return (
+      <div className="embedded-signup connected">
+        <div>
+          <span>CONNECTED NUMBER</span>
+          <b>{displayAddress || "WhatsApp Business"}</b>
+          <small>{coexistence ? "Coexistence active: WhatsApp Business app and OmniRelay inbox can work with this number." : "Cloud API active: webhooks and tenant routing are ready."}</small>
+          <p className="connect-message done">This connection is tenant-scoped. Only the workspace owner can change it. Disconnecting an existing Business app number requires a guided support action so the clinic does not lose service.</p>
+        </div>
+        <i>{coexistence ? "COEXISTENCE" : "LIVE"}</i>
+      </div>
+    );
   }
   if (!appId || !configurationId) {
     const missingLabel = !appId && !configurationId

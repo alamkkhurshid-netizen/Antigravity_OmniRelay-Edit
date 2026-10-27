@@ -135,7 +135,7 @@ async function resolveTenant(
     .select("id, organization_id, status, external_phone_number_id, display_address")
     .eq("channel", "whatsapp")
     .eq("external_phone_number_id", phoneNumberId)
-    .in("status", ["live", "test", "pending"])
+    .in("status", ["live", "connected", "acceptance_testing", "test", "pending"])
     .maybeSingle();
 
   if (conn?.organization_id) {
@@ -153,7 +153,7 @@ async function resolveTenant(
       .select("id, organization_id, status, external_phone_number_id, display_address")
       .eq("channel", "whatsapp")
       .eq("external_account_id", wabaId)
-      .in("status", ["live", "test", "pending"])
+      .in("status", ["live", "connected", "acceptance_testing", "test", "pending"])
       .maybeSingle();
 
     if (wabaConn?.organization_id) {
@@ -660,6 +660,31 @@ Deno.serve(async (request: Request) => {
             organizationId: tenant.organization_id,
             messageType: parsedContent.type,
           });
+
+          // Phase 6 acceptance condition:
+          // Once a signed inbound webhook message is processed successfully,
+          // advance status from connected / acceptance_testing to live
+          if (tenant.connection_id) {
+            await client
+              .from("channel_connections")
+              .update({
+                status: "live",
+                last_verified_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", tenant.connection_id)
+              .in("status", ["connected", "acceptance_testing"]);
+
+            await client
+              .from("whatsapp_onboarding_runs")
+              .update({
+                status: "live",
+                updated_at: new Date().toISOString(),
+              })
+              .eq("organization_id", tenant.organization_id)
+              .eq("phone_number_id", phoneNumberId)
+              .in("status", ["connected", "acceptance_testing"]);
+          }
         } else {
           log.info("Duplicate or existing incoming message skipped", {
             providerMessageId: messageId,

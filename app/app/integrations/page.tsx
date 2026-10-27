@@ -15,8 +15,10 @@ export default async function IntegrationsPage() {
     supabase.from("reminder_events").select("id",{count:"exact",head:true}).eq("organization_id",organization.id).eq("channel","whatsapp").eq("status","sent"),
     supabase.from("reminder_events").select("id",{count:"exact",head:true}).eq("organization_id",organization.id).eq("channel","whatsapp").eq("status","failed"),
   ]);
-  const connected=connection?.status==="test"||connection?.status==="live";
-  const approved=templates?.filter((item)=>item.status==="approved").length??0;
+  const isLive = connection?.status === "live";
+  const isConnected = connection?.status === "connected" || connection?.status === "acceptance_testing";
+  const connected = isLive || isConnected || connection?.status === "test";
+  const approved = templates?.filter((item) => item.status === "approved").length ?? 0;
   const metaAppId = process.env.META_APP_ID;
   const embeddedSignupConfigurationId = process.env.META_EMBEDDED_SIGNUP_CONFIG_ID;
   const metaConfigMissing = !metaAppId || !embeddedSignupConfigurationId;
@@ -62,13 +64,13 @@ export default async function IntegrationsPage() {
       <div className="flex flex-wrap items-center gap-3 z-10">
         <div className={`inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-[13px] font-bold text-white shadow-sm backdrop-blur-md`}>
           <div className="flex flex-col text-right">
-            <span>{connected ? "Active Connection" : "Test Mode / Pending"}</span>
-            <span className={connected ? "text-teal-400" : "text-amber-400"}>{connected ? connection.status : "READY TO CONNECT"}</span>
+            <span>{isLive ? "Active Live Connection" : isConnected ? "Connected (Acceptance Testing)" : connection?.status === "pending_registration" ? "Action Required: Registration" : "Test Mode / Pending"}</span>
+            <span className={isLive ? "text-teal-400" : isConnected ? "text-emerald-400" : "text-amber-400"}>{connection?.status ? connection.status.toUpperCase() : "READY TO CONNECT"}</span>
           </div>
         </div>
       </div>
     </header>
-    <div className="channel-metrics"><article><span>Connection</span><b>{connected?"Active":"Pending"}</b><small>{connection?.display_address||"Meta credentials required"}</small></article><article><span>Approved templates</span><b>{approved}/{templates?.length??0}</b><small>Meta-approved utility messages</small></article><article><span>Queued</span><b>{queued??0}</b><small>Waiting for delivery</small></article><article><span>Delivered to provider</span><b>{sent??0}</b><small>{failed??0} failed attempts</small></article></div>
+    <div className="channel-metrics"><article><span>Connection</span><b>{isLive ? "Live" : isConnected ? "Connected" : connection?.status === "pending_registration" ? "Registration Pending" : "Pending"}</b><small>{connection?.display_address||"Meta credentials required"}</small></article><article><span>Approved templates</span><b>{approved}/{templates?.length??0}</b><small>Meta-approved utility messages</small></article><article><span>Queued</span><b>{queued??0}</b><small>Waiting for delivery</small></article><article><span>Delivered to provider</span><b>{sent??0}</b><small>{failed??0} failed attempts</small></article></div>
     {metaConfigMissing && (
       <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800" role="alert">
         <h4 className="font-semibold text-sm">Meta Embedded Signup Configuration Missing</h4>
