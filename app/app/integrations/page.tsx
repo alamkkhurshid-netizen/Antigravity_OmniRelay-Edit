@@ -82,7 +82,16 @@ export default async function IntegrationsPage() {
         </p>
       </div>
     )}
-    <WhatsAppConnect appId={metaAppId ?? ""} configurationId={embeddedSignupConfigurationId} connected={connected} displayAddress={connection?.display_address} onboardingMode={(connection?.capabilities as {onboarding_mode?:string}|null)?.onboarding_mode}/>
+    <WhatsAppConnect
+      appId={metaAppId ?? ""}
+      configurationId={embeddedSignupConfigurationId}
+      connected={connected}
+      connectionStatus={connection?.status}
+      displayAddress={connection?.display_address}
+      phoneNumberId={connection?.external_phone_number_id}
+      lastError={connection?.last_error}
+      onboardingMode={(connection?.capabilities as {onboarding_mode?:string}|null)?.onboarding_mode}
+    />
     <section className="meta-onboarding-path"><header><div><span className="app-eyebrow">SMOOTH CLINIC ONBOARDING</span><h3>One guided Meta connection</h3></div><span>Recommended: Coexistence</span></header><div><article><i>1</i><b>Continue with Meta<small>Clinic owner signs in directly; OmniRelay never receives the Meta password.</small></b></article><article><i>2</i><b>Select the business<small>Choose the verified business portfolio and WhatsApp Business Account.</small></b></article><article><i>3</i><b>Keep the existing number<small>Where Meta marks it eligible, connect through Coexistence and retain the Business app.</small></b></article><article><i>4</i><b>Automatic verification<small>OmniRelay maps the tenant, subscribes webhooks and verifies the number before activation.</small></b></article></div><p><b>Existing WhatsApp Business app number:</b> choose Coexistence only when Meta offers it. If it is not offered, exit without changes and review eligibility; OmniRelay will never silently migrate or replace that number. <b>New spare SIM:</b> choose Meta&apos;s new-phone-number path instead—Coexistence is not required.</p></section>
     <TemplateReadiness templates={templates??[]} reminders={reminders??[]} doctorDispatches={doctorDispatches??[]}/>
     <section className="connection-foundation"><header><div><span className="app-eyebrow">CONNECTION FOUNDATION</span><h3>Meta Cloud API readiness</h3></div><span>{connected?"Verified":"Embedded Signup pending"}</span></header><div className="connection-checklist">

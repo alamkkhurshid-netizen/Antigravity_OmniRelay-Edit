@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getWorkspace } from "@/lib/workspace";
 import { supabaseUrl } from "@/lib/supabase/config";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isWhatsAppStagingAllowed } from "@/lib/whatsapp-staging-guard";
 
 type SignupPayload = {
@@ -78,38 +79,102 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: result.message ?? result.error ?? "Meta could not connect this WhatsApp account." }, { status: response.status });
   }
 
-  const secret = process.env.SUPABASE_SECRET_KEY;
-  if (!secret) return NextResponse.json({ error: "Server connection is incomplete." }, { status: 503 });
-  const connectionResponse = await fetch(`${supabaseUrl}/rest/v1/channel_connections?on_conflict=organization_id,channel,provider`, {
-    method: "POST",
-    headers: {
-      apikey: secret,
-      Authorization: `Bearer ${secret}`,
-      "Content-Type": "application/json",
-      Prefer: "resolution=merge-duplicates,return=minimal",
-    },
-    body: JSON.stringify({
-      organization_id: organization.id,
-      channel: "whatsapp",
-      provider: "meta_cloud",
-      status: "live",
-      external_account_id: payload.wabaId,
-      external_phone_number_id: payload.phoneNumberId,
-      display_name: result.extra?.verified_name ?? "WhatsApp Business",
-      display_address: result.extra?.phone_number ?? result.address ?? payload.phoneNumberId,
-      capabilities: {
-        embedded_signup: true,
-        coexistence: payload.flowType === "existing_phone_number",
-        onboarding_mode: payload.flowType ?? "new_phone_number",
-        business_id: payload.businessId ?? null,
-      },
-      last_verified_at: new Date().toISOString(),
-      last_error: null,
-      updated_at: new Date().toISOString(),
-    }),
-  });
-  if (!connectionResponse.ok) {
-    return NextResponse.json({ error: "WhatsApp connected, but workspace synchronization failed." }, { status: 502 });
+  // Confirm Meta status before marking connections live
+  let initialStatus = "pending_registration";
+  if (payload.flowType === "existing_phone_number") {
+    // For coexistence connections, confirm status with Meta before marking live
+    try {
+      const adminClient = createAdminClient();
+      const { data: accessToken } = await adminClient.rpc("get_whatsapp_access_token", {
+        p_organization_id: organization.id,
+        p_phone_number_id: payload.phoneNumberId,
+      });
+
+      if (accessToken) {
+        const graphVersion = process.env.WHATSAPP_CLOUD_API_VERSION || "v24.0";
+        const metaRes = await fetch(
+          `https://graph.facebook.com/${graphVersion}/${encodeURIComponent(payload.phoneNumberId)}?fields=status,code_verification_status`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            cache: "no-store",
+          }
+        );
+        if (metaRes.ok) {
+          const metaData = await metaRes.json().catch(() => ({})) as { status?: string; code_verification_status?: string };
+          const metaStatus = String(metaData.status || "").toUpperCase();
+          const metaVerify = String(metaData.code_verification_status || "").toUpperCase();
+          if (metaStatus === "CONNECTED" || metaVerify === "VERIFIED") {
+            initialStatus = "live";
+          } else {
+            initialStatus = "test";
+          }
+        } else {
+          initialStatus = "test";
+        }
+      } else {
+        initialStatus = "test";
+      }
+    } catch {
+      initialStatus = "test";
+    }
+  } else {
+    // new_phone_number must complete two-step PIN registration before becoming live
+    initialStatus = "pending_registration";
   }
-  return NextResponse.json({ connected: true, phoneNumber: result.extra?.phone_number ?? result.address, verifiedName: result.extra?.verified_name });
+
+  const adminClient = createAdminClient();
+  const nowIso = new Date().toISOString();
+
+  // Scope upsert to exact organization_id, channel, provider and external_phone_number_id
+  const { data: connectionRows, error: connError } = await adminClient
+    .from("channel_connections")
+    .upsert(
+      {
+        organization_id: organization.id,
+        channel: "whatsapp",
+        provider: "meta_cloud",
+        status: initialStatus,
+        external_account_id: payload.wabaId,
+        external_phone_number_id: payload.phoneNumberId,
+        display_name: result.extra?.verified_name ?? "WhatsApp Business",
+        display_address: result.extra?.phone_number ?? result.address ?? payload.phoneNumberId,
+        capabilities: {
+          embedded_signup: true,
+          coexistence: payload.flowType === "existing_phone_number",
+          onboarding_mode: payload.flowType ?? "new_phone_number",
+          business_id: payload.businessId ?? null,
+        },
+        last_verified_at: nowIso,
+        last_error: null,
+        updated_at: nowIso,
+      },
+      { onConflict: "organization_id,channel,provider" }
+    )
+    .select();
+
+  if (connError || !connectionRows || connectionRows.length === 0) {
+    await adminClient.from("logs").insert({
+      organization_id: organization.id,
+      organization_address: payload.phoneNumberId,
+      category: "reconciliation_alert",
+      service: "whatsapp",
+      level: "error",
+      message: "WhatsApp connected via Meta, but channel_connections upsert failed.",
+    });
+    return NextResponse.json(
+      {
+        error: "WhatsApp connected, but workspace synchronization failed.",
+        status: "reconciliation_required",
+        reconciliationRequired: true,
+      },
+      { status: 502 }
+    );
+  }
+
+  return NextResponse.json({
+    connected: true,
+    status: initialStatus,
+    phoneNumber: result.extra?.phone_number ?? result.address,
+    verifiedName: result.extra?.verified_name,
+  });
 }

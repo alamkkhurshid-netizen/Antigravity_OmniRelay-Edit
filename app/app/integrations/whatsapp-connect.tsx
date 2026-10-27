@@ -44,11 +44,23 @@ declare global {
   }
 }
 
-export function WhatsAppConnect({ appId, configurationId, connected, displayAddress, onboardingMode }: {
+export function WhatsAppConnect({
+  appId,
+  configurationId,
+  connected,
+  connectionStatus,
+  displayAddress,
+  phoneNumberId,
+  lastError,
+  onboardingMode,
+}: {
   appId: string;
   configurationId?: string;
   connected: boolean;
+  connectionStatus?: string;
   displayAddress?: string | null;
+  phoneNumberId?: string | null;
+  lastError?: string | null;
   onboardingMode?: string | null;
 }) {
   const router = useRouter();
@@ -58,6 +70,9 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
   const [sdkReady, setSdkReady] = useState(false);
   const [state, setState] = useState<"idle" | "starting" | "authorizing" | "provisioning" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [pin, setPin] = useState("");
+  const [registering, setRegistering] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(lastError || null);
 
   function clearDialogWatch() {
     if (dialogWatch.current !== null) {
@@ -293,6 +308,89 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
       setState("error");
       setMessage(`Meta could not start the secure connection window: ${detail}. No WhatsApp account was changed.`);
     }
+  }
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(pin)) {
+      setRegisterError("Two-step verification PIN must be exactly 6 numeric digits.");
+      return;
+    }
+    setRegistering(true);
+    setRegisterError(null);
+    try {
+      const res = await fetch("/api/whatsapp/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin, phoneNumberId }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+        message?: string;
+      };
+      if (!res.ok || !data.success) {
+        setRegisterError(data.error || data.message || "Registration failed. Please verify your PIN and try again.");
+      } else {
+        router.refresh();
+      }
+    } catch {
+      setRegisterError("Network error completing registration. Please retry.");
+    } finally {
+      setRegistering(false);
+      setPin("");
+    }
+  }
+
+  if (connectionStatus === "pending_registration") {
+    return (
+      <div className="embedded-signup pending-registration">
+        <div>
+          <span style={{ color: "#f59e0b" }}>ACTION REQUIRED · OWNER ONLY</span>
+          <b>Complete WhatsApp Registration: {displayAddress || phoneNumberId || "New Phone Number"}</b>
+          <small>
+            Meta Embedded Signup verified ownership of this number. To activate the Cloud API, enter your chosen 6-digit two-step verification PIN.
+          </small>
+          {registerError && (
+            <p className="connect-message error" style={{ marginTop: "8px" }}>
+              {registerError}
+            </p>
+          )}
+        </div>
+        <form onSubmit={handleRegister} style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            type="password"
+            inputMode="numeric"
+            pattern="[0-9]{6}"
+            maxLength={6}
+            placeholder="6-digit PIN"
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            disabled={registering}
+            style={{
+              width: "140px",
+              padding: "8px 12px",
+              textAlign: "center",
+              letterSpacing: "4px",
+              fontSize: "18px",
+              borderRadius: "8px",
+              border: "1px solid rgba(255,255,255,0.2)",
+              background: "rgba(0,0,0,0.5)",
+              color: "#fff",
+            }}
+            required
+            autoComplete="new-password"
+          />
+          <button
+            type="submit"
+            disabled={registering || pin.length !== 6}
+            style={{ padding: "10px 18px", borderRadius: "8px", fontWeight: "bold" }}
+          >
+            {registering ? "Registering with Meta…" : "Complete Registration →"}
+          </button>
+        </form>
+      </div>
+    );
   }
 
   if (connected) {

@@ -54,11 +54,13 @@ test("fails closed when Supabase hostname is invalid, malformed, or arbitrary do
   assert.equal(isWhatsAppStagingAllowed({ targetEnv: "staging", supabaseUrl: "https://evil-sqcprlkhsnfbydgzpsml.supabase.co", vercelEnv: "production" }), false);
 });
 
-test("both WhatsApp routes use isWhatsAppStagingAllowed guard", async () => {
+test("all WhatsApp routes use isWhatsAppStagingAllowed guard", async () => {
   const root = new URL("../", import.meta.url);
   const onboardingRoute = await readFile(new URL("app/api/whatsapp/onboarding-session/route.ts", root), "utf8");
   const embeddedRoute = await readFile(new URL("app/api/whatsapp/embedded-signup/route.ts", root), "utf8");
+  const registerRoute = await readFile(new URL("app/api/whatsapp/register/route.ts", root), "utf8");
 
   assert.match(onboardingRoute, /isWhatsAppStagingAllowed\(\)/);
   assert.match(embeddedRoute, /isWhatsAppStagingAllowed\(\)/);
+  assert.match(registerRoute, /isWhatsAppStagingAllowed\(\)/);
 });
