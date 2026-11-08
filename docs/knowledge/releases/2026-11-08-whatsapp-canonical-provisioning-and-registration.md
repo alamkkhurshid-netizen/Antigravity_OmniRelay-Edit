@@ -28,8 +28,8 @@
    - Direct `wa.me/<number>?text=Hi` test trigger in `whatsapp-connect.tsx`.
    - Background polling listener automatically promotes status to `LIVE` upon webhook receipt of the verified inbound test message.
 
-5. **Outbound WhatsApp Reply Dispatch (`/api/conversations/reply`):**
-   - Transmits staff replies directly to Meta Cloud API via `POST https://graph.facebook.com/v24.0/{PHONE_ID}/messages`.
-   - Access tokens retrieved securely via `get_whatsapp_access_token` with fallback to sealed credentials.
+5. **Outbound WhatsApp Dispatch (`/api/conversations/reply` & `/api/conversations/start`):**
+   - Transmits staff free-form replies and approved templates directly to Meta Cloud API via `POST https://graph.facebook.com/v24.0/{PHONE_ID}/messages`.
+   - Access tokens retrieved securely via `get_whatsapp_access_token` from Vault with fallback to sealed credentials.
    - Atomically records Meta `external_id` (wamid) and updates delivery status to `accepted` and `sent`.
    - Automatically advances connection status to `live` on verified outbound dispatch acceptance.
