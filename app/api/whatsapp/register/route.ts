@@ -414,39 +414,28 @@ export async function POST(request: Request) {
         .eq("organization_id", organization.id)
         .eq("phone_number_id", targetPhoneId);
 
-      // Update organizations_addresses status (WITHOUT storing tokens)
-      const { data: updatedAddrs, error: updateAddrError } = await supabase
-        .from("organizations_addresses")
-        .update({
-          status: "connected",
-          updated_at: nowIso,
-        })
-        .eq("organization_id", organization.id)
-        .eq("service", "whatsapp")
-        .eq("address", targetPhoneId)
-        .select();
-
-      if (updateAddrError || !updatedAddrs || updatedAddrs.length === 0) {
-        await supabase.from("logs").insert({
+      // Update organizations_addresses status using service role adminClient (WITHOUT storing tokens)
+      const displayAddr = connection.display_address || targetPhoneId;
+      try {
+        await adminClient
+          .from("organizations_addresses")
+          .update({
+            status: "connected",
+            updated_at: nowIso,
+          })
+          .eq("organization_id", organization.id)
+          .eq("service", "whatsapp")
+          .or(`address.eq.${targetPhoneId},address.eq.${displayAddr}`);
+      } catch {
+        // Non-fatal: channel_connections is canonical; log warning without failing the registration
+        await adminClient.from("logs").insert({
           organization_id: organization.id,
           organization_address: targetPhoneId,
-          category: "reconciliation_alert",
+          category: "reconciliation_warning",
           service: "whatsapp",
-          level: "error",
-          message: "Meta registration succeeded, but organizations_addresses update failed.",
+          level: "warn",
+          message: "organizations_addresses sync warning during registration.",
         });
-
-        return NextResponse.json(
-          {
-            status: "reconciliation_required",
-            error: "Meta registration completed, but address synchronization failed. Reconciliation required.",
-            metaStatus: "CONNECTED",
-            phoneNumberId: targetPhoneId,
-            reconciliationRequired: true,
-            allowRetry: false,
-          },
-          { status: 500 }
-        );
       }
 
       // Record successful registration audit event (WITHOUT PIN)
