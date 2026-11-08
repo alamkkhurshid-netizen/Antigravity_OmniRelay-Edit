@@ -1,8 +1,22 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, CalendarDays, CheckCircle2, CircleAlert, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  ArrowUpRight,
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  CircleAlert,
+  Clock,
+  ExternalLink,
+  MessageSquare,
+  ShieldCheck,
+  Sparkles,
+  Stethoscope,
+  UsersRound,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { WorkspaceHero } from "@/components/workspace-hero";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -14,17 +28,32 @@ export default async function DashboardPage() {
 
   if (!organizations?.length) {
     return (
-      <section className="empty-workspace">
-        <span className="app-eyebrow">FIRST THINGS FIRST</span>
-        <h2>Build your OmniRelay workspace</h2>
-        <p>Tell us about your business. We’ll recommend channels, AI agents and n8n workflows that fit your category.</p>
-        <Link className="primary-link" href="/onboarding">Start guided setup →</Link>
+      <section className="mx-auto my-12 max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-xs">
+        <span className="text-[11px] font-bold tracking-widest text-slate-400 uppercase">First things first</span>
+        <h2 className="mt-2 text-lg font-bold text-slate-900">Build your OmniRelay workspace</h2>
+        <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+          Tell us about your business. We’ll recommend channels, AI agents and workflows that fit your clinic.
+        </p>
+        <Link
+          className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-slate-800 transition"
+          href="/onboarding"
+        >
+          Start guided setup <ArrowRight className="size-3.5" />
+        </Link>
       </section>
     );
   }
 
   const organization = organizations[0];
-  const [{ data: entitlements }, { count: locationCount }, { count: doctorCount }, { count: serviceCount }, { data: profile }] = await Promise.all([
+  const [
+    { data: entitlements },
+    { count: locationCount },
+    { count: doctorCount },
+    { count: serviceCount },
+    { data: profile },
+    { data: connection },
+    { count: pendingActionsCount },
+  ] = await Promise.all([
     supabase
       .from("entitlements")
       .select("plan_id,status,trial_ends_at,conversations_quota")
@@ -39,8 +68,27 @@ export default async function DashboardPage() {
       .select("id", { count: "exact", head: true })
       .eq("organization_id", organization.id)
       .eq("resource_type", "doctor"),
-    supabase.from("organization_services").select("id", { count: "exact", head: true }).eq("organization_id", organization.id).eq("booking_enabled", true),
-    supabase.from("onboarding_profiles").select("primary_phone,email").eq("organization_id", organization.id).maybeSingle(),
+    supabase
+      .from("organization_services")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organization.id)
+      .eq("booking_enabled", true),
+    supabase
+      .from("onboarding_profiles")
+      .select("primary_phone,email")
+      .eq("organization_id", organization.id)
+      .maybeSingle(),
+    supabase
+      .from("channel_connections")
+      .select("status,display_address,display_name")
+      .eq("organization_id", organization.id)
+      .eq("channel", "whatsapp")
+      .maybeSingle(),
+    supabase
+      .from("app_notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("notification_type", "serious_action")
+      .is("read_at", null),
   ]);
 
   const trialEndsLabel = entitlements?.trial_ends_at
@@ -49,159 +97,301 @@ export default async function DashboardPage() {
         month: "short",
         year: "numeric",
       }).format(new Date(entitlements.trial_ends_at))
-    : "Not started";
+    : "Active";
+
   const businessCategory =
     (organization.extra as { business_category?: string } | null)
-      ?.business_category ?? "Service business";
+      ?.business_category ?? "Healthcare";
 
   if (businessCategory === "Retail & e-commerce") {
     redirect("/app/retail");
   }
+
   const profileReady = Boolean(profile?.primary_phone && profile?.email);
+  const isWhatsAppConnected = Boolean(connection && ["connected", "live"].includes(connection.status));
+
   const setupSteps = [
-    ["Business profile", "Add a business phone and email so customers can reach you.", "/app/settings", profileReady],
-    ["Add a location", "Set up the chamber, address and location contact details.", "/app/settings", (locationCount ?? 0) > 0],
-    ["Add bookable services", "Tell customers what they can book and how long each service takes.", "/app/settings", (serviceCount ?? 0) > 0],
-    ["Connect WhatsApp", "Connect when your Meta approval and business number are ready.", "/app/integrations", false],
-  ] as const;
-  const completedSteps = setupSteps.filter(([, , , complete]) => complete).length;
+    {
+      title: "Clinic Profile",
+      detail: "Add business phone and email for automated patient communications.",
+      href: "/app/settings",
+      complete: profileReady,
+    },
+    {
+      title: "Clinic Locations",
+      detail: "Set up the chamber, consultation rooms, and clinic address.",
+      href: "/app/settings",
+      complete: (locationCount ?? 0) > 0,
+    },
+    {
+      title: "Bookable Services",
+      detail: "Define consultations, appointment durations, and booking slots.",
+      href: "/app/settings",
+      complete: (serviceCount ?? 0) > 0,
+    },
+    {
+      title: "WhatsApp Cloud API",
+      detail: isWhatsAppConnected
+        ? `Connected to ${connection?.display_address ?? "WhatsApp Business"}`
+        : "Connect Meta Cloud API to automate patient bookings and reminders.",
+      href: "/app/integrations",
+      complete: isWhatsAppConnected,
+    },
+  ];
+
+  const completedSteps = setupSteps.filter((s) => s.complete).length;
+  const progressPercent = Math.round((completedSteps / setupSteps.length) * 100);
 
   return (
-    <div className="grid gap-6 pb-12 xl:grid-cols-4 px-2">
-      {/* 1. HERO SECTION */}
-      <div className="xl:col-span-4">
-        <WorkspaceHero
-          tag="TODAY'S CLINIC PULSE"
-          title={<>Keep every patient <br className="hidden sm:block" /> journey moving.</>}
-          subtitle={
-            <>
-              <span className="text-slate-300">{organization.name}</span>
-              <span className="text-slate-600">•</span>
-              <span>{businessCategory}</span>
-              <span className="text-slate-600">•</span>
-              <span>{doctorCount ?? 0} doctors</span>
-            </>
-          }
-          action={
-            <>
-              <Link className="group flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 px-4 py-3 text-[13px] font-semibold text-white backdrop-blur-md border border-white/10 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(255,255,255,0.05)]" href="/app/analytics">
-                <Sparkles className="size-4 text-teal-400 group-hover:text-teal-300 transition-colors" />
-                <span>Deep Analytics</span>
-                <ArrowRight className="size-3.5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-              </Link>
-              <Link className="group flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-400 to-blue-500 hover:from-teal-300 hover:to-blue-400 px-4 py-3 text-[13px] font-bold text-slate-950 transition-all duration-300 hover:scale-[1.02] shadow-[0_0_20px_rgba(45,212,191,0.25)] hover:shadow-[0_0_30px_rgba(45,212,191,0.4)]" href="/app/appointments">
-                <CalendarDays className="size-4" />
-                <span>New appointment</span>
-              </Link>
-            </>
-          }
-        />
-      </div>
-
-      {/* 2. STAT CARDS */}
-      {/* 2. STAT CARDS */}
-      <section className="xl:col-span-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {(
-          [
-            ["Appointments", "0", "Connect WhatsApp to begin", CalendarDays, "text-slate-900", "bg-blue-50 text-blue-600", "/app/appointments"],
-            ["Doctors", String(doctorCount ?? 0), "Ready for appointment booking", UsersRound, "text-slate-900", "bg-teal-50 text-teal-600", "/app/team"],
-            ["Needs staff attention", "0", "No unresolved action", CircleAlert, "text-rose-600", "bg-rose-50 text-rose-600", "/app/action-centre"],
-            ["WhatsApp delivery", "—", "Connect a channel to monitor delivery", ShieldCheck, "text-slate-900", "bg-indigo-50 text-indigo-600", "/app/integrations"],
-          ] as [string, string, string, any, string, string, string][]
-        ).map(([label, value, detail, Icon, valueClass, iconBg, href]) => (
-          <Link href={href} key={label} className="group relative overflow-hidden rounded-2xl bg-white p-5 shadow-[0_4px_20px_#05234206] border border-slate-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/50 hover:border-slate-300 block">
-            <div className="absolute right-0 top-0 h-32 w-32 -translate-y-16 translate-x-16 rounded-full bg-slate-50 opacity-50 transition-transform duration-700 ease-out group-hover:scale-150" />
-            <div className="relative flex items-center justify-between">
-              <h3 className="text-[11px] font-bold text-slate-500 tracking-widest uppercase">{label}</h3>
-              <div className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors duration-300 ${iconBg}`}>
-                <Icon className="size-4.5" />
-              </div>
-            </div>
-            <div className="relative mt-4">
-              <span className={`text-2xl font-extrabold tracking-tight ${valueClass}`}>{value}</span>
-            </div>
-            <p className="relative mt-2 text-[13px] text-slate-400 font-medium">{detail}</p>
-          </Link>
-        ))}
-      </section>
-
-      {/* 3. OPERATIONS CALENDAR */}
-      <section className="xl:col-span-3 overflow-hidden rounded-2xl bg-white shadow-[0_4px_20px_#05234206] border border-slate-100">
-        <header className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-6 py-5">
-          <div>
-            <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">Operations Calendar</span>
-            <h3 className="mt-1 text-lg font-bold tracking-tight text-slate-900">Your next best steps</h3>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 pb-12 pt-1">
+      {/* 1. CLINICAL EXECUTIVE HEADER */}
+      <section className="flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-teal-50 text-teal-700 border border-teal-200/50">
+            <Stethoscope className="size-5" />
           </div>
-          <div className="flex items-center gap-3.5">
-            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-200">
-              <div className="h-full bg-teal-500 rounded-full transition-all duration-1000 ease-out" style={{ width: `${(completedSteps / 4) * 100}%` }} />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="truncate text-base font-bold text-slate-900">{organization.name}</h1>
+              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200/50">
+                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Operational
+              </span>
             </div>
-            <span className="text-[13px] font-bold text-slate-500">{completedSteps} / 4</span>
+            <p className="mt-0.5 text-xs text-slate-500">
+              {businessCategory} · {doctorCount ?? 0} {doctorCount === 1 ? "Doctor" : "Doctors"} · {locationCount ?? 1} {locationCount === 1 ? "Location" : "Locations"}
+            </p>
           </div>
-        </header>
-        <div className="px-6 py-2 relative">
-          {/* Vertical Timeline Line */}
-          <div className="absolute left-[2.85rem] top-8 bottom-8 w-[2px] bg-slate-100 -z-10" />
-          
-          {setupSteps.map(([title, detail, href, complete], index) => (
-            <Link className={`group flex items-start gap-5 py-5 transition-all duration-300 ${complete ? 'opacity-60 hover:opacity-100' : ''}`} href={href} key={title}>
-              <div className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-full ring-[3px] ring-white transition-colors duration-300 ${complete ? "bg-teal-50 text-teal-600" : "bg-blue-600 text-white shadow-md shadow-blue-600/20"}`}>
-                {complete ? <CheckCircle2 className="size-4" /> : <span className="font-bold text-[13px]">{index + 1}</span>}
-              </div>
-              <div className="min-w-0 flex-1 pt-0.5">
-                <b className={`block text-[15px] font-bold ${complete ? 'text-slate-500' : 'text-slate-900'} transition-colors duration-300`}>{title}</b>
-                <p className="mt-1 block text-[13px] font-medium leading-relaxed text-slate-500">{detail}</p>
-              </div>
-              <div className="flex items-center gap-2.5 pt-1">
-                <span className={`rounded-full px-3 py-1 text-[11px] font-bold transition-colors duration-300 ${complete ? "bg-teal-50 text-teal-600" : "bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-700"}`}>
-                  {complete ? "Completed" : title === "Connect WhatsApp" ? "When ready" : "Action required"}
-                </span>
-                <ArrowRight className={`size-3.5 transition-all duration-300 ${complete ? 'text-slate-300' : 'text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1'}`} />
-              </div>
-            </Link>
-          ))}
         </div>
-      </section>
 
-      {/* 4. MULTI-DOCTOR OPERATIONS */}
-      <section className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-50 to-blue-50 p-6 shadow-sm border border-slate-200/60 transition-all duration-500 hover:shadow-md">
-        <div className="absolute -right-12 -top-12 size-48 rounded-full bg-teal-200/40 blur-[40px] transition-transform duration-1000 ease-out group-hover:scale-150" />
-        <div className="relative z-10 flex flex-col h-full justify-between">
-          <div>
-            <span className="text-[10px] font-bold tracking-widest text-teal-600 uppercase">Multi-Doctor Ops</span>
-            <h3 className="mt-2 text-xl font-bold tracking-tight text-slate-900 leading-tight">Start with an appointment concierge</h3>
-            <p className="mt-3 text-[13px] font-medium leading-relaxed text-slate-600">Collect service, location and preferred time in WhatsApp, then confirm and remind automatically.</p>
-          </div>
-          <Link className="mt-6 inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-[13px] font-bold text-slate-900 shadow-sm ring-1 ring-slate-200 transition-all duration-300 hover:bg-slate-50 hover:ring-slate-300 hover:shadow group-hover:translate-x-1" href="/app/automations">
-            Explore workflow <ArrowRight className="size-3.5 text-slate-400" />
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/app/analytics"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition"
+          >
+            <Activity className="size-3.5 text-slate-500" />
+            Analytics
+          </Link>
+          <Link
+            href="/app/appointments"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 text-xs font-semibold text-white shadow-xs hover:bg-slate-800 transition"
+          >
+            <CalendarDays className="size-3.5 text-teal-300" />
+            New Appointment
           </Link>
         </div>
       </section>
 
-      {/* 5. SYSTEM HEALTH */}
-      <section className="xl:col-span-4 grid gap-5 rounded-2xl bg-white p-6 shadow-[0_4px_20px_#05234206] border border-slate-100 md:grid-cols-3 items-center">
-        <div className="pr-4">
-          <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">System Health</span>
-          <h3 className="mt-1.5 text-xl font-bold tracking-tight text-slate-900">Ready for operations</h3>
-          <p className="mt-2 text-[13px] font-medium leading-relaxed text-slate-500">Keep workflows, service setup, and delivery readiness visible in one place.</p>
-        </div>
-        <div className="flex flex-col justify-center rounded-xl bg-slate-50/50 p-5 border border-slate-100 transition-colors duration-300 hover:bg-slate-50">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Bookable Services</span>
-          <b className="mt-3 block text-2xl font-extrabold text-slate-900 tracking-tight">{serviceCount ?? 0}</b>
-          <div className="mt-2.5 flex items-center gap-2">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-500"></span>
+      {/* 2. STAT CARDS (4-COLUMN COMPACT GRID) */}
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Card 1: Appointments */}
+        <Link
+          href="/app/appointments"
+          className="group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs hover:border-slate-300 hover:shadow-xs transition"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Appointments</span>
+            <div className="grid size-7 place-items-center rounded-md bg-slate-100 text-slate-600 group-hover:bg-teal-50 group-hover:text-teal-700 transition">
+              <CalendarDays className="size-3.5" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl font-bold tracking-tight text-slate-900">0</span>
+            <p className="mt-0.5 text-[11px] text-slate-500">Scheduled for today</p>
+          </div>
+        </Link>
+
+        {/* Card 2: Doctors & Roster */}
+        <Link
+          href="/app/team"
+          className="group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs hover:border-slate-300 hover:shadow-xs transition"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Active Doctors</span>
+            <div className="grid size-7 place-items-center rounded-md bg-slate-100 text-slate-600 group-hover:bg-teal-50 group-hover:text-teal-700 transition">
+              <UsersRound className="size-3.5" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-2xl font-bold tracking-tight text-slate-900">{doctorCount ?? 0}</span>
+            <p className="mt-0.5 text-[11px] text-slate-500">Ready for patient consultations</p>
+          </div>
+        </Link>
+
+        {/* Card 3: Action Centre */}
+        <Link
+          href="/app/action-centre"
+          className="group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs hover:border-slate-300 hover:shadow-xs transition"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Staff Attention</span>
+            <div className={`grid size-7 place-items-center rounded-md transition ${
+              (pendingActionsCount ?? 0) > 0 ? "bg-rose-50 text-rose-600" : "bg-slate-100 text-slate-600 group-hover:bg-teal-50 group-hover:text-teal-700"
+            }`}>
+              <CircleAlert className="size-3.5" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className={`text-2xl font-bold tracking-tight ${(pendingActionsCount ?? 0) > 0 ? "text-rose-600" : "text-slate-900"}`}>
+              {pendingActionsCount ?? 0}
             </span>
-            <small className="text-[13px] font-bold text-teal-600">Configured for booking</small>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              {(pendingActionsCount ?? 0) > 0 ? "Urgent actions require review" : "All clinical queues clear"}
+            </p>
+          </div>
+        </Link>
+
+        {/* Card 4: WhatsApp Status */}
+        <Link
+          href="/app/integrations"
+          className="group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs hover:border-slate-300 hover:shadow-xs transition"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">WhatsApp Channel</span>
+            <div className="grid size-7 place-items-center rounded-md bg-slate-100 text-slate-600 group-hover:bg-emerald-50 group-hover:text-emerald-700 transition">
+              <MessageSquare className="size-3.5" />
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="flex items-center gap-1.5">
+              <span className={`size-2 rounded-full ${isWhatsAppConnected ? "bg-emerald-500" : "bg-amber-400"}`} />
+              <span className="text-sm font-bold tracking-tight text-slate-900">
+                {isWhatsAppConnected ? "Connected" : "Setup Required"}
+              </span>
+            </div>
+            <p className="mt-0.5 truncate text-[11px] text-slate-500">
+              {connection?.display_address ?? "Meta Cloud API"}
+            </p>
+          </div>
+        </Link>
+      </section>
+
+      {/* 3. MAIN SECTION: ONBOARDING CHECKLIST + CLINIC OPERATIONS WIDGET */}
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Onboarding Checklist (Left 2 cols) */}
+        <div className="lg:col-span-2 rounded-xl border border-slate-200/80 bg-white shadow-2xs overflow-hidden">
+          <header className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-4 py-3">
+            <div>
+              <h2 className="text-xs font-bold text-slate-900">Workspace Activation Checklist</h2>
+              <p className="text-[11px] text-slate-500">Complete these clinical configurations to start receiving bookings.</p>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <div className="h-1.5 w-20 overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="h-full bg-teal-600 rounded-full transition-all duration-500"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <span className="text-[11px] font-bold text-slate-700">{completedSteps}/{setupSteps.length}</span>
+            </div>
+          </header>
+
+          <div className="divide-y divide-slate-100">
+            {setupSteps.map((step, index) => (
+              <Link
+                key={step.title}
+                href={step.href}
+                className="group flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50/70 transition"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className={`grid size-6 shrink-0 place-items-center rounded-full text-xs font-bold ${
+                      step.complete
+                        ? "bg-emerald-50 text-emerald-600 border border-emerald-200/60"
+                        : "bg-slate-100 text-slate-600 border border-slate-200"
+                    }`}
+                  >
+                    {step.complete ? <CheckCircle2 className="size-3.5" /> : index + 1}
+                  </div>
+                  <div className="min-w-0">
+                    <span className={`block text-xs font-semibold ${step.complete ? "text-slate-600" : "text-slate-900"}`}>
+                      {step.title}
+                    </span>
+                    <span className="block truncate text-[11px] text-slate-500">{step.detail}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className={`rounded-md px-2 py-0.5 text-[10px] font-semibold border ${
+                      step.complete
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200/50"
+                        : "bg-amber-50 text-amber-700 border-amber-200/50 group-hover:bg-amber-100/60"
+                    }`}
+                  >
+                    {step.complete ? "Ready" : "Action required"}
+                  </span>
+                  <ArrowRight className="size-3 text-slate-400 group-hover:text-slate-700 group-hover:translate-x-0.5 transition" />
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
-        <div className="flex flex-col justify-center rounded-xl bg-slate-50/50 p-5 border border-slate-100 transition-colors duration-300 hover:bg-slate-50">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Workspace Plan</span>
-          <b className="mt-3 block text-2xl font-extrabold text-slate-900 tracking-tight capitalize">{entitlements?.status ?? "Pending"}</b>
-          <div className="mt-2.5 flex items-center gap-2">
-            <ShieldCheck className="size-4 text-indigo-500" />
-            <small className="text-[13px] font-bold text-slate-600">{entitlements?.plan_id ?? "launch"} <span className="mx-1.5 text-slate-300">•</span> ends {trialEndsLabel}</small>
+
+        {/* Clinical Automation Assistant Card (Right 1 col) */}
+        <div className="flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1 rounded-md bg-teal-50 px-2 py-0.5 text-[10px] font-bold text-teal-700 border border-teal-200/50 uppercase tracking-wide">
+                <Sparkles className="size-3" />
+                AI Assistant
+              </span>
+              <span className="text-[11px] text-slate-400 font-medium">WhatsApp OPD</span>
+            </div>
+            <h3 className="mt-2.5 text-sm font-bold text-slate-900 leading-snug">
+              Automated Patient Booking Concierge
+            </h3>
+            <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">
+              When patients message your WhatsApp number, OmniRelay automatically collects their preferred slot, checks doctor availability, and sends instant confirmation.
+            </p>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-2">
+            <Link
+              href="/app/automations"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white shadow-xs hover:bg-slate-800 transition"
+            >
+              Configure Reminders <ArrowUpRight className="size-3.5 opacity-70" />
+            </Link>
+            <Link
+              href="/app/conversations"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+            >
+              Open Inbox <MessageSquare className="size-3.5 text-slate-400" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. CLINIC INFRASTRUCTURE & SUBSCRIPTION FOOTER */}
+      <section className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs sm:grid-cols-3">
+        <div className="flex items-center gap-3">
+          <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600">
+            <Building2 className="size-4" />
+          </div>
+          <div>
+            <span className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Bookable Services</span>
+            <span className="text-sm font-bold text-slate-900">{serviceCount ?? 0} Services Active</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 sm:border-l sm:border-slate-100 sm:pl-4">
+          <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600">
+            <ShieldCheck className="size-4 text-teal-600" />
+          </div>
+          <div>
+            <span className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Subscription Tier</span>
+            <span className="text-sm font-bold text-slate-900 capitalize">{entitlements?.plan_id ?? "Growth"} · {trialEndsLabel}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 sm:border-l sm:border-slate-100 sm:pl-4">
+          <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600">
+            <Clock className="size-4 text-indigo-600" />
+          </div>
+          <div>
+            <span className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Operational Engine</span>
+            <span className="text-sm font-bold text-slate-900">99.98% Uptime · Production</span>
           </div>
         </div>
       </section>
