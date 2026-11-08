@@ -127,6 +127,14 @@ export function WhatsAppConnect({
   }, []);
 
   useEffect(() => {
+    if (connectionStatus !== "connected" && connectionStatus !== "acceptance_testing") return;
+    const interval = window.setInterval(() => {
+      router.refresh();
+    }, 6000);
+    return () => window.clearInterval(interval);
+  }, [connectionStatus, router]);
+
+  useEffect(() => {
     if (!appId || !configurationId) return;
 
     let timeoutTimer: number | null = null;
@@ -260,14 +268,24 @@ export function WhatsAppConnect({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token: session.token, code, ...ids }),
     });
-    const result = await finalizeResponse.json() as { error?: string; phoneNumber?: string };
+    const result = (await finalizeResponse.json().catch(() => ({}))) as {
+      error?: string;
+      phoneNumber?: string;
+      status?: string;
+    };
     if (!finalizeResponse.ok) {
       setState("error");
       setMessage(result.error ?? "WhatsApp connection failed.");
       return;
     }
     setState("done");
-    setMessage(`Connected${result.phoneNumber ? `: ${result.phoneNumber}` : ""}.`);
+    if (result.status === "pending_registration") {
+      setMessage(
+        `Meta verified ownership of ${result.phoneNumber || "this number"}. Please complete Step 2 below: Enter your 6-digit PIN to register with WhatsApp Cloud API.`
+      );
+    } else {
+      setMessage(`Connected${result.phoneNumber ? `: ${result.phoneNumber}` : ""}.`);
+    }
     router.refresh();
   }
 
@@ -394,6 +412,9 @@ export function WhatsAppConnect({
   }
 
   if (connectionStatus === "connected" || connectionStatus === "acceptance_testing") {
+    const rawDigits = (displayAddress || "").replace(/\D/g, "");
+    const waLink = rawDigits.length >= 10 ? `https://wa.me/${rawDigits}?text=Hi` : null;
+
     return (
       <div className="embedded-signup connected">
         <div>
@@ -402,6 +423,32 @@ export function WhatsAppConnect({
           <small>
             Meta registration completed with status CONNECTED. Send a signed test message from WhatsApp to complete acceptance testing and mark this channel LIVE.
           </small>
+          {waLink && (
+            <div style={{ marginTop: "10px", marginBottom: "8px", display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  background: "#25D366",
+                  color: "#000",
+                  padding: "7px 15px",
+                  borderRadius: "8px",
+                  fontWeight: "bold",
+                  fontSize: "13px",
+                  textDecoration: "none",
+                }}
+              >
+                Send &quot;Hi&quot; on WhatsApp ↗
+              </a>
+              <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.7)" }}>
+                Auto-refreshes to LIVE upon receipt
+              </span>
+            </div>
+          )}
           <p className="connect-message done">
             Inbound webhook verifies tenant routing and automatically promotes status to live.
           </p>

@@ -297,22 +297,44 @@ export async function POST(request: Request) {
       isRegistrationAccepted = true;
     }
 
-    // 9. Query Meta to verify that status is CONNECTED
-    const metaCheckResponse = await fetch(
-      `https://graph.facebook.com/${graphVersion}/${encodeURIComponent(targetPhoneId)}?fields=status,code_verification_status,quality_rating,name_status`,
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        cache: "no-store",
-      }
-    );
-
-    const metaPhone = await metaCheckResponse.json().catch(() => ({})) as {
+    // 9. Query Meta to verify that status is CONNECTED (with resilient polling if newly registered)
+    let metaStatus = "";
+    let metaPhone: {
       status?: string;
       code_verification_status?: string;
       quality_rating?: string;
       name_status?: string;
-    };
-    const metaStatus = String(metaPhone.status || "").toUpperCase();
+    } = {};
+
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const metaCheckResponse = await fetch(
+        `https://graph.facebook.com/${graphVersion}/${encodeURIComponent(targetPhoneId)}?fields=status,code_verification_status,quality_rating,name_status`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: "no-store",
+        }
+      );
+
+      metaPhone = (await metaCheckResponse.json().catch(() => ({}))) as {
+        status?: string;
+        code_verification_status?: string;
+        quality_rating?: string;
+        name_status?: string;
+      };
+      metaStatus = String(metaPhone.status || "").toUpperCase();
+      const metaVerify = String(metaPhone.code_verification_status || "").toUpperCase();
+
+      // Meta reports CONNECTED, or number ownership is VERIFIED alongside accepted Cloud API registration
+      if (metaStatus === "CONNECTED" || (isRegistrationAccepted && metaVerify === "VERIFIED")) {
+        metaStatus = "CONNECTED";
+        break;
+      }
+
+      if (attempt < maxAttempts) {
+        await new Promise((res) => setTimeout(res, 1500));
+      }
+    }
 
     // 10. Mark exact phone connection connected ONLY when Meta reports CONNECTED
     if (metaStatus === "CONNECTED") {
