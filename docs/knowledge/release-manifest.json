@@ -1,7 +1,16 @@
 {
   "schema_version": 1,
-  "latest_release": "2026-10-18-cto-closure-fail-closed-nonces-durable-controls",
+  "latest_release": "2026-11-08-whatsapp-canonical-provisioning-and-registration",
   "releases": [
+    {
+      "id": "2026-11-08-whatsapp-canonical-provisioning-and-registration",
+      "record": "docs/knowledge/releases/2026-11-08-whatsapp-canonical-provisioning-and-registration.md",
+      "guide_reviewed_on": "2026-11-08",
+      "product_areas": ["WhatsApp Cloud API", "Embedded Signup", "PIN Registration", "Supabase Vault", "Canonical Lifecycle", "Webhook Verification"],
+      "guide_articles": ["booking-concierge"],
+      "rag_impact": "guide_only",
+      "verified_by": ["Automated test suite", "whatsapp-provisioning-lifecycle test", "whatsapp-registration test", "whatsapp-route-guards test", "Canonical two-table migrations"]
+    },
     {
       "id": "2026-10-18-cto-closure-fail-closed-nonces-durable-controls",
       "record": "docs/knowledge/releases/2026-10-18-cto-closure-fail-closed-nonces-durable-controls.md",
