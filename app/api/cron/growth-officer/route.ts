@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { isWorkerPaused, recordWorkerPauseAudit } from "@/lib/runtime-controls";
 
 export async function GET(req: Request) {
   try {
@@ -8,6 +9,20 @@ export async function GET(req: Request) {
     const authHeader = req.headers.get("authorization");
     if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // 2. Check Runtime Worker Kill Switch
+    const pauseCheck = await isWorkerPaused("growth_officer");
+    if (pauseCheck.paused) {
+      console.warn(`[Growth Officer] Job paused via ${pauseCheck.controlKey}: ${pauseCheck.reason}`);
+      await recordWorkerPauseAudit("growth_officer", {
+        controlKey: pauseCheck.controlKey || "WORKER_ENABLED",
+        message: `Growth officer weekly report skipped: ${pauseCheck.reason}`,
+      });
+      return NextResponse.json(
+        { status: "paused", reason: pauseCheck.reason, controlKey: pauseCheck.controlKey },
+        { status: 200 }
+      );
     }
 
     const systemToken = process.env.WHATSAPP_SYSTEM_TOKEN;
@@ -54,7 +69,7 @@ export async function GET(req: Request) {
     `;
 
     const result = await model.generateContent(prompt);
-    let brief = result.response.text().trim();
+    const brief = result.response.text().trim();
 
     console.log("[Growth Officer] Strategy Brief generated. Sending to Founder...");
 

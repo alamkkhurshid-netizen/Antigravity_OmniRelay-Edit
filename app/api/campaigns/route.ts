@@ -1,5 +1,6 @@
 import {NextResponse} from "next/server";
 import {getWorkspace} from "@/lib/workspace";
+import {isWorkerPaused, recordWorkerPauseAudit} from "@/lib/runtime-controls";
 const eventByType:Record<string,string>={care:"care_campaign",marketing:"marketing_campaign",emergency:"emergency_notice"};
 const normalizeAddress=(value:string)=>value.replace(/\D/g,"");
 export async function POST(request:Request){
@@ -97,6 +98,13 @@ export async function PATCH(request:Request){
  const {supabase,organization}=await getWorkspace(),{data:{user}}=await supabase.auth.getUser();
  if(!user||!organization)return NextResponse.json({error:"Authentication required."},{status:401});
  const b=await request.json(),action=String(b.action??""),id=String(b.id??"");
+ if(action==="send_now"||action==="resume"){
+  const pauseCheck=await isWorkerPaused("campaign_dispatch",organization.id);
+  if(pauseCheck.paused){
+   await recordWorkerPauseAudit("campaign_dispatch",{organizationId:organization.id,controlKey:pauseCheck.controlKey||"WORKER_ENABLED",message:`Campaign dispatch paused via ${pauseCheck.controlKey}: ${pauseCheck.reason}`,metadata:{campaignId:id,action}});
+   return NextResponse.json({error:`Campaign dispatch is temporarily paused by runtime safety control (${pauseCheck.controlKey}).`},{status:423});
+  }
+ }
  const {data:campaign}=await supabase.from("campaigns").select("id,status").eq("id",id).eq("organization_id",organization.id).maybeSingle();
  if(!campaign)return NextResponse.json({error:"Campaign not found."},{status:404});
  const updates:Record<string,unknown>={updated_at:new Date().toISOString()};

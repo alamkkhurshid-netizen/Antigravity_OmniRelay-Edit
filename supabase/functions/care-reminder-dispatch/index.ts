@@ -41,6 +41,25 @@ Deno.serve(async (request) => {
   const token = request.headers.get("authorization")?.replace("Bearer ", "");
   if (!token || token !== serviceKey) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
+  // 1. Check Master and Granular Runtime Controls before claiming runs
+  const { data: controls } = await client
+    .from("system_runtime_controls")
+    .select("control_key, is_enabled")
+    .in("control_key", ["WORKER_ENABLED", "CARE_REMINDER_WORKER_ENABLED"]);
+
+  const masterPaused = controls?.some((c: { control_key: string; is_enabled: boolean }) => c.control_key === "WORKER_ENABLED" && !c.is_enabled);
+  const carePaused = controls?.some((c: { control_key: string; is_enabled: boolean }) => c.control_key === "CARE_REMINDER_WORKER_ENABLED" && !c.is_enabled);
+
+  if (masterPaused || carePaused) {
+    return Response.json(
+      {
+        status: "paused",
+        reason: masterPaused ? "Master worker switch active (WORKER_ENABLED=false)" : "Care reminder worker switch active (CARE_REMINDER_WORKER_ENABLED=false)"
+      },
+      { status: 200 }
+    );
+  }
+
   const { data: runs, error } = await client.rpc("claim_due_care_reminder_runs", { p_limit: 20 });
   if (error) return Response.json({ error: error.message }, { status: 500 });
 

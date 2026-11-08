@@ -33,4 +33,4 @@ create policy "members update trend intelligence"
 create trigger set_trend_intelligence_reports_updated_at
   before update on public.trend_intelligence_reports
   for each row
-  execute function moddatetime(updated_at);
+  execute function public.set_updated_at();

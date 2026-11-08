@@ -86,6 +86,25 @@ Deno.serve(async (request) => {
   }
   if (!publicSiteUrl) return Response.json({ error: "PUBLIC_SITE_URL is required." }, { status: 503 });
 
+  // Runtime control check before claiming reminders
+  const { data: controls } = await client
+    .from("system_runtime_controls")
+    .select("control_key, is_enabled")
+    .in("control_key", ["WORKER_ENABLED", "APPOINTMENT_REMINDER_WORKER_ENABLED"]);
+
+  const masterPaused = controls?.some((c: { control_key: string; is_enabled: boolean }) => c.control_key === "WORKER_ENABLED" && !c.is_enabled);
+  const reminderPaused = controls?.some((c: { control_key: string; is_enabled: boolean }) => c.control_key === "APPOINTMENT_REMINDER_WORKER_ENABLED" && !c.is_enabled);
+
+  if (masterPaused || reminderPaused) {
+    return Response.json(
+      {
+        status: "paused",
+        reason: masterPaused ? "Master worker switch active (WORKER_ENABLED=false)" : "Appointment reminder worker switch active (APPOINTMENT_REMINDER_WORKER_ENABLED=false)"
+      },
+      { status: 200 }
+    );
+  }
+
   const { data: claimed, error: claimError } = await client.rpc("claim_due_appointment_reminders", { p_limit: 20 });
   if (claimError) return Response.json({ error: claimError.message }, { status: 500 });
 

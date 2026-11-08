@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 
 const route=readFileSync(new URL("../app/api/clinic-operations/roster/route.ts",import.meta.url),"utf8");
-const workspace=readFileSync(new URL("../app/app/clinic-operations/workspace.tsx",import.meta.url),"utf8");
+const workspaceFile=readFileSync(new URL("../app/app/clinic-operations/workspace.tsx",import.meta.url),"utf8");
+const metricsFile=readFileSync(new URL("../components/clinic-operations/roster-metrics.tsx",import.meta.url),"utf8");
+const rosterFile=readFileSync(new URL("../components/clinic-operations/live-roster.tsx",import.meta.url),"utf8");
+const workspace = workspaceFile + "\n" + metricsFile + "\n" + rosterFile;
 
 test("operations board keeps department and exception queries tenant scoped",()=>{
   assert.match(route,/from\("provider_departments"\)[\s\S]*?eq\("organization_id", organization\.id\)/);

@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     const startTime = new Date(record.starts_at);
     const endTime = record.ends_at ? new Date(record.ends_at) : new Date(startTime.getTime() + 30 * 60000); // default 30m
 
-    let results = { patientSync: false, doctorSync: false, googleEventId: null as string | null };
+    const results = { patientSync: false, doctorSync: false, googleEventId: null as string | null };
 
     // --- 1. PATIENT SYNC (.ics via email) ---
     if (record.customer_email && process.env.RESEND_API_KEY) {

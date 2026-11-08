@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { ArrowLeft, Workflow, Save } from "lucide-react";
+import { ArrowLeft, Workflow } from "lucide-react";
 import { getWorkspace } from "@/lib/workspace";
 import { FlowCanvas } from "./flow-canvas";
 
 export default async function FlowsPage() {
-  const { supabase, organization } = await getWorkspace();
+  const { organization } = await getWorkspace();
   if (!organization) return null;
 
   return (

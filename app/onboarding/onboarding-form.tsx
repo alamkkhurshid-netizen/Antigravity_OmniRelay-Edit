@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import { ArrowRight, Building2, CheckCircle2, Lock, MapPin, ShieldAlert, Sparkles, Stethoscope } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { TierSelectionStep } from "./tier-selection-step";
 
 const categories = [
   ["Healthcare", "Doctors, clinics, polyclinics, diagnostics", true],
@@ -12,20 +13,32 @@ const categories = [
   ["Professional services", "Consulting, legal, finance", false],
   ["Real estate", "Brokers, builders, property teams", false],
   ["Automotive services", "Garages, dealers, service centres", false],
-  ["Retail & e-commerce", "Stores, D2C and online retail", true],
+  ["Retail & e-commerce", "Stores, D2C and online retail", false],
   ["Home services", "Repairs, cleaning, field services", false],
   ["Other", "Custom business model", false],
 ] as const;
+
+function getDraftField(field: "name" | "primaryDoctorName" | "locations" | "clinicMode", fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const saved = localStorage.getItem("omnirelay_onboarding_draft");
+    if (!saved) return fallback;
+    const parsed = JSON.parse(saved);
+    return parsed[field] || fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 export function OnboardingForm() {
   const [step, setStep] = useState(1);
   const [tier, setTier] = useState<"standard" | "premium">("standard");
 
   const [category, setCategory] = useState("Healthcare");
-  const [name, setName] = useState("");
-  const [locations, setLocations] = useState("1");
-  const [clinicMode, setClinicMode] = useState("solo_practitioner");
-  const [primaryDoctorName, setPrimaryDoctorName] = useState("");
+  const [name, setName] = useState(() => getDraftField("name", ""));
+  const [locations, setLocations] = useState(() => getDraftField("locations", "1"));
+  const [clinicMode, setClinicMode] = useState(() => getDraftField("clinicMode", "solo_practitioner"));
+  const [primaryDoctorName, setPrimaryDoctorName] = useState(() => getDraftField("primaryDoctorName", ""));
   
   // Double-confirmation gate states
   const [confirmHealthcare, setConfirmHealthcare] = useState(false);
@@ -34,6 +47,19 @@ export function OnboardingForm() {
   const [waitlistNotice, setWaitlistNotice] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("omnirelay_onboarding_draft", JSON.stringify({
+        name,
+        primaryDoctorName,
+        locations,
+        clinicMode,
+      }));
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [name, primaryDoctorName, locations, clinicMode]);
 
   function handleCategoryClick(catName: string, isAvailable: boolean) {
     if (!isAvailable) {
@@ -48,16 +74,19 @@ export function OnboardingForm() {
     e.preventDefault();
     setError("");
 
-    if (category === "Healthcare") {
-      if (!confirmHealthcare || !confirmSingleProfile) {
-        setError("Please confirm both required safeguards below to verify your clinic practice.");
-        return;
-      }
+    if (category !== "Healthcare") {
+      setError("Only Clinic & Healthcare practices are permitted.");
+      return;
+    }
 
-      if (primaryDoctorName.trim().length < 2) {
-        setError("Enter the first doctor’s full name. Patients will see this name when they book.");
-        return;
-      }
+    if (!confirmHealthcare || !confirmSingleProfile) {
+      setError("Please confirm both required safeguards below to verify your clinic practice.");
+      return;
+    }
+
+    if (primaryDoctorName.trim().length < 2) {
+      setError("Enter the first doctor’s full name. Patients will see this name when they book.");
+      return;
     }
 
     setStep(2);
@@ -72,11 +101,11 @@ export function OnboardingForm() {
     const locationCount = locations === "5+" ? 5 : Number(locations);
     const { error: insertError } = await supabase.rpc("complete_workspace_onboarding", {
       p_business_name: name.trim(),
-      p_business_category: category,
+      p_business_category: "Healthcare",
       p_location_count: locationCount,
       p_timezone: "Asia/Kolkata",
-      p_clinic_mode: category === "Healthcare" ? clinicMode : null,
-      p_primary_provider_name: category === "Healthcare" ? primaryDoctorName.trim() : null,
+      p_clinic_mode: clinicMode,
+      p_primary_provider_name: primaryDoctorName.trim(),
       p_subscription_tier: selectedTier,
     });
 
@@ -86,6 +115,10 @@ export function OnboardingForm() {
       setStep(1); // Go back if it fails
       return;
     }
+
+    try {
+      localStorage.removeItem("omnirelay_onboarding_draft");
+    } catch {}
 
     window.location.assign("/app");
   }
@@ -125,83 +158,13 @@ export function OnboardingForm() {
 
   if (step === 2) {
     return (
-      <div className="w-full rounded-3xl border border-slate-200 bg-white p-6 shadow-xl sm:p-10 relative overflow-hidden">
-        {/* Subtle top accent */}
-        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[#087fb9] to-[#18bfc5]" />
-        
-        <div className="flex items-center justify-between mb-8">
-          <span className="text-[10px] font-bold tracking-widest text-[#087fb9] uppercase">CHOOSE ENGINE</span>
-          <button onClick={() => setStep(1)} className="text-xs font-bold text-slate-400 hover:text-slate-700 transition-colors">
-            ← BACK TO SETUP
-          </button>
-        </div>
-        
-        <h2 className="text-3xl font-semibold tracking-tight text-slate-900">
-          Select your automation tier
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-          How do you want to handle incoming messages and routing? You can upgrade later.
-        </p>
-
-        <div className="mt-10 grid gap-6 sm:grid-cols-2">
-          {/* Standard Tier */}
-          <button
-            type="button"
-            onClick={() => finalizeOnboarding("standard")}
-            disabled={busy}
-            className="group flex flex-col text-left rounded-2xl border-2 border-slate-200 bg-white p-6 transition-all hover:border-slate-300 hover:shadow-md disabled:opacity-50"
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex items-center justify-center size-10 rounded-xl bg-slate-100 text-slate-600 transition-colors group-hover:bg-slate-200 group-hover:text-slate-800">
-                <CheckCircle2 className="size-5" />
-              </div>
-              <h3 className="font-semibold text-slate-900 text-xl">Standard</h3>
-            </div>
-            <p className="text-sm text-slate-500 mb-6 h-10 leading-relaxed">Regular WhatsApp Flow and rule-based manual routing.</p>
-            <ul className="text-xs text-slate-600 space-y-3 mb-8 flex-1">
-              <li className="flex items-start gap-2"><CheckCircle2 className="size-4 text-slate-400 shrink-0 group-hover:text-emerald-500 transition-colors" /> Unified Action Centre</li>
-              <li className="flex items-start gap-2"><CheckCircle2 className="size-4 text-slate-400 shrink-0 group-hover:text-emerald-500 transition-colors" /> Standard Broadcasts</li>
-              <li className="flex items-start gap-2"><CheckCircle2 className="size-4 text-slate-400 shrink-0 group-hover:text-emerald-500 transition-colors" /> Manual Escalation</li>
-            </ul>
-            <div className="mt-auto pt-4 border-t border-slate-100 w-full font-semibold text-center text-slate-500 group-hover:text-slate-800 transition-colors">
-              {busy && tier === "standard" ? "Provisioning..." : "Select Standard"}
-            </div>
-          </button>
-
-          {/* Premium Tier */}
-          <button
-            type="button"
-            onClick={() => finalizeOnboarding("premium")}
-            disabled={busy}
-            className="group flex flex-col text-left rounded-2xl border-2 border-[#18bfc5]/30 bg-gradient-to-b from-[#18bfc5]/5 to-white p-6 transition-all hover:border-[#18bfc5] hover:shadow-[0_8px_30px_rgba(24,191,197,.15)] relative disabled:opacity-50"
-          >
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#087fb9] to-[#18bfc5] text-white text-[10px] font-bold tracking-widest uppercase px-4 py-1 rounded-full shadow-sm">
-              Recommended
-            </div>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex items-center justify-center size-10 rounded-xl bg-gradient-to-br from-[#087fb9] to-[#18bfc5] text-white shadow-md">
-                <Sparkles className="size-5" />
-              </div>
-              <h3 className="font-semibold text-slate-900 text-xl group-hover:text-[#087fb9] transition-colors">Premium AI</h3>
-            </div>
-            <p className="text-sm text-slate-600 mb-6 h-10 leading-relaxed">RAG AI Concierge & XYFlow Visual Builder.</p>
-            <ul className="text-xs text-slate-700 space-y-3 mb-8 flex-1">
-              <li className="flex items-start gap-2"><CheckCircle2 className="size-4 text-[#18bfc5] shrink-0" /> Semantic RAG Bot</li>
-              <li className="flex items-start gap-2"><CheckCircle2 className="size-4 text-[#18bfc5] shrink-0" /> Upload Custom Documents</li>
-              <li className="flex items-start gap-2"><CheckCircle2 className="size-4 text-[#18bfc5] shrink-0" /> XYFlow Drag & Drop Builder</li>
-            </ul>
-            <div className="mt-auto pt-4 border-t border-[#18bfc5]/20 w-full font-semibold text-center text-[#087fb9]">
-              {busy && tier === "premium" ? "Provisioning..." : "Select Premium"}
-            </div>
-          </button>
-        </div>
-
-        {error && (
-          <p className="mt-8 rounded-xl bg-red-50 p-4 text-sm font-medium text-red-800 border border-red-100" role="status">
-            {error}
-          </p>
-        )}
-      </div>
+      <TierSelectionStep
+        busy={busy}
+        tier={tier}
+        error={error}
+        onSelectTier={finalizeOnboarding}
+        onBack={() => setStep(1)}
+      />
     );
   }
 
@@ -275,7 +238,7 @@ export function OnboardingForm() {
                 )}
                 {isAvailable && (
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded shadow-sm">
-                    Active
+                    Active CRM
                   </span>
                 )}
               </div>

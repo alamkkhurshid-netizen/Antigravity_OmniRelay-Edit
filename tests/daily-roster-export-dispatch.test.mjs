@@ -243,7 +243,10 @@ test("reception board exposes daily booking sheet download and email dispatch co
 });
 
 test("settings form supports configurable automated daily roster dispatch", async () => {
-  const ui = await readFile(new URL("app/app/settings/workspace-form.tsx", root), "utf8");
+  const formFile = await readFile(new URL("app/app/settings/workspace-form.tsx", root), "utf8");
+  const hookFile = await readFile(new URL("app/app/settings/use-workspace-settings.ts", root), "utf8");
+  const dispatchFile = await readFile(new URL("components/settings/roster-dispatch-editor.tsx", root), "utf8");
+  const ui = formFile + "\n" + hookFile + "\n" + dispatchFile;
   assert.match(ui, /roster_dispatch/);
   assert.match(ui, /Daily Patient Booking Roster & Email Dispatch/);
   assert.match(ui, /Enable automated daily booking email dispatch/);

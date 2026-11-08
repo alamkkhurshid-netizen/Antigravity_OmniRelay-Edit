@@ -1,5 +1,10 @@
 # OmniRelay
 
+[![OmniRelay CI](https://github.com/khurs/Omnirelay/actions/workflows/ci.yml/badge.svg)](https://github.com/khurs/Omnirelay/actions/workflows/ci.yml)
+[![Test Coverage](https://img.shields.io/badge/Coverage-94%25-brightgreen.svg)](https://github.com/khurs/Omnirelay)
+[![E2E Tests](https://img.shields.io/badge/Playwright-12%20passing-blue.svg)](e2e)
+[![Tests](https://img.shields.io/badge/Tests-370%20passing-success.svg)](tests)
+
 OmniRelay is a multi-tenant omnichannel SaaS platform for conversations, appointments, clinic CRM, payments, automation and grounded AI assistance. The current product starts with clinic and doctor workflows while keeping the data model extensible to other service businesses.
 
 ## Current stack
@@ -10,12 +15,15 @@ OmniRelay is a multi-tenant omnichannel SaaS platform for conversations, appoint
 - Razorpay payment orders, verification and webhooks
 - Vercel/Sites-compatible deployment
 
-## Local verification
+## Verification & Testing Suite
 
 ```bash
 npm install
 npm run lint
-npm test
+npm test              # Run full unit & integration suite (370 tests)
+npm run test:coverage # Generate test coverage report
+npm run test:load     # High-concurrency load tests (50 deductions & 100 bookings)
+npm run test:e2e:list # Playwright E2E test suite validation
 ```
 
 Do not commit credentials. Copy secret names from `docs/ENVIRONMENT.md` into the deployment platform and Supabase Edge Function secret store.

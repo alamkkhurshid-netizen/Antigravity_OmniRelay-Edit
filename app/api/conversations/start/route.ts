@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     .eq("organization_id", organization.id)
     .eq("channel", "whatsapp")
     .maybeSingle();
-  if (!connection || !["test", "live"].includes(connection.status) || !connection.external_phone_number_id) {
+  if (!connection || !["test", "live", "connected", "acceptance_testing"].includes(connection.status) || !connection.external_phone_number_id) {
     return NextResponse.json({ error: "Connect an active WhatsApp number first." }, { status: 409 });
   }
 
@@ -189,6 +189,107 @@ export async function POST(request: Request) {
     .select("id,conversation_id,external_id,direction,content,status,timestamp,agent_id")
     .single();
   if (messageError || !message) return NextResponse.json({ error: messageError?.message ?? "Message could not be queued." }, { status: 400 });
+
+  // Dispatch approved template to Meta WhatsApp Cloud API
+  let accessToken: string | null = null;
+  const phoneId = connection.external_phone_number_id;
+
+  try {
+    const { data: vaultToken } = await admin.rpc("get_whatsapp_access_token", {
+      p_organization_id: organization.id,
+      p_phone_number_id: phoneId,
+    });
+    if (typeof vaultToken === "string" && vaultToken.length > 0) {
+      accessToken = vaultToken;
+    }
+  } catch {
+    // fallback
+  }
+
+  if (!accessToken) {
+    const { data: addrRow } = await admin
+      .from("organizations_addresses")
+      .select("extra,address")
+      .eq("organization_id", organization.id)
+      .eq("service", "whatsapp")
+      .or(`address.eq.${phoneId},status.eq.connected`)
+      .maybeSingle();
+
+    const extra = addrRow?.extra as { access_token?: string } | null;
+    accessToken = extra?.access_token || process.env.META_SYSTEM_USER_ACCESS_TOKEN || process.env.WHATSAPP_SYSTEM_TOKEN || null;
+  }
+
+  if (accessToken && phoneId) {
+    const graphVersion = process.env.WHATSAPP_CLOUD_API_VERSION || "v24.0";
+    try {
+      const templatePayload: Record<string, unknown> = {
+        name: templateName,
+        language: { code: languageCode || "en" },
+      };
+      if (variablePositions.length) {
+        templatePayload.components = [
+          {
+            type: "body",
+            parameters: variablePositions.map((position) => ({
+              type: "text",
+              text: String(variables[position]).trim(),
+            })),
+          },
+        ];
+      }
+
+      const metaRes = await fetch(
+        `https://graph.facebook.com/${graphVersion}/${encodeURIComponent(phoneId)}/messages`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: phone,
+            type: "template",
+            template: templatePayload,
+          }),
+        }
+      );
+
+      const metaResult = await metaRes.json().catch(() => ({})) as {
+        messages?: Array<{ id: string }>;
+        error?: { message?: string; code?: number };
+      };
+
+      if (metaRes.ok && metaResult.messages?.[0]?.id) {
+        const metaMessageId = metaResult.messages[0].id;
+        const acceptedStatus = {
+          accepted: true,
+          sent: new Date().toISOString(),
+          provider_response: metaResult,
+        };
+        await admin.from("messages").update({
+          external_id: metaMessageId,
+          status: acceptedStatus,
+        }).eq("id", message.id);
+
+        message.external_id = metaMessageId;
+        message.status = acceptedStatus;
+      } else {
+        const metaError = metaResult.error?.message || "Template rejected by WhatsApp.";
+        const failedStatus = {
+          failed: true,
+          failed_at: new Date().toISOString(),
+          errors: [metaResult.error || { message: metaError }],
+          provider_response: metaResult,
+        };
+        await admin.from("messages").update({ status: failedStatus }).eq("id", message.id);
+        message.status = failedStatus;
+      }
+    } catch (dispatchErr: any) {
+      console.warn("[WhatsApp Start] Template dispatch network error:", dispatchErr);
+    }
+  }
 
   return NextResponse.json({ conversation, message, contact, address });
 }

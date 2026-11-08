@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getWorkspace } from "@/lib/workspace";
+import { isWorkerPaused, recordWorkerPauseAudit } from "@/lib/runtime-controls";
 
 const select =
   "id,reminder_id,patient_id,scheduled_for,channel,status,attempt_count,max_attempts,provider_message_id,failure_reason,sent_at,delivered_at,read_at,approved_at,acknowledged_at,acknowledgement,response_kind,response_text,response_received_at,created_at";
@@ -15,6 +16,22 @@ export async function PATCH(request: Request) {
   const action = typeof payload.action === "string" ? payload.action : "";
   if (!id || !["approve", "retry", "skip", "acknowledge"].includes(action)) {
     return NextResponse.json({ error: "Valid reminder run and action are required." }, { status: 400 });
+  }
+
+  if (action === "approve" || action === "retry") {
+    const pauseCheck = await isWorkerPaused("care_reminder", organization.id);
+    if (pauseCheck.paused) {
+      await recordWorkerPauseAudit("care_reminder", {
+        organizationId: organization.id,
+        controlKey: pauseCheck.controlKey || "WORKER_ENABLED",
+        message: `Care reminder processing paused via ${pauseCheck.controlKey}: ${pauseCheck.reason}`,
+        metadata: { runId: id, action },
+      });
+      return NextResponse.json(
+        { error: `Care reminder processing is temporarily paused by runtime safety control (${pauseCheck.controlKey}).` },
+        { status: 423 }
+      );
+    }
   }
 
   const { data: current } = await supabase.from("care_reminder_runs")

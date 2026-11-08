@@ -12,11 +12,55 @@ type SignupData = {
   flowType?: "only_waba" | "new_phone_number" | "existing_phone_number";
 };
 
-export function WhatsAppConnect({ appId, configurationId, connected, displayAddress, onboardingMode }: {
+interface FacebookLoginResponse {
+  authResponse?: {
+    code?: string;
+    accessToken?: string;
+    userID?: string;
+    expiresIn?: number;
+    signedRequest?: string;
+  };
+  status?: string;
+}
+
+interface FacebookSDK {
+  init(options: { appId: string; cookie?: boolean; xfbml?: boolean; version: string }): void;
+  login(
+    callback: (response: FacebookLoginResponse) => void,
+    options?: {
+      config_id?: string;
+      response_type?: string;
+      override_default_response_type?: boolean;
+      extras?: Record<string, unknown>;
+      scope?: string;
+    }
+  ): void;
+}
+
+declare global {
+  interface Window {
+    FB?: FacebookSDK;
+    fbAsyncInit?: () => void;
+  }
+}
+
+export function WhatsAppConnect({
+  appId,
+  configurationId,
+  connected,
+  connectionStatus,
+  displayAddress,
+  phoneNumberId,
+  lastError,
+  onboardingMode,
+}: {
   appId: string;
   configurationId?: string;
   connected: boolean;
+  connectionStatus?: string;
   displayAddress?: string | null;
+  phoneNumberId?: string | null;
+  lastError?: string | null;
   onboardingMode?: string | null;
 }) {
   const router = useRouter();
@@ -26,6 +70,9 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
   const [sdkReady, setSdkReady] = useState(false);
   const [state, setState] = useState<"idle" | "starting" | "authorizing" | "provisioning" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
+  const [pin, setPin] = useState("");
+  const [registering, setRegistering] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(lastError || null);
 
   function clearDialogWatch() {
     if (dialogWatch.current !== null) {
@@ -80,14 +127,92 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
   }, []);
 
   useEffect(() => {
-    if (!configurationId) return;
-    (window as any).fbAsyncInit = () => {
-      (window as any).FB?.init({ appId, cookie: true, xfbml: false, version: "v25.0" });
-      setSdkReady(true);
+    if (connectionStatus !== "connected" && connectionStatus !== "acceptance_testing") return;
+    const interval = window.setInterval(() => {
+      router.refresh();
+    }, 6000);
+    return () => window.clearInterval(interval);
+  }, [connectionStatus, router]);
+
+  useEffect(() => {
+    if (!appId || !configurationId) return;
+
+    let timeoutTimer: number | null = null;
+
+    const initSdk = () => {
+      try {
+        window.FB?.init({ appId, cookie: true, xfbml: false, version: "v25.0" });
+        setSdkReady(true);
+        setState((current) => (current === "error" ? "idle" : current));
+        setMessage((current) => (current.includes("Meta SDK") ? "" : current));
+      } catch (err) {
+        console.error("Meta SDK initialization failed", err);
+        setSdkReady(false);
+        setState("error");
+        setMessage("Meta SDK initialization failed. Please check browser privacy or extension settings.");
+      }
     };
-    if (document.getElementById("facebook-jssdk")) {
-      (window as any).fbAsyncInit();
+
+    if (window.FB) {
+      initSdk();
       return;
+    }
+
+    window.fbAsyncInit = () => {
+      if (timeoutTimer !== null) {
+        window.clearTimeout(timeoutTimer);
+        timeoutTimer = null;
+      }
+      initSdk();
+    };
+
+    const existing = document.getElementById("facebook-jssdk") as HTMLScriptElement | null;
+    if (existing) {
+      if (window.FB) {
+        initSdk();
+      }
+    } else {
+      const script = document.createElement("script");
+      script.id = "facebook-jssdk";
+      script.async = true;
+      script.defer = true;
+      script.crossOrigin = "anonymous";
+      script.src = "https://connect.facebook.net/en_US/sdk.js";
+
+      script.onerror = () => {
+        if (timeoutTimer !== null) {
+          window.clearTimeout(timeoutTimer);
+          timeoutTimer = null;
+        }
+        setSdkReady(false);
+        setState("error");
+        setMessage("Failed to load Meta SDK (check network or Content Security Policy).");
+      };
+
+      document.body.appendChild(script);
+    }
+
+    timeoutTimer = window.setTimeout(() => {
+      if (!window.FB) {
+        setSdkReady(false);
+        setState("error");
+        setMessage("Timed out while loading Meta SDK. Please check your network connection or refresh.");
+      }
+    }, 10000);
+
+    return () => {
+      if (timeoutTimer !== null) {
+        window.clearTimeout(timeoutTimer);
+      }
+    };
+  }, [appId, configurationId]);
+
+  function retryLoadSdk() {
+    setState("idle");
+    setMessage("Retrying Meta SDK connection…");
+    const existing = document.getElementById("facebook-jssdk");
+    if (existing) {
+      existing.remove();
     }
     const script = document.createElement("script");
     script.id = "facebook-jssdk";
@@ -95,8 +220,25 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
     script.defer = true;
     script.crossOrigin = "anonymous";
     script.src = "https://connect.facebook.net/en_US/sdk.js";
+    script.onerror = () => {
+      setSdkReady(false);
+      setState("error");
+      setMessage("Failed to load Meta SDK (check network or Content Security Policy).");
+    };
+    window.fbAsyncInit = () => {
+      try {
+        window.FB?.init({ appId, cookie: true, xfbml: false, version: "v25.0" });
+        setSdkReady(true);
+        setState("idle");
+        setMessage("");
+      } catch {
+        setSdkReady(false);
+        setState("error");
+        setMessage("Meta SDK initialization failed.");
+      }
+    };
     document.body.appendChild(script);
-  }, [appId, configurationId]);
+  }
 
   async function completeMetaLogin(response: { authResponse?: { code?: string } }) {
     const code = response.authResponse?.code;
@@ -126,19 +268,29 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token: session.token, code, ...ids }),
     });
-    const result = await finalizeResponse.json() as { error?: string; phoneNumber?: string };
+    const result = (await finalizeResponse.json().catch(() => ({}))) as {
+      error?: string;
+      phoneNumber?: string;
+      status?: string;
+    };
     if (!finalizeResponse.ok) {
       setState("error");
       setMessage(result.error ?? "WhatsApp connection failed.");
       return;
     }
     setState("done");
-    setMessage(`Connected${result.phoneNumber ? `: ${result.phoneNumber}` : ""}.`);
+    if (result.status === "pending_registration") {
+      setMessage(
+        `Meta verified ownership of ${result.phoneNumber || "this number"}. Please complete Step 2 below: Enter your 6-digit PIN to register with WhatsApp Cloud API.`
+      );
+    } else {
+      setMessage(`Connected${result.phoneNumber ? `: ${result.phoneNumber}` : ""}.`);
+    }
     router.refresh();
   }
 
   function connect() {
-    if (!configurationId || !(window as any).FB) return;
+    if (!configurationId || !window.FB) return;
     metaDialogOpened.current = false;
     clearDialogWatch();
     setState("authorizing");
@@ -146,7 +298,7 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
     // FB.login must run synchronously inside the click handler. Meta also
     // requires this callback itself to be a plain function, not async.
     try {
-      (window as any).FB.login((response: any) => {
+      window.FB.login((response) => {
         clearDialogWatch();
         void completeMetaLogin(response).catch(() => {
           setState("error");
@@ -176,12 +328,190 @@ export function WhatsAppConnect({ appId, configurationId, connected, displayAddr
     }
   }
 
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(pin)) {
+      setRegisterError("Two-step verification PIN must be exactly 6 numeric digits.");
+      return;
+    }
+    setRegistering(true);
+    setRegisterError(null);
+    try {
+      const res = await fetch("/api/whatsapp/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin, phoneNumberId }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+        message?: string;
+      };
+      if (!res.ok || !data.success) {
+        setRegisterError(data.error || data.message || "Registration failed. Please verify your PIN and try again.");
+      } else {
+        router.refresh();
+      }
+    } catch {
+      setRegisterError("Network error completing registration. Please retry.");
+    } finally {
+      setRegistering(false);
+      setPin("");
+    }
+  }
+
+  if (connectionStatus === "pending_registration") {
+    return (
+      <div className="embedded-signup pending-registration">
+        <div>
+          <span style={{ color: "#f59e0b" }}>ACTION REQUIRED · OWNER ONLY</span>
+          <b>Complete WhatsApp Registration: {displayAddress || phoneNumberId || "New Phone Number"}</b>
+          <small>
+            Meta Embedded Signup verified ownership of this number. To activate the Cloud API, enter your chosen 6-digit two-step verification PIN.
+          </small>
+          {registerError && (
+            <p className="connect-message error" style={{ marginTop: "8px" }}>
+              {registerError}
+            </p>
+          )}
+        </div>
+        <form onSubmit={handleRegister} style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            type="password"
+            inputMode="numeric"
+            pattern="[0-9]{6}"
+            maxLength={6}
+            placeholder="6-digit PIN"
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            disabled={registering}
+            style={{
+              width: "140px",
+              padding: "8px 12px",
+              textAlign: "center",
+              letterSpacing: "4px",
+              fontSize: "18px",
+              borderRadius: "8px",
+              border: "1px solid rgba(255,255,255,0.2)",
+              background: "rgba(0,0,0,0.5)",
+              color: "#fff",
+            }}
+            required
+            autoComplete="new-password"
+          />
+          <button
+            type="submit"
+            disabled={registering || pin.length !== 6}
+            style={{ padding: "10px 18px", borderRadius: "8px", fontWeight: "bold" }}
+          >
+            {registering ? "Registering with Meta…" : "Complete Registration →"}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  if (connectionStatus === "connected" || connectionStatus === "acceptance_testing") {
+    const rawDigits = (displayAddress || "").replace(/\D/g, "");
+    const waLink = rawDigits.length >= 10 ? `https://wa.me/${rawDigits}?text=Hi` : null;
+
+    return (
+      <div className="embedded-signup connected">
+        <div>
+          <span style={{ color: "#10b981" }}>CONNECTED · AWAITING INBOUND TEST MESSAGE</span>
+          <b>{displayAddress || phoneNumberId || "WhatsApp Business"}</b>
+          <small>
+            Meta registration completed with status CONNECTED. Send a signed test message from WhatsApp to complete acceptance testing and mark this channel LIVE.
+          </small>
+          {waLink && (
+            <div style={{ marginTop: "10px", marginBottom: "8px", display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  background: "#25D366",
+                  color: "#000",
+                  padding: "7px 15px",
+                  borderRadius: "8px",
+                  fontWeight: "bold",
+                  fontSize: "13px",
+                  textDecoration: "none",
+                }}
+              >
+                Send &quot;Hi&quot; on WhatsApp ↗
+              </a>
+              <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.7)" }}>
+                Auto-refreshes to LIVE upon receipt
+              </span>
+            </div>
+          )}
+          <p className="connect-message done">
+            Inbound webhook verifies tenant routing and automatically promotes status to live.
+          </p>
+        </div>
+        <i style={{ background: "#059669", color: "#fff" }}>CONNECTED</i>
+      </div>
+    );
+  }
+
   if (connected) {
-    const coexistence=onboardingMode==="existing_phone_number";
-    return <div className="embedded-signup connected"><div><span>CONNECTED NUMBER</span><b>{displayAddress || "WhatsApp Business"}</b><small>{coexistence?"Coexistence active: WhatsApp Business app and OmniRelay inbox can work with this number.":"Cloud API active: webhooks and tenant routing are ready."}</small><p className="connect-message done">This connection is tenant-scoped. Only the workspace owner can change it. Disconnecting an existing Business app number requires a guided support action so the clinic does not lose service.</p></div><i>{coexistence?"COEXISTENCE":"LIVE"}</i></div>;
+    const coexistence = onboardingMode === "existing_phone_number";
+    return (
+      <div className="embedded-signup connected">
+        <div>
+          <span>CONNECTED NUMBER</span>
+          <b>{displayAddress || "WhatsApp Business"}</b>
+          <small>{coexistence ? "Coexistence active: WhatsApp Business app and OmniRelay inbox can work with this number." : "Cloud API active: webhooks and tenant routing are ready."}</small>
+          <p className="connect-message done">This connection is tenant-scoped. Only the workspace owner can change it. Disconnecting an existing Business app number requires a guided support action so the clinic does not lose service.</p>
+        </div>
+        <i>{coexistence ? "COEXISTENCE" : "LIVE"}</i>
+      </div>
+    );
   }
-  if (!configurationId) {
-    return <div className="embedded-signup pending"><div><span>EMBEDDED SIGNUP + COEXISTENCE</span><b>Meta Configuration ID required</b><small>The secure onboarding flow is installed. Add the approved Meta configuration to let clinics connect an existing WhatsApp Business app number without losing the app workflow.</small></div><button disabled>Connect WhatsApp</button></div>;
+  if (!appId || !configurationId) {
+    const missingLabel = !appId && !configurationId
+      ? "Meta App ID & Configuration ID required"
+      : !appId
+      ? "Meta App ID required"
+      : "Meta Configuration ID required";
+    const missingDetail = !appId && !configurationId
+      ? "Neither META_APP_ID nor META_EMBEDDED_SIGNUP_CONFIG_ID is configured in the environment. Self-service WhatsApp connection is unavailable until both are set."
+      : !appId
+      ? "META_APP_ID environment variable is missing on the server. Please configure it to enable Meta Embedded Signup."
+      : "META_EMBEDDED_SIGNUP_CONFIG_ID environment variable is missing on the server. Please configure it to enable Meta Embedded Signup.";
+    return (
+      <div className="embedded-signup pending">
+        <div>
+          <span>EMBEDDED SIGNUP + COEXISTENCE</span>
+          <b>{missingLabel}</b>
+          <small>{missingDetail}</small>
+        </div>
+        <button disabled>Connect WhatsApp</button>
+      </div>
+    );
   }
-  return <div className="embedded-signup"><div><span>SELF-SERVICE CONNECTION</span><b>Connect WhatsApp Business</b><small>Recommended: keep the existing WhatsApp Business app through Meta Coexistence. Meta will show the eligible connection choices and the business owner grants permission directly.</small>{message && <p className={`connect-message ${state}`}>{message}</p>}</div><button onClick={connect} disabled={!sdkReady || !["idle", "error"].includes(state)}>{state === "idle" || state === "error" ? "Connect with Meta →" : "Connecting…"}</button></div>;
+  return (
+    <div className="embedded-signup">
+      <div>
+        <span>SELF-SERVICE CONNECTION</span>
+        <b>Connect WhatsApp Business</b>
+        <small>Recommended: keep the existing WhatsApp Business app through Meta Coexistence. Meta will show the eligible connection choices and the business owner grants permission directly.</small>
+        {message && <p className={`connect-message ${state}`}>{message}</p>}
+      </div>
+      <button
+        onClick={!sdkReady && state === "error" ? retryLoadSdk : connect}
+        disabled={(!sdkReady && state !== "error") || !["idle", "error"].includes(state)}
+      >
+        {!sdkReady && state === "error"
+          ? "Retry Meta SDK"
+          : state === "idle" || state === "error"
+          ? "Connect with Meta →"
+          : "Connecting…"}
+      </button>
+    </div>
+  );
 }

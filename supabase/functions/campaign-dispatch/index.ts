@@ -8,6 +8,26 @@ const doctorLabel=(name:string)=>/^dr\b/i.test(name.trim())?name.trim():`Dr ${na
 Deno.serve(async(req)=>{
  const token=req.headers.get("authorization")?.replace("Bearer ","");
  if(!token||token!==serviceKey)return Response.json({error:"Unauthorized"},{status:401});
+
+ // Runtime control check before claiming campaign recipients
+ const { data: controls } = await db
+  .from("system_runtime_controls")
+  .select("control_key, is_enabled")
+  .in("control_key", ["WORKER_ENABLED", "CAMPAIGN_DISPATCH_WORKER_ENABLED"]);
+
+ const masterPaused = controls?.some((c: { control_key: string; is_enabled: boolean }) => c.control_key === "WORKER_ENABLED" && !c.is_enabled);
+ const campaignPaused = controls?.some((c: { control_key: string; is_enabled: boolean }) => c.control_key === "CAMPAIGN_DISPATCH_WORKER_ENABLED" && !c.is_enabled);
+
+ if (masterPaused || campaignPaused) {
+  return Response.json(
+   {
+    status: "paused",
+    reason: masterPaused ? "Master worker switch active (WORKER_ENABLED=false)" : "Campaign dispatch worker switch active (CAMPAIGN_DISPATCH_WORKER_ENABLED=false)"
+   },
+   { status: 200 }
+  );
+ }
+
  const now=new Date().toISOString();
  const {data,error}=await db.from("campaign_recipients")
   .select("id,campaign_id,organization_id,patient_id,recipient_address,consent_basis,campaign:campaigns!inner(id,name,campaign_type,frequency_cap_hours,message_note,status,scheduled_for,audience_filter,template:channel_message_templates!inner(provider_template_name,language_code,status)),patient:patient_profiles!inner(full_name,care_communications_consent,marketing_consent)")

@@ -22,10 +22,10 @@ CREATE POLICY "Users can manage their own organization's CAPI config"
     FOR ALL
     TO authenticated
     USING (organization_id IN (
-        SELECT organization_id FROM public.organization_members WHERE user_id = auth.uid()
+        SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
     ))
     WITH CHECK (organization_id IN (
-        SELECT organization_id FROM public.organization_members WHERE user_id = auth.uid()
+        SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
     ));
 
 -- 2. Retail Products (For Dynamic Catalog Feed)
@@ -55,10 +55,10 @@ CREATE POLICY "Users can manage their own organization's products"
     FOR ALL
     TO authenticated
     USING (organization_id IN (
-        SELECT organization_id FROM public.organization_members WHERE user_id = auth.uid()
+        SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
     ))
     WITH CHECK (organization_id IN (
-        SELECT organization_id FROM public.organization_members WHERE user_id = auth.uid()
+        SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
     ));
 
 -- 3. CAPI Event Logs (For tracking and debugging)
@@ -80,7 +80,7 @@ CREATE POLICY "Users can view their organization's CAPI logs"
     FOR SELECT
     TO authenticated
     USING (organization_id IN (
-        SELECT organization_id FROM public.organization_members WHERE user_id = auth.uid()
+        SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
     ));
 
 -- Triggers for updated_at

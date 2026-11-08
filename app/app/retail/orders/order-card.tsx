@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Clock, Phone, ShoppingBag, MessageCircle, MapPin } from "lucide-react";
 
 export type RetailOrder = {
@@ -68,15 +69,24 @@ export function OrderCard({ order, onMoveNext, nextActionLabel, disabled }: { or
           <Phone className="size-3" /> {order.customer_phone}
         </span>
         
-        <button 
-          onClick={(e) => {
-            e.stopPropagation(); // prevent drag
-            window.open(`https://wa.me/${order.customer_phone.replace(/\D/g,'')}`, '_blank');
-          }}
-          className="flex items-center gap-1 rounded bg-[#25D366]/10 px-2 py-1 text-[10px] font-bold text-[#1b9a4a] transition-colors hover:bg-[#25D366]/20"
-        >
-          <MessageCircle className="size-3" /> Chat
-        </button>
+        <div className="flex items-center gap-1.5">
+          <Link
+            href={`/app/retail/orders/${order.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-700 transition-colors hover:bg-slate-200"
+          >
+            Details
+          </Link>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation(); // prevent drag
+              window.open(`https://wa.me/${order.customer_phone.replace(/\D/g,'')}`, '_blank');
+            }}
+            className="flex items-center gap-1 rounded bg-[#25D366]/10 px-2 py-1 text-[10px] font-bold text-[#1b9a4a] transition-colors hover:bg-[#25D366]/20"
+          >
+            <MessageCircle className="size-3" /> Chat
+          </button>
+        </div>
         {onMoveNext && nextActionLabel && (
           <button
             onClick={(e) => {

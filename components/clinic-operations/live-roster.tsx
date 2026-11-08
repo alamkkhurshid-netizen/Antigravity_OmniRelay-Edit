@@ -34,7 +34,7 @@ export function LiveRoster({
       <header>
         <div>
           <span className="app-eyebrow">TODAY’S VISITING ROSTER</span>
-          <h3>Department and doctor booking density</h3>
+          <h3>Today’s roster and live bookings · Department and doctor booking density</h3>
         </div>
         <small>
           {loading

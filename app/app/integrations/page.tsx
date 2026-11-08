@@ -15,10 +15,29 @@ export default async function IntegrationsPage() {
     supabase.from("reminder_events").select("id",{count:"exact",head:true}).eq("organization_id",organization.id).eq("channel","whatsapp").eq("status","sent"),
     supabase.from("reminder_events").select("id",{count:"exact",head:true}).eq("organization_id",organization.id).eq("channel","whatsapp").eq("status","failed"),
   ]);
-  const connected=connection?.status==="test"||connection?.status==="live";
-  const approved=templates?.filter((item)=>item.status==="approved").length??0;
-  const metaAppId=process.env.META_APP_ID??"973751725720667";
-  const embeddedSignupConfigurationId=process.env.META_EMBEDDED_SIGNUP_CONFIG_ID;
+  const isLive = connection?.status === "live";
+  const isConnected = connection?.status === "connected" || connection?.status === "acceptance_testing";
+  const connected = isLive || isConnected || connection?.status === "test";
+  const approved = templates?.filter((item) => item.status === "approved").length ?? 0;
+  const metaAppId = process.env.META_APP_ID;
+  const embeddedSignupConfigurationId = process.env.META_EMBEDDED_SIGNUP_CONFIG_ID;
+  const metaConfigMissing = !metaAppId || !embeddedSignupConfigurationId;
+
+  const stagingProjectRef = "sqcprlkhsnfbydgzpsml";
+  const targetEnv = (process.env.TARGET_ENV || process.env.VERCEL_ENV || "").toLowerCase();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+  let isStaging = targetEnv === "staging" || targetEnv === "preview";
+  try {
+    if (new URL(supabaseUrl).hostname.toLowerCase() === `${stagingProjectRef}.supabase.co`) {
+      isStaging = true;
+    }
+  } catch {
+    // preserve targetEnv fallback
+  }
+  const callbackUrl = isStaging
+    ? `https://${stagingProjectRef}.supabase.co/functions/v1/whatsapp-webhook`
+    : `${supabaseUrl || "https://bywsjwpaezdlicsbujbk.supabase.co"}/functions/v1/whatsapp-webhook`;
+
   return <section className="mx-auto grid max-w-7xl gap-5 pb-12">
     <header className="relative flex flex-col gap-6 overflow-hidden rounded-2xl bg-slate-950 px-6 py-8 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between sm:px-8 isolate mb-6">
       {/* Ambient Orbs & Grain */}
@@ -45,14 +64,36 @@ export default async function IntegrationsPage() {
       <div className="flex flex-wrap items-center gap-3 z-10">
         <div className={`inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-[13px] font-bold text-white shadow-sm backdrop-blur-md`}>
           <div className="flex flex-col text-right">
-            <span>{connected ? "Active Connection" : "Test Mode / Pending"}</span>
-            <span className={connected ? "text-teal-400" : "text-amber-400"}>{connected ? connection.status : "READY TO CONNECT"}</span>
+            <span>{isLive ? "Active Live Connection" : isConnected ? "Connected (Acceptance Testing)" : connection?.status === "pending_registration" ? "Action Required: Registration" : "Test Mode / Pending"}</span>
+            <span className={isLive ? "text-teal-400" : isConnected ? "text-emerald-400" : "text-amber-400"}>{connection?.status ? connection.status.toUpperCase() : "READY TO CONNECT"}</span>
           </div>
         </div>
       </div>
     </header>
-    <div className="channel-metrics"><article><span>Connection</span><b>{connected?"Active":"Pending"}</b><small>{connection?.display_address||"Meta credentials required"}</small></article><article><span>Approved templates</span><b>{approved}/{templates?.length??0}</b><small>Meta-approved utility messages</small></article><article><span>Queued</span><b>{queued??0}</b><small>Waiting for delivery</small></article><article><span>Delivered to provider</span><b>{sent??0}</b><small>{failed??0} failed attempts</small></article></div>
-    <WhatsAppConnect appId={metaAppId} configurationId={embeddedSignupConfigurationId} connected={connected} displayAddress={connection?.display_address} onboardingMode={(connection?.capabilities as {onboarding_mode?:string}|null)?.onboarding_mode}/>
+    <div className="channel-metrics"><article><span>Connection</span><b>{isLive ? "Live" : isConnected ? "Connected" : connection?.status === "pending_registration" ? "Registration Pending" : "Pending"}</b><small>{connection?.display_address||"Meta credentials required"}</small></article><article><span>Approved templates</span><b>{approved}/{templates?.length??0}</b><small>Meta-approved utility messages</small></article><article><span>Queued</span><b>{queued??0}</b><small>Waiting for delivery</small></article><article><span>Delivered to provider</span><b>{sent??0}</b><small>{failed??0} failed attempts</small></article></div>
+    {metaConfigMissing && (
+      <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-rose-800" role="alert">
+        <h4 className="font-semibold text-sm">Meta Embedded Signup Configuration Missing</h4>
+        <p className="mt-1 text-xs">
+          {!metaAppId && !embeddedSignupConfigurationId
+            ? "Neither META_APP_ID nor META_EMBEDDED_SIGNUP_CONFIG_ID is configured in the server environment."
+            : !metaAppId
+            ? "META_APP_ID environment variable is missing on the server."
+            : "META_EMBEDDED_SIGNUP_CONFIG_ID environment variable is missing on the server."}
+          {" "}Self-service WhatsApp connection cannot start until these variables are configured.
+        </p>
+      </div>
+    )}
+    <WhatsAppConnect
+      appId={metaAppId ?? ""}
+      configurationId={embeddedSignupConfigurationId}
+      connected={connected}
+      connectionStatus={connection?.status}
+      displayAddress={connection?.display_address}
+      phoneNumberId={connection?.external_phone_number_id}
+      lastError={connection?.last_error}
+      onboardingMode={(connection?.capabilities as {onboarding_mode?:string}|null)?.onboarding_mode}
+    />
     <section className="meta-onboarding-path"><header><div><span className="app-eyebrow">SMOOTH CLINIC ONBOARDING</span><h3>One guided Meta connection</h3></div><span>Recommended: Coexistence</span></header><div><article><i>1</i><b>Continue with Meta<small>Clinic owner signs in directly; OmniRelay never receives the Meta password.</small></b></article><article><i>2</i><b>Select the business<small>Choose the verified business portfolio and WhatsApp Business Account.</small></b></article><article><i>3</i><b>Keep the existing number<small>Where Meta marks it eligible, connect through Coexistence and retain the Business app.</small></b></article><article><i>4</i><b>Automatic verification<small>OmniRelay maps the tenant, subscribes webhooks and verifies the number before activation.</small></b></article></div><p><b>Existing WhatsApp Business app number:</b> choose Coexistence only when Meta offers it. If it is not offered, exit without changes and review eligibility; OmniRelay will never silently migrate or replace that number. <b>New spare SIM:</b> choose Meta&apos;s new-phone-number path instead—Coexistence is not required.</p></section>
     <TemplateReadiness templates={templates??[]} reminders={reminders??[]} doctorDispatches={doctorDispatches??[]}/>
     <section className="connection-foundation"><header><div><span className="app-eyebrow">CONNECTION FOUNDATION</span><h3>Meta Cloud API readiness</h3></div><span>{connected?"Verified":"Embedded Signup pending"}</span></header><div className="connection-checklist">
@@ -60,7 +101,7 @@ export default async function IntegrationsPage() {
       <article className="complete"><i>✓</i><b>Webhook verification<small>Signature checking and delivery receipts are ready.</small></b></article>
       <article className="complete"><i>✓</i><b>Durable message queue<small>Booking, reminder, cancellation and follow-up events are tracked.</small></b></article>
       <article className={connected?"complete":""}><i>{connected?"✓":"4"}</i><b>Meta credentials<small>{connected?"Business account and phone number verified.":"CTO will configure the required production secrets."}</small></b></article>
-    </div><div className="webhook-card"><div><span>CALLBACK URL</span><code>https://bywsjwpaezdlicsbujbk.supabase.co/functions/v1/whatsapp-webhook</code></div><small>Customer accounts are subscribed automatically during Embedded Signup; no 24×7 OmniRelay operator action is needed.</small></div></section>
+    </div><div className="webhook-card"><div><span>CALLBACK URL</span><code>{callbackUrl}</code></div><small>Customer accounts are subscribed automatically during Embedded Signup; no 24×7 OmniRelay operator action is needed.</small></div></section>
     <section className="template-registry"><header><div><span className="app-eyebrow">MESSAGE GOVERNANCE</span><h3>Required WhatsApp templates</h3></div><span>Utility category</span></header><div>{templates?.map((item)=><article key={item.id}><div><b>{item.event_type.replaceAll("_"," ")}</b><small>{item.provider_template_name} · {item.language_code}</small></div><i className={`template-${item.status}`}>{item.status}</i></article>)}</div><p>Templates stay in draft until their exact wording is reviewed and submitted in WhatsApp Manager. OmniRelay will dispatch only templates marked approved.</p></section>
     <section className="channel-roadmap"><span className="app-eyebrow">ACTIVATION SEQUENCE</span><div><article><b>1</b><span>Meta app and WhatsApp Business Account</span></article><article><b>2</b><span>Test phone number and webhook verification</span></article><article><b>3</b><span>Template approval and test delivery</span></article><article><b>4</b><span>Production number and live monitoring</span></article></div></section>
   </section>;

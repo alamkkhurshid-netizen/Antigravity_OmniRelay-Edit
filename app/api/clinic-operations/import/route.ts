@@ -26,6 +26,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Workspace not found." }, { status: 409 });
     }
 
+    const { data: allowed, error: limitError } = await supabase.rpc("consume_api_rate_limit", {
+      p_bucket: "doctor_bulk_import",
+      p_limit: 10,
+      p_window_seconds: 3600,
+    });
+    if (limitError || allowed === false) {
+      return NextResponse.json({ error: "Too many doctor import attempts. Please try again later." }, { status: 429 });
+    }
+
     const body = (await request.json().catch(() => ({}))) as {
       rows?: unknown[];
       commit?: boolean;
@@ -171,7 +180,7 @@ export async function POST(request: Request) {
       if (!chamberLocationId) continue;
 
       // Check if doctor resource already exists
-      let { data: existingResource } = await supabase
+      const { data: existingResource } = await supabase
         .from("booking_resources")
         .select("id")
         .eq("organization_id", organization.id)
@@ -213,7 +222,7 @@ export async function POST(request: Request) {
       }
 
       // Check or create provider location assignment
-      let { data: existingAssignment } = await supabase
+      const { data: existingAssignment } = await supabase
         .from("provider_location_assignments")
         .select("id")
         .eq("organization_id", organization.id)

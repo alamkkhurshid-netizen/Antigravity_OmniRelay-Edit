@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { OrderCard, RetailOrder } from "./order-card";
-import { Loader2 } from "lucide-react";
 
 const COLUMNS = [
   { id: "new", title: "New Orders", color: "bg-sky-100 text-sky-800 border-sky-200" },

@@ -74,7 +74,7 @@ export function ClinicOperationsWorkspace({ today }: { today: string }) {
               className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-slate-300 shadow-sm hover:bg-white/10 transition-colors backdrop-blur-md"
               onClick={state.runPreDispatchCheck}
             >
-              Pre-dispatch check
+              Run pre-dispatch check
             </button>
 
             <DoctorRosterImportModal

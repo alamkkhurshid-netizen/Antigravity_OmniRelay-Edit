@@ -52,6 +52,25 @@ Deno.serve(async (request) => {
       return Response.json({ error: "Web Push VAPID configuration or provider is unavailable." }, { status: 503 });
     }
 
+    // Runtime control check before claiming device push deliveries
+    const { data: controls } = await db
+      .from("system_runtime_controls")
+      .select("control_key, is_enabled")
+      .in("control_key", ["WORKER_ENABLED", "DEVICE_PUSH_WORKER_ENABLED"]);
+
+    const masterPaused = controls?.some((c: { control_key: string; is_enabled: boolean }) => c.control_key === "WORKER_ENABLED" && !c.is_enabled);
+    const pushPaused = controls?.some((c: { control_key: string; is_enabled: boolean }) => c.control_key === "DEVICE_PUSH_WORKER_ENABLED" && !c.is_enabled);
+
+    if (masterPaused || pushPaused) {
+      return Response.json(
+        {
+          status: "paused",
+          reason: masterPaused ? "Master worker switch active (WORKER_ENABLED=false)" : "Device push worker switch active (DEVICE_PUSH_WORKER_ENABLED=false)"
+        },
+        { status: 200 }
+      );
+    }
+
     const { data, error } = await db.rpc("claim_due_device_push_deliveries", { p_limit: 20 });
     if (error) {
       console.error("Unable to claim device push deliveries.", error);

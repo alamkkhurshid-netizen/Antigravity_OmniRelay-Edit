@@ -263,10 +263,15 @@ test("Clinic Analytics UI & Navigation Integration", async () => {
     "Overview page must link to Analytics workspace"
   );
 
-  const workspaceUi = fs.readFileSync(
+  const workspaceFile = fs.readFileSync(
     path.join(projectRoot, "app", "app", "analytics", "analytics-workspace.tsx"),
     "utf-8"
   );
+  const bannerFile = fs.readFileSync(
+    path.join(projectRoot, "components", "analytics", "ai-copilot-banner.tsx"),
+    "utf-8"
+  );
+  const workspaceUi = workspaceFile + "\n" + bannerFile;
   assert.ok(
     workspaceUi.includes("AI Operations Copilot"),
     "UI must render AI Operations Copilot"

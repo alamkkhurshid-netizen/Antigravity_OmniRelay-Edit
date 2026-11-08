@@ -56,30 +56,36 @@ CREATE INDEX IF NOT EXISTS idx_voice_sessions_call_sid ON voice_sessions(call_si
 -- Allows voice agent to query availability safely without direct table mutation access
 CREATE OR REPLACE VIEW voice_appointments_readonly AS
 SELECT 
-    id,
-    organization_id,
-    patient_name,
-    patient_phone,
-    appointment_date,
-    start_time,
-    end_time,
-    status,
-    doctor_id,
-    service_id
-FROM appointments
-WHERE status IN ('confirmed', 'pending', 'scheduled');
+    a.id,
+    a.organization_id,
+    a.customer_name AS patient_name,
+    a.customer_phone AS patient_phone,
+    (a.starts_at AT TIME ZONE 'Asia/Kolkata')::date AS appointment_date,
+    to_char(a.starts_at AT TIME ZONE 'Asia/Kolkata', 'HH12:MI AM') AS start_time,
+    to_char(a.ends_at AT TIME ZONE 'Asia/Kolkata', 'HH12:MI AM') AS end_time,
+    a.starts_at,
+    a.ends_at,
+    a.status,
+    a.resource_id AS doctor_id,
+    r.name AS doctor_name,
+    a.service_id,
+    s.name AS service_name,
+    a.location_id
+FROM appointments a
+LEFT JOIN booking_resources r ON a.resource_id = r.id
+LEFT JOIN organization_services s ON a.service_id = s.id
+WHERE a.status IN ('confirmed', 'pending', 'arrived');
 
 CREATE OR REPLACE VIEW voice_org_config_readonly AS
 SELECT 
     id,
     name,
-    phone,
-    address,
-    operating_hours,
-    emergency_phone,
-    is_active
-FROM organizations
-WHERE is_active = true;
+    COALESCE(extra->>'phone', '') AS phone,
+    COALESCE(extra->>'address', '') AS address,
+    COALESCE(extra->>'operating_hours', '{}') AS operating_hours,
+    COALESCE(extra->>'emergency_phone', '') AS emergency_phone,
+    TRUE AS is_active
+FROM organizations;
 
 -- 4. Enable Row Level Security (RLS) on voice_call_logs
 ALTER TABLE voice_call_logs ENABLE ROW LEVEL SECURITY;
@@ -98,6 +104,6 @@ CREATE POLICY "Tenants view own voice_call_logs"
     FOR SELECT
     USING (
         org_id IN (
-            SELECT organization_id FROM user_organizations WHERE user_id = auth.uid()
+            SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
         )
     );

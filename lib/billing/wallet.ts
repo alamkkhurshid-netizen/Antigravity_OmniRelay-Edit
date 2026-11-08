@@ -125,3 +125,21 @@ export async function getWalletTransactions(organizationId: string, limit: numbe
     gstAmountInr: (tx.gst_amount_paise || 0) / 100,
   }));
 }
+
+/**
+ * Checks if active billing deductions are enabled (via env var or runtime control RPC).
+ */
+export async function isBillingActive(organizationId?: string): Promise<boolean> {
+  if (process.env.ENABLE_ACTIVE_BILLING === "true") return true;
+
+  try {
+    const supabase = createAdminClient();
+    const { data } = await supabase.rpc("get_runtime_control", {
+      p_control_key: "ENABLE_ACTIVE_BILLING",
+      p_organization_id: organizationId || null,
+    });
+    return Boolean(data?.is_enabled);
+  } catch {
+    return false;
+  }
+}

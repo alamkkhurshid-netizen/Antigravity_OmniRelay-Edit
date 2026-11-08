@@ -5,11 +5,11 @@ import test from "node:test";
 const root = new URL("../", import.meta.url);
 
 test("Meta inbound webhooks require an App Secret HMAC", async () => {
-  const route = await readFile(new URL("app/api/whatsapp/webhook/route.ts", root), "utf8");
-  assert.match(route, /x-hub-signature-256/);
-  assert.match(route, /WHATSAPP_APP_SECRET/);
-  assert.match(route, /HMAC/);
-  assert.doesNotMatch(route, /validSignature\([^)]*SUPABASE/);
+  const webhook = await readFile(new URL("supabase/functions/whatsapp-webhook/index.ts", root), "utf8");
+  assert.match(webhook, /X-Hub-Signature-256/i);
+  assert.match(webhook, /META_APP_SECRET/);
+  assert.match(webhook, /HMAC/);
+  assert.match(webhook, /constantTimeEqual/);
 });
 
 test("private operator and booking-access tables are deny-by-default", async () => {

@@ -61,7 +61,7 @@ CREATE POLICY "Tenants view own voice_agent_configs"
     FOR SELECT
     USING (
         org_id IN (
-            SELECT organization_id FROM user_organizations WHERE user_id = auth.uid()
+            SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
         )
     );
 
@@ -71,7 +71,7 @@ CREATE POLICY "Tenants insert own voice_agent_configs"
     FOR INSERT
     WITH CHECK (
         org_id IN (
-            SELECT organization_id FROM user_organizations WHERE user_id = auth.uid()
+            SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
         )
     );
 
@@ -81,11 +81,11 @@ CREATE POLICY "Tenants update own voice_agent_configs"
     FOR UPDATE
     USING (
         org_id IN (
-            SELECT organization_id FROM user_organizations WHERE user_id = auth.uid()
+            SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
         )
     )
     WITH CHECK (
         org_id IN (
-            SELECT organization_id FROM user_organizations WHERE user_id = auth.uid()
+            SELECT organization_id FROM public.agents WHERE user_id = auth.uid()
         )
     );

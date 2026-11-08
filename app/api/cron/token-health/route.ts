@@ -1,7 +1,19 @@
 import { NextResponse } from "next/server";
+import { isWorkerPaused, recordWorkerPauseAudit } from "@/lib/runtime-controls";
 
 export async function GET(req: Request) {
   try {
+    // Worker Guard: Check if token health worker is paused
+    const pauseCheck = await isWorkerPaused("token_health");
+    if (pauseCheck.paused) {
+      console.warn(`[Token Health Cron] Worker is paused: ${pauseCheck.reason}`);
+      await recordWorkerPauseAudit("token_health", {
+        controlKey: pauseCheck.controlKey || "WORKER_ENABLED",
+        message: `Token health check skipped: ${pauseCheck.reason}`
+      });
+      return NextResponse.json({ status: "paused", message: pauseCheck.reason });
+    }
+
     // 1. Verify Vercel Cron Security Header
     // Vercel automatically passes this header for cron requests to prevent unauthorized triggers.
     const authHeader = req.headers.get("authorization");

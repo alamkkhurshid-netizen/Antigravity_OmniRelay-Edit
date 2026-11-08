@@ -4,7 +4,10 @@ import {readFileSync} from "node:fs";
 
 const migration=readFileSync(new URL("../supabase/migrations/20260823210000_action_centre_ownership.sql",import.meta.url),"utf8");
 const page=readFileSync(new URL("../app/app/action-centre/page.tsx",import.meta.url),"utf8");
-const ui=readFileSync(new URL("../app/app/action-centre/workspace.tsx",import.meta.url),"utf8");
+const workspaceFile=readFileSync(new URL("../app/app/action-centre/workspace.tsx",import.meta.url),"utf8");
+const hookFile=readFileSync(new URL("../app/app/action-centre/use-action-centre.ts",import.meta.url),"utf8");
+const queueFile=readFileSync(new URL("../components/action-centre/priority-review-queue.tsx",import.meta.url),"utf8");
+const ui = workspaceFile + "\n" + hookFile + "\n" + queueFile;
 const route=readFileSync(new URL("../app/api/action-centre/ownership/route.ts",import.meta.url),"utf8");
 
 test("action ownership is tenant scoped and coordination only",()=>{

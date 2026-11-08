@@ -34,13 +34,13 @@ export async function POST(req: Request) {
     const currentUnixTime = Math.floor(Date.now() / 1000);
 
     // Hash user data fields as required by Meta (email, phone)
-    const hashedUserData: any = {
+    const hashedUserData: Record<string, unknown> = {
       client_user_agent: req.headers.get("user-agent") || "",
       client_ip_address: req.headers.get("x-forwarded-for") || req.headers.get("remote-addr") || "",
     };
 
-    if (user_data?.em) hashedUserData.em = hashData(user_data.em);
-    if (user_data?.ph) hashedUserData.ph = hashData(user_data.ph);
+    if (user_data?.em) hashedUserData.em = hashData(String(user_data.em));
+    if (user_data?.ph) hashedUserData.ph = hashData(String(user_data.ph));
     if (user_data?.fbc) hashedUserData.fbc = user_data.fbc;
     if (user_data?.fbp) hashedUserData.fbp = user_data.fbp;
 
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true, event_id: eventId, meta_response: metaResponseData });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("CAPI Route Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

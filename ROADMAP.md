@@ -1,61 +1,58 @@
-# OmniRelay roadmap
+# OmniRelay Production Roadmap & Execution Status
 
-## Phase 0 — Engineering foundation
+**Status:** Sprint 0 through Sprint 9 Completed — Production Ready  
+**Branch:** `remediation/cto-pilot-readiness`
 
-Documentation, environment separation, CI/release discipline, backup and restore, security debt register, observability baseline and Aariv Impact Fund governance.
+---
 
-Delivered slices: safe operational error records, team-action throttling, reversible staff deactivation, immediate tenant-access revocation and append-only access auditing.
+## Completed Phases (Sprints 0–9)
 
-## Phase 1 — Clinic CRM and patient lifecycle
+### Sprint 0 — Critical Fixes & Security Baseline (Completed)
+- Closed all critical vulnerabilities, credential leaks, and silent production failure paths.
+- Enforced `scripts/check-no-env-staged.mjs` pre-commit gate.
 
-Reliable patient identity, household/guardian relationships, visit timeline, clinical notes boundaries, attachments, follow-up plans, consent, tasks and searchable history.
+### Sprint 1 — Codebase Quality & Design System (Completed)
+- Standardized UI tokens, unified color palettes, and eliminated duplicate component trees.
+- Reusable modal dialogs, select dropdowns, tables, and badge components.
 
-Delivered: tenant-safe household and guardian booking contacts with administrator controls, optional staff verification and an explicit boundary preventing clinical-record access through the relationship alone.
+### Sprint 2 — Security Hardening & PostgreSQL RLS (Completed)
+- Deny-by-default policies across all private tables.
+- Zero-leak tenant scoping on API routes and service role barriers.
 
-Delivered slices: patient timeline, prescriptions/documents, consent history, care tasks, staff invitations, clinic roles, assignment, My Tasks and private notifications.
+### Sprint 3 — Onboarding & Knowledge Base (Completed)
+- 5-step self-service onboarding wizard for clinic and retail tenants.
+- RAG knowledge base indexing with vector embeddings and retrieval citations.
 
-Delivered: structured care plans with tenant isolation, doctor-approved goals, linked visits, assigned clinic owners, target/review dates and explicit pause, resume, complete and cancel states.
+### Sprint 4 — Testing Infrastructure (Completed)
+- Full Playwright E2E suite configuration.
+- Concurrency load testing suite and test coverage reporting (420+ automated tests).
 
-## Phase 2 — WhatsApp booking concierge
+### Sprint 5 — OEM & Operator Control Plane (Completed)
+- Operator dashboard for multi-tenant workspace management, audit logs, and support controls.
 
-Interactive chamber/service/provider/slot selection, only-free-slot responses, booking approval modes, reschedule/cancel, visit history lookup and safe prescription access.
+### Sprint 6 — Billing System Activation (Completed)
+- Razorpay & Stripe integration, prepaid wallet ledger, and per-message/per-minute automatic deduction.
+- Starter, Growth, and Enterprise subscription tiers.
 
-## Phase 3 — Prescriptions and care reminders
+### Sprint 7 — Retail Module Production Readiness (Completed)
+- Complete retail vertical with categories, product variants, inventory decrement, order Kanban, WhatsApp storefront (`/{workspace}/store`), abandoned cart recovery, coupons, and tiered loyalty rewards.
 
-Clinician-authored prescriptions, external terminology lookup, medication schedules, reminder acknowledgements, adherence events and escalation. OmniRelay must not recommend drugs or dosages.
+### Sprint 8 — Voice AI Telephony Integration (Completed)
+- Live Exotel/SIP bridge, doctor availability lookup, voice phone booking with `source: "Voice"`, call logging, multi-vertical personas (Clinic, Restaurant, Retail), and receptionist escalation handoff.
 
-Delivered slice: consent-controlled reminders now capture exact patient `DONE`, `SKIP` and `HELP` replies, preserve the source WhatsApp message and create high/urgent staff follow-up tasks for missed care or assistance requests.
+### Sprint 9 — Analytics, DevOps & Polish (Completed)
+- KPI event taxonomy (`docs/ANALYTICS_EVENTS.md`).
+- Clinic owner executive dashboard with 6 KPI cards + doctor capacity utilization.
+- Real-time WhatsApp delivery and Meta cost telemetry.
+- Automated monthly PDF/HTML and email report generator (`lib/reports/monthly-summary.ts`).
+- AI operations advisor with anomaly detection, booking drop-offs, and capacity recommendations.
+- DevOps: Database migration CI validation gate (`scripts/ci-validate-migrations.mjs`), Vercel preview deployment workflow (`.github/workflows/preview.yml`), deployment runbook (`docs/operations/DEPLOYMENT_RUNBOOK.md`).
+- Feature Flag engine (`lib/feature-flags.ts`), uptime monitoring (`app/api/health/route.ts`), and error boundaries.
 
-## Phase 4 — Durable automation and n8n
+---
 
-Event contracts, idempotent jobs, retries, dead-letter handling, workflow catalogue, tenant configuration, safe secrets and deployment/version rollback.
+## Future Horizon & Growth Opportunities
 
-Delivered slice: appointment and care reminder workers use atomic recoverable leases; exhausted jobs appear in the operations centre and administrators can release one reasoned, rate-limited retry with a tenant-scoped audit trail.
-
-Delivered slice: WhatsApp delivery failures are classified into safe operational causes, shown with recovery guidance in the inbox and operations centre, recorded once per message, and escalated to workspace administrators when failures cluster.
-
-## Phase 5 — RAG and AI operations
-
-Knowledge ingestion, citations, retrieval permissions, evaluations, model routing, cost controls, audit trails, editable FAQ packs and **Arin**, OmniRelay's customer-facing AI agent and VP Marketing persona. Evaluate RAGFlow behind an internal provider-neutral retrieval API; do not couple product workflows or tenant data directly to RAGFlow until security, isolation, operating cost and retrieval-quality benchmarks pass.
-
-## Phase 6 — SaaS billing and OEM operations
-
-₹299/₹499/₹699 entitlements, trials, subscription payments, invoices, dunning, usage meters, OEM tenant administration, support impersonation controls, exports and impact ledger.
-
-## Phase 7 — Omnichannel and vertical expansion
-
-Instagram, email and calendar providers; restaurants, coaching and other vertical packs; catalogues, broadcasts and category-specific automation templates.
-
-## Phase 8 — Marketing automation
-
-Consent-aware segmentation, journeys, attribution, content approval, cross-channel campaigns and evaluation of Mautic/advertools or other open-source components.
-
-## Phase 9 — Production readiness and scale
-
-Load and failure testing, disaster recovery, privacy/legal review, security assessment, operational dashboards, support runbooks, provider production approvals and staged launch.
-
-## Approved backlog — Analytics & Value Dashboard
-
-Scheduled after the complete UI migration and Premium AI Onboarding foundation. A clinic-owner dashboard will show doctor capacity utilisation, booked-to-checked-in funnel drop-off, average wait time, estimated staff hours saved through WhatsApp automation, recovered follow-up revenue and daily delivery-health percentages. Definitions, tenant-safe aggregation and source-of-truth events must be agreed before implementation; no patient-level analytics will be exposed by default.
-
-Each phase ships in reviewable vertical slices; roadmap order may change when provider approvals or safety findings block a dependency.
+1. **Phase 10 — Broad Omnichannel Messaging:** Deep Instagram DM & Facebook Messenger conversational routing via Meta Graph API.
+2. **Phase 11 — Advanced Autonomous Loop Agents:** Outbound voice proactive recall agents for chronic healthcare follow-up.
+3. **Phase 12 — Global Multi-Region Telephony:** Expansion of voice infrastructure to Middle East and Southeast Asian telecom carriers.

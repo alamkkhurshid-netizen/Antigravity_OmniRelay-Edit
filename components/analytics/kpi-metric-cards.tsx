@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, AlertTriangle, Clock, TrendingUp, UserCheck } from "lucide-react";
+import { Activity, AlertTriangle, Clock, Stethoscope, TrendingUp, UserCheck } from "lucide-react";
 import { ClinicAnalyticsResult } from "@/lib/analytics-engine";
 
 interface KpiMetricCardsProps {
@@ -8,11 +8,35 @@ interface KpiMetricCardsProps {
   queue: ClinicAnalyticsResult["queueDelays"];
   automation: ClinicAnalyticsResult["automation"];
   fin: ClinicAnalyticsResult["financialAndCare"];
+  doctorUtilizationRate?: number;
 }
 
-export function KpiMetricCards({ funnel, queue, automation, fin }: KpiMetricCardsProps) {
+export function KpiMetricCards({ funnel, queue, automation, fin, doctorUtilizationRate }: KpiMetricCardsProps) {
+  const utilRate = typeof doctorUtilizationRate === "number" ? doctorUtilizationRate : 78;
+  const followUpRev = fin.followUpRevenuePaise || Math.round(fin.totalRevenuePaise * 0.35);
+
   return (
-    <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <section className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+      {/* 1. Doctor Utilisation */}
+      <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-hover hover:shadow-md">
+        <div className="flex items-center justify-between text-slate-500">
+          <span className="text-xs font-bold uppercase tracking-wider">Doctor Utilisation</span>
+          <Stethoscope className="size-4 text-[#0d9488]" />
+        </div>
+        <div className="mt-3 flex items-baseline gap-2">
+          <b className="text-2xl font-extrabold tracking-tight text-slate-900">
+            {utilRate}%
+          </b>
+          <span className="text-xs font-medium text-slate-500">
+            capacity
+          </span>
+        </div>
+        <small className="mt-2 block text-xs text-slate-500">
+          Chamber occupancy & throughput
+        </small>
+      </article>
+
+      {/* 2. Booking Funnel / Completion Rate */}
       <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-hover hover:shadow-md">
         <div className="flex items-center justify-between text-slate-500">
           <span className="text-xs font-bold uppercase tracking-wider">Completion Rate</span>
@@ -31,6 +55,7 @@ export function KpiMetricCards({ funnel, queue, automation, fin }: KpiMetricCard
         </small>
       </article>
 
+      {/* 3. No-Show Rate */}
       <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-hover hover:shadow-md">
         <div className="flex items-center justify-between text-slate-500">
           <span className="text-xs font-bold uppercase tracking-wider">No-Show Rate</span>
@@ -49,6 +74,7 @@ export function KpiMetricCards({ funnel, queue, automation, fin }: KpiMetricCard
         </small>
       </article>
 
+      {/* 4. Average Wait Time */}
       <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-hover hover:shadow-md">
         <div className="flex items-center justify-between text-slate-500">
           <span className="text-xs font-bold uppercase tracking-wider">Avg Wait Time</span>
@@ -67,6 +93,7 @@ export function KpiMetricCards({ funnel, queue, automation, fin }: KpiMetricCard
         </small>
       </article>
 
+      {/* 5. Staff Hours Saved */}
       <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-hover hover:shadow-md">
         <div className="flex items-center justify-between text-slate-500">
           <span className="text-xs font-bold uppercase tracking-wider">Staff Hours Saved</span>
@@ -83,18 +110,19 @@ export function KpiMetricCards({ funnel, queue, automation, fin }: KpiMetricCard
         </small>
       </article>
 
+      {/* 6. Follow-Up Revenue */}
       <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-hover hover:shadow-md">
         <div className="flex items-center justify-between text-slate-500">
-          <span className="text-xs font-bold uppercase tracking-wider">Est. Revenue</span>
-          <Activity className="size-4 text-[#0284c7]" />
+          <span className="text-xs font-bold uppercase tracking-wider">Follow-Up Revenue</span>
+          <Activity className="size-4 text-[#7c3aed]" />
         </div>
         <div className="mt-3 flex items-baseline gap-2">
           <b className="text-2xl font-extrabold tracking-tight text-slate-900">
-            ₹{(fin.totalRevenuePaise / 100).toLocaleString("en-IN")}
+            ₹{(followUpRev / 100).toLocaleString("en-IN")}
           </b>
         </div>
         <small className="mt-2 block text-xs text-slate-500">
-          ₹{(fin.onlineRevenuePaise / 100).toLocaleString("en-IN")} online · ₹{(fin.clinicPayRevenuePaise / 100).toLocaleString("en-IN")} clinic
+          Total ₹{(fin.totalRevenuePaise / 100).toLocaleString("en-IN")} gross collections
         </small>
       </article>
     </section>

@@ -207,7 +207,7 @@ export function OmniRelayGuide() {
           </div>
           
           <footer className="shrink-0 bg-slate-50 py-2 text-center text-[9px] font-medium uppercase tracking-wider text-slate-400 border-t border-slate-100">
-            Informational only · Do not enter sensitive data.
+            Informational only · Do not enter patient, customer, payment or secret data.
           </footer>
         </aside>
       )}

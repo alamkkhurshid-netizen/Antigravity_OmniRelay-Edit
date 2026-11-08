@@ -26,7 +26,9 @@ test("patients can record medication outcomes through the approved reminder temp
 test("clinic dashboard exposes a tenant-scoped 30-day adherence summary", async () => {
   const migration = await readFile(new URL("supabase/migrations/20260809200000_medication_dose_adherence.sql", root), "utf8");
   const page = await readFile(new URL("app/app/automations/page.tsx", root), "utf8");
-  const ui = await readFile(new URL("app/app/automations/care-reminder-workspace.tsx", root), "utf8");
+  const workspaceFile = await readFile(new URL("app/app/automations/care-reminder-workspace.tsx", root), "utf8");
+  const panelFile = await readFile(new URL("components/automations/adherence-panel.tsx", root), "utf8");
+  const ui = workspaceFile + "\n" + panelFile;
   assert.match(migration, /view public\.patient_medication_adherence/i);
   assert.match(migration, /security_invoker = true/i);
   assert.match(page, /patient_medication_adherence/i);

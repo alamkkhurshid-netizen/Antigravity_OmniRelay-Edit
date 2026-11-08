@@ -15,18 +15,19 @@ interface PriorityReviewQueueProps {
   coordinate: (item: ExceptionItem, action: "claim"|"review"|"release") => void;
   updateTask: (item: ExceptionItem, status: "in_progress"|"completed") => void;
   retry: (item: ExceptionItem) => void;
+  resolveCarrierRecovery?: (item: ExceptionItem, action: "resolve" | "retry") => void;
 }
 
 export function PriorityReviewQueue({
   exceptions, currentUserId, working, notice, error, buttonBase,
-  resolveDraft, coordinate, updateTask, retry
+  resolveDraft, coordinate, updateTask, retry, resolveCarrierRecovery
 }: PriorityReviewQueueProps) {
   return (
     <section id="priority-review-queue" className="sandbox-step-queue scroll-mt-6 overflow-hidden rounded-2xl border border-border bg-white shadow-[0_12px_36px_rgba(7,19,38,.06)]">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
         <div>
           <span className="text-xs font-black tracking-[.1em] text-slate-500">PRIORITIZED CLINIC QUEUE</span>
-          <h2 className="text-lg font-bold text-slate-900 mt-1">Approvals, waitlists and exceptions</h2>
+          <h2 className="or-type-section mt-2">Approvals, waitlists and exceptions</h2>
         </div>
         <span className="rounded-full bg-rose-50 px-3 py-1 text-sm font-bold text-rose-700">{exceptions.length} items</span>
       </header>
@@ -84,11 +85,9 @@ export function PriorityReviewQueue({
                           Start follow-up
                         </button>
                       )}
-                      {claimedByYou && (
-                        <button className={`${buttonBase} bg-emerald-600 text-white`} type="button" onClick={() => updateTask(item,"completed")} disabled={working === item.id}>
+                      {claimedByYou&&<button className={`${buttonBase} bg-emerald-600 text-white`} type="button" onClick={() => updateTask(item,"completed")} disabled={working === item.id}>
                           {working === item.id ? "Saving…" : "Complete"}
-                        </button>
-                      )}
+                        </button>}
                       {claimedByYou && (
                         <button className={`${buttonBase} border border-border bg-white text-foreground`} type="button" onClick={() => coordinate(item,"release")} disabled={working === item.id}>
                           Release
@@ -97,6 +96,30 @@ export function PriorityReviewQueue({
                       <Link className={`${buttonBase} bg-primary text-primary-foreground`} href={item.href}>
                         Open <ArrowUpRight size={15}/>
                       </Link>
+                    </>
+                  ) : item.kind === "carrier_recovery" ? (
+                    <>
+                      {!claimedByYou && !claimedByOther && (
+                        <button className={`${buttonBase} border border-border bg-white text-foreground`} type="button" onClick={() => coordinate(item, "claim")} disabled={working === item.id}>
+                          {working === item.id ? "Claiming…" : "Claim recovery task"}
+                        </button>
+                      )}
+                      {claimedByYou && (
+                        <>
+                          <button className={`${buttonBase} bg-emerald-600 text-white hover:bg-emerald-700`} type="button" onClick={() => resolveCarrierRecovery?.(item, "resolve")} disabled={working === item.id}>
+                            {working === item.id ? "Saving…" : "Mark contacted & resolve"}
+                          </button>
+                          <button className={`${buttonBase} border border-border bg-white text-blue-600 hover:bg-blue-50`} type="button" onClick={() => resolveCarrierRecovery?.(item, "retry")} disabled={working === item.id}>
+                            Queue retry
+                          </button>
+                          <button className={`${buttonBase} border border-border bg-white text-foreground`} type="button" onClick={() => coordinate(item, "release")} disabled={working === item.id}>
+                            Release
+                          </button>
+                        </>
+                      )}
+                      {claimedByOther && (
+                        <span className="self-center text-xs italic text-muted-foreground">Claimed by colleague</span>
+                      )}
                     </>
                   ) : item.kind === "care_retry" || item.kind === "appointment_retry" ? (
                     <button className={`${buttonBase} bg-primary text-primary-foreground`} type="button" onClick={() => retry(item)} disabled={working === item.id}>

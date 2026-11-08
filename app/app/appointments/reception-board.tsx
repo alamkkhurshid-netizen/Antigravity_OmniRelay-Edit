@@ -88,7 +88,7 @@ export function ReceptionBoard({organizationId,appointments,resources,locations,
       
       <div className="flex flex-wrap items-center gap-3 z-10">
         <button type="button" className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 text-[13px] font-bold text-white shadow-sm backdrop-blur-md transition-all hover:bg-white/10" onClick={downloadRoster} title="Download Doctor-wise Booking Story as Excel/CSV">
-          📥 Download Sheet
+          📥 Download Sheet (CSV)
         </button>
         <button type="button" className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 text-[13px] font-bold text-white shadow-sm backdrop-blur-md transition-all hover:bg-white/10" disabled={busy!==""} onClick={triggerEmailDispatch} title="Send Daily Summary Email to Clinic & Doctors">
           {busy==="dispatch" ? "Dispatching..." : "✉️ Dispatch Email"}

@@ -1,15 +1,11 @@
-import { withSentryConfig } from "@sentry/nextjs";
+import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   typescript: {
-    ignoreBuildErrors: true, // CI pipeline handles type checking
+    // TypeScript is strictly validated in CI with dedicated 4GB heap via `npm run typecheck`
+    ignoreBuildErrors: true,
   },
-  ...({
-    eslint: {
-      ignoreDuringBuilds: true, // CI pipeline handles linting
-    }
-  } as any)
 };
 
 export default withSentryConfig(nextConfig, {
