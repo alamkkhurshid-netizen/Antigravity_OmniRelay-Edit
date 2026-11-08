@@ -17,6 +17,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { WorkspaceHero } from "@/components/workspace-hero";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -144,43 +145,43 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 pb-12 pt-1">
-      {/* 1. CLINICAL EXECUTIVE HEADER */}
-      <section className="flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-teal-50 text-teal-700 border border-teal-200/50">
-            <Stethoscope className="size-5" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="truncate text-base font-bold text-slate-900">{organization.name}</h1>
-              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200/50">
-                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Operational
-              </span>
-            </div>
-            <p className="mt-0.5 text-xs text-slate-500">
-              {businessCategory} · {doctorCount ?? 0} {doctorCount === 1 ? "Doctor" : "Doctors"} · {locationCount ?? 1} {locationCount === 1 ? "Location" : "Locations"}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <Link
-            href="/app/analytics"
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 transition"
-          >
-            <Activity className="size-3.5 text-slate-500" />
-            Analytics
-          </Link>
-          <Link
-            href="/app/appointments"
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 text-xs font-semibold text-white shadow-xs hover:bg-slate-800 transition"
-          >
-            <CalendarDays className="size-3.5 text-teal-300" />
-            New Appointment
-          </Link>
-        </div>
-      </section>
+      {/* 1. GLOWING BLACK AI HERO BANNER (Preserved & Enhanced) */}
+      <WorkspaceHero
+        tag="TODAY'S CLINIC PULSE"
+        title={
+          <>
+            Keep every patient <br className="hidden sm:block" /> journey moving.
+          </>
+        }
+        subtitle={
+          <>
+            <span className="text-slate-200 font-semibold">{organization.name}</span>
+            <span className="text-slate-600">•</span>
+            <span>{businessCategory}</span>
+            <span className="text-slate-600">•</span>
+            <span>{doctorCount ?? 0} doctors</span>
+          </>
+        }
+        action={
+          <>
+            <Link
+              className="group flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 px-4 py-2.5 text-[13px] font-semibold text-white backdrop-blur-md border border-white/10 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(255,255,255,0.05)]"
+              href="/app/analytics"
+            >
+              <Sparkles className="size-4 text-teal-400 group-hover:text-teal-300 transition-colors" />
+              <span>Deep Analytics</span>
+              <ArrowRight className="size-3.5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+            </Link>
+            <Link
+              className="group flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-400 to-blue-500 hover:from-teal-300 hover:to-blue-400 px-4 py-2.5 text-[13px] font-bold text-slate-950 transition-all duration-300 hover:scale-[1.02] shadow-[0_0_20px_rgba(45,212,191,0.25)] hover:shadow-[0_0_30px_rgba(45,212,191,0.4)]"
+              href="/app/appointments"
+            >
+              <CalendarDays className="size-4" />
+              <span>New appointment</span>
+            </Link>
+          </>
+        }
+      />
 
       {/* 2. STAT CARDS (4-COLUMN COMPACT GRID) */}
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
