@@ -31,9 +31,13 @@ test("fails closed when TARGET_ENV is missing or empty", () => {
   assert.equal(isWhatsAppStagingAllowed({ targetEnv: "   ", supabaseUrl: STAGING_URL, vercelEnv: "production" }), false);
 });
 
-test("fails closed when TARGET_ENV is production", () => {
+test("fails closed when TARGET_ENV is production against staging URL", () => {
   assert.equal(isWhatsAppStagingAllowed({ targetEnv: "production", supabaseUrl: STAGING_URL, vercelEnv: "production" }), false);
   assert.equal(isWhatsAppStagingAllowed({ targetEnv: "production", supabaseUrl: STAGING_URL, vercelEnv: "preview" }), false);
+});
+
+test("allows TARGET_ENV=production with exact production Supabase", () => {
+  assert.equal(isWhatsAppStagingAllowed({ targetEnv: "production", supabaseUrl: PROD_URL, vercelEnv: "production" }), true);
 });
 
 test("fails closed when TARGET_ENV is non-staging value", () => {

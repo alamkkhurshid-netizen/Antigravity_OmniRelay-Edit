@@ -38,3 +38,8 @@
    - Eliminated vertical window double-scrolling by binding inbox container to `calc(100vh - 9.5rem)`.
    - Compacted 3-column proportions (264px sidebars, streamlined message bubbles with 13px typography).
    - Removed repetitive bubble tags and scaled patient context card to crisp professional SaaS standards.
+
+7. **Production Route Guard Hardening:**
+   - Unified `isWhatsAppStagingAllowed` to validate dual-environment strict mapping (`staging` -> `sqcprlkhsnfbydgzpsml`, `production` -> `dwkwxrcuycsqiviozgtl`).
+   - Dynamic `getWhatsAppWebhookCallbackUrl()` resolving to production Supabase webhook for live clinics.
+

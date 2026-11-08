@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getWorkspace } from "@/lib/workspace";
-import { isWhatsAppStagingAllowed, STAGING_CALLBACK_URL } from "@/lib/whatsapp-staging-guard";
+import { isWhatsAppStagingAllowed, getWhatsAppWebhookCallbackUrl } from "@/lib/whatsapp-staging-guard";
 
 export async function POST() {
   if (!isWhatsAppStagingAllowed()) {
@@ -46,7 +46,7 @@ export async function POST() {
       organization_id: organization.id,
       name: `OmniRelay embedded signup ${new Date().toISOString()}`,
       service: "whatsapp",
-      callback_url: STAGING_CALLBACK_URL,
+      callback_url: getWhatsAppWebhookCallbackUrl(),
       verify_token: verifyToken,
       expires_at: expiresAt,
       status: "active",
