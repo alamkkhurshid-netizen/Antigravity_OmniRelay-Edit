@@ -33,3 +33,8 @@
    - Access tokens retrieved securely via `get_whatsapp_access_token` from Vault with fallback to sealed credentials.
    - Atomically records Meta `external_id` (wamid) and updates delivery status to `accepted` and `sent`.
    - Automatically advances connection status to `live` on verified outbound dispatch acceptance.
+
+6. **Conversations Workspace Density & Viewport Polish:**
+   - Eliminated vertical window double-scrolling by binding inbox container to `calc(100vh - 9.5rem)`.
+   - Compacted 3-column proportions (264px sidebars, streamlined message bubbles with 13px typography).
+   - Removed repetitive bubble tags and scaled patient context card to crisp professional SaaS standards.

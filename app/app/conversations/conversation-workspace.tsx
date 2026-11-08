@@ -50,17 +50,17 @@ export function ConversationWorkspace({
   }
 
   return (
-    <main className="flex h-[calc(100vh-5.5rem)] min-h-[42rem] flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-marble">
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-border bg-panel px-4 py-3 sm:px-5">
-        <div className="flex min-w-0 items-center gap-2 text-sm">
+    <main className="flex h-[calc(100vh-9.5rem)] min-h-[34rem] flex-col overflow-hidden rounded-xl border border-border bg-card text-foreground shadow-sm">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-panel px-3.5 py-2 sm:px-4">
+        <div className="flex min-w-0 items-center gap-2 text-xs">
           <span className={`h-2 w-2 shrink-0 rounded-full ${state.realtimeStatus === "live" ? "bg-teal" : "bg-amber-500"}`} />
           <span className="truncate font-semibold">{connection.display_name ?? "WhatsApp Business"}</span>
           <span className="hidden text-muted-foreground sm:inline">· {connection.display_address ?? "Connected"}</span>
-          {state.realtimeStatus !== "live" && <span className="hidden text-xs text-muted-foreground md:inline">· Live updates reconnecting</span>}
+          {state.realtimeStatus !== "live" && <span className="hidden text-[11px] text-muted-foreground md:inline">· Reconnecting…</span>}
         </div>
-        <button type="button" className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition hover:opacity-90" onClick={() => state.openTemplateComposer(false)}>New conversation</button>
+        <button type="button" className="rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground shadow-sm transition hover:opacity-90" onClick={() => state.openTemplateComposer(false)}>New conversation</button>
       </header>
-      <section className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[19rem_minmax(0,1fr)_20rem]">
+      <section className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[16.5rem_minmax(0,1fr)_16.5rem]">
         <ConversationList
           mobilePanel={state.mobilePanel} query={state.query} setQuery={state.setQuery}
           rows={state.rows} activeId={state.activeId} selectConversation={state.selectConversation}
