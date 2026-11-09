@@ -362,20 +362,20 @@ export function WhatsAppConnect({
 
   if (connectionStatus === "pending_registration") {
     return (
-      <div className="embedded-signup pending-registration">
-        <div>
-          <span style={{ color: "#f59e0b" }}>ACTION REQUIRED · OWNER ONLY</span>
-          <b>Complete WhatsApp Registration: {displayAddress || phoneNumberId || "New Phone Number"}</b>
-          <small>
+      <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 shadow-2xs">
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800">ACTION REQUIRED · OWNER ONLY</span>
+          <b className="text-sm font-bold text-slate-900">Complete WhatsApp Registration: {displayAddress || phoneNumberId || "New Phone Number"}</b>
+          <small className="text-xs font-medium text-slate-700">
             Meta Embedded Signup verified ownership of this number. To activate the Cloud API, enter your chosen 6-digit two-step verification PIN.
           </small>
           {registerError && (
-            <p className="connect-message error" style={{ marginTop: "8px" }}>
+            <p className="mt-2 rounded-md bg-rose-100 border border-rose-200 p-2 text-xs font-semibold text-rose-800">
               {registerError}
             </p>
           )}
         </div>
-        <form onSubmit={handleRegister} style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+        <form onSubmit={handleRegister} className="mt-3 flex flex-wrap items-center gap-2.5">
           <input
             type="password"
             inputMode="numeric"
@@ -385,24 +385,14 @@ export function WhatsAppConnect({
             value={pin}
             onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
             disabled={registering}
-            style={{
-              width: "140px",
-              padding: "8px 12px",
-              textAlign: "center",
-              letterSpacing: "4px",
-              fontSize: "18px",
-              borderRadius: "8px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: "rgba(0,0,0,0.5)",
-              color: "#fff",
-            }}
+            className="w-36 rounded-lg border border-slate-300 bg-white px-3 py-2 text-center text-lg font-bold tracking-widest text-slate-900 shadow-2xs outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
             required
             autoComplete="new-password"
           />
           <button
             type="submit"
             disabled={registering || pin.length !== 6}
-            style={{ padding: "10px 18px", borderRadius: "8px", fontWeight: "bold" }}
+            className="inline-flex h-9 items-center justify-center rounded-lg bg-slate-900 px-4 text-xs font-bold text-white shadow-xs transition hover:bg-slate-800 disabled:opacity-40"
           >
             {registering ? "Registering with Meta…" : "Complete Registration →"}
           </button>
@@ -416,44 +406,33 @@ export function WhatsAppConnect({
     const waLink = rawDigits.length >= 10 ? `https://wa.me/${rawDigits}?text=Hi` : null;
 
     return (
-      <div className="embedded-signup connected">
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <span style={{ color: "#10b981" }}>CONNECTED · AWAITING INBOUND TEST MESSAGE</span>
-          <b>{displayAddress || phoneNumberId || "WhatsApp Business"}</b>
-          <small>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">CONNECTED · AWAITING INBOUND TEST MESSAGE</span>
+          <b className="mt-0.5 block text-sm font-bold text-slate-900">{displayAddress || phoneNumberId || "WhatsApp Business"}</b>
+          <small className="mt-0.5 block text-xs font-medium text-slate-700">
             Meta registration completed with status CONNECTED. Send a signed test message from WhatsApp to complete acceptance testing and mark this channel LIVE.
           </small>
           {waLink && (
-            <div style={{ marginTop: "10px", marginBottom: "8px", display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+            <div className="mt-2.5 flex flex-wrap items-center gap-3">
               <a
                 href={waLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  background: "#25D366",
-                  color: "#000",
-                  padding: "7px 15px",
-                  borderRadius: "8px",
-                  fontWeight: "bold",
-                  fontSize: "13px",
-                  textDecoration: "none",
-                }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#25D366] px-3.5 py-1.5 text-xs font-bold text-slate-950 shadow-xs transition hover:opacity-90"
               >
                 Send &quot;Hi&quot; on WhatsApp ↗
               </a>
-              <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.7)" }}>
+              <span className="text-xs font-medium text-slate-600">
                 Auto-refreshes to LIVE upon receipt
               </span>
             </div>
           )}
-          <p className="connect-message done">
+          <p className="mt-2 text-xs font-medium text-emerald-800">
             Inbound webhook verifies tenant routing and automatically promotes status to live.
           </p>
         </div>
-        <i style={{ background: "#059669", color: "#fff" }}>CONNECTED</i>
+        <span className="inline-flex shrink-0 items-center rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white shadow-2xs">CONNECTED</span>
       </div>
     );
   }
@@ -461,14 +440,14 @@ export function WhatsAppConnect({
   if (connected) {
     const coexistence = onboardingMode === "existing_phone_number";
     return (
-      <div className="embedded-signup connected">
+      <div className="rounded-xl border border-teal-200/80 bg-teal-50/40 p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <span>CONNECTED NUMBER</span>
-          <b>{displayAddress || "WhatsApp Business"}</b>
-          <small>{coexistence ? "Coexistence active: WhatsApp Business app and OmniRelay inbox can work with this number." : "Cloud API active: webhooks and tenant routing are ready."}</small>
-          <p className="connect-message done">This connection is tenant-scoped. Only the workspace owner can change it. Disconnecting an existing Business app number requires a guided support action so the clinic does not lose service.</p>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-teal-800">CONNECTED NUMBER</span>
+          <b className="mt-0.5 block text-sm font-bold text-slate-900">{displayAddress || "WhatsApp Business"}</b>
+          <small className="mt-0.5 block text-xs font-medium text-slate-700">{coexistence ? "Coexistence active: WhatsApp Business app and OmniRelay inbox can work with this number." : "Cloud API active: webhooks and tenant routing are ready."}</small>
+          <p className="mt-1 text-xs font-medium text-slate-600">This connection is tenant-scoped. Only the workspace owner can change it. Disconnecting an existing Business app number requires a guided support action so the clinic does not lose service.</p>
         </div>
-        <i>{coexistence ? "COEXISTENCE" : "LIVE"}</i>
+        <span className="inline-flex shrink-0 items-center rounded-md bg-teal-600 px-2.5 py-1 text-xs font-bold text-white shadow-2xs">{coexistence ? "COEXISTENCE" : "LIVE"}</span>
       </div>
     );
   }
@@ -484,27 +463,36 @@ export function WhatsAppConnect({
       ? "META_APP_ID environment variable is missing on the server. Please configure it to enable Meta Embedded Signup."
       : "META_EMBEDDED_SIGNUP_CONFIG_ID environment variable is missing on the server. Please configure it to enable Meta Embedded Signup.";
     return (
-      <div className="embedded-signup pending">
+      <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <span>EMBEDDED SIGNUP + COEXISTENCE</span>
-          <b>{missingLabel}</b>
-          <small>{missingDetail}</small>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700">EMBEDDED SIGNUP + COEXISTENCE</span>
+          <b className="mt-0.5 block text-sm font-bold text-slate-900">{missingLabel}</b>
+          <small className="mt-0.5 block text-xs font-medium text-slate-600">{missingDetail}</small>
         </div>
-        <button disabled>Connect WhatsApp</button>
+        <button className="inline-flex h-9 items-center justify-center rounded-lg bg-slate-200 px-4 text-xs font-semibold text-slate-500 cursor-not-allowed shrink-0" disabled>Connect WhatsApp</button>
       </div>
     );
   }
   return (
-    <div className="embedded-signup">
-      <div>
-        <span>SELF-SERVICE CONNECTION</span>
-        <b>Connect WhatsApp Business</b>
-        <small>Recommended: keep the existing WhatsApp Business app through Meta Coexistence. Meta will show the eligible connection choices and the business owner grants permission directly.</small>
-        {message && <p className={`connect-message ${state}`}>{message}</p>}
+    <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="max-w-2xl">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700">SELF-SERVICE CONNECTION</span>
+        <b className="mt-0.5 block text-sm font-bold text-slate-900">Connect WhatsApp Business</b>
+        <small className="mt-0.5 block text-xs font-medium text-slate-600 leading-normal">
+          Recommended: keep the existing WhatsApp Business app through Meta Coexistence. Meta will show the eligible connection choices and the business owner grants permission directly.
+        </small>
+        {message && (
+          <p className={`mt-2 rounded-md p-2 text-xs font-semibold ${
+            state === "error" ? "bg-rose-50 border border-rose-200 text-rose-800" : "bg-teal-50 border border-teal-200 text-teal-800"
+          }`}>
+            {message}
+          </p>
+        )}
       </div>
       <button
         onClick={!sdkReady && state === "error" ? retryLoadSdk : connect}
         disabled={(!sdkReady && state !== "error") || !["idle", "error"].includes(state)}
+        className="inline-flex h-9 items-center justify-center rounded-lg bg-slate-900 px-4 text-xs font-bold text-white shadow-xs transition hover:bg-slate-800 disabled:opacity-40 shrink-0"
       >
         {!sdkReady && state === "error"
           ? "Retry Meta SDK"
