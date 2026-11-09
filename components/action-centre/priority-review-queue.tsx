@@ -43,15 +43,15 @@ export function PriorityReviewQueue({
   }, [exceptions, activeTab]);
 
   return (
-    <section id="priority-review-queue" className="sandbox-step-queue scroll-mt-6 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-2xs">
+    <section id="priority-review-queue" className="sandbox-step-queue scroll-mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       {/* Header */}
-      <header className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50/60 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">PRIORITIZED CLINIC QUEUE</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-slate-500">PRIORITIZED CLINIC QUEUE</span>
           <h2 className="or-type-section mt-2">Approvals, waitlists and exceptions</h2>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-md bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 border border-rose-200/50">
+          <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700 border border-rose-200/60">
             {exceptions.length} items
           </span>
         </div>
@@ -59,75 +59,75 @@ export function PriorityReviewQueue({
 
       {/* Linear-Style Filter Tabs */}
       {exceptions.length > 0 && (
-        <div className="flex items-center gap-1 overflow-x-auto border-b border-slate-100 bg-slate-50/50 px-3 py-1.5 text-xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto border-b border-slate-100 bg-slate-50/50 px-6 py-2.5 text-xs">
           <button
             type="button"
-            className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition ${
-              activeTab === "all" ? "bg-white text-slate-900 shadow-2xs border border-slate-200" : "text-slate-500 hover:text-slate-800"
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+              activeTab === "all" ? "bg-white text-slate-900 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-800 font-medium"
             }`}
             onClick={() => setActiveTab("all")}
           >
-            All <span className="text-[10px] opacity-70">({tabCounts.all})</span>
+            All <span className="text-[11px] opacity-70">({tabCounts.all})</span>
           </button>
           {tabCounts.draft > 0 && (
             <button
               type="button"
-              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition ${
-                activeTab === "draft" ? "bg-white text-slate-900 shadow-2xs border border-slate-200" : "text-slate-500 hover:text-slate-800"
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                activeTab === "draft" ? "bg-white text-slate-900 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-800 font-medium"
               }`}
               onClick={() => setActiveTab("draft")}
             >
-              <Sparkles className="size-3 text-teal-600" />
-              AI Drafts <span className="text-[10px] opacity-70">({tabCounts.draft})</span>
+              <Sparkles className="size-3.5 text-teal-600" />
+              AI Drafts <span className="text-[11px] opacity-70">({tabCounts.draft})</span>
             </button>
           )}
           {tabCounts.booking > 0 && (
             <button
               type="button"
-              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition ${
-                activeTab === "booking" ? "bg-white text-slate-900 shadow-2xs border border-slate-200" : "text-slate-500 hover:text-slate-800"
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                activeTab === "booking" ? "bg-white text-slate-900 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-800 font-medium"
               }`}
               onClick={() => setActiveTab("booking")}
             >
-              Bookings & Waitlist <span className="text-[10px] opacity-70">({tabCounts.booking})</span>
+              Bookings & Waitlist <span className="text-[11px] opacity-70">({tabCounts.booking})</span>
             </button>
           )}
           {tabCounts.task > 0 && (
             <button
               type="button"
-              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition ${
-                activeTab === "task" ? "bg-white text-slate-900 shadow-2xs border border-slate-200" : "text-slate-500 hover:text-slate-800"
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                activeTab === "task" ? "bg-white text-slate-900 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-800 font-medium"
               }`}
               onClick={() => setActiveTab("task")}
             >
-              Care Tasks <span className="text-[10px] opacity-70">({tabCounts.task})</span>
+              Care Tasks <span className="text-[11px] opacity-70">({tabCounts.task})</span>
             </button>
           )}
           {tabCounts.system > 0 && (
             <button
               type="button"
-              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition ${
-                activeTab === "system" ? "bg-white text-slate-900 shadow-2xs border border-slate-200" : "text-slate-500 hover:text-slate-800"
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                activeTab === "system" ? "bg-white text-slate-900 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-800 font-medium"
               }`}
               onClick={() => setActiveTab("system")}
             >
-              Launch & Carrier <span className="text-[10px] opacity-70">({tabCounts.system})</span>
+              Launch & Carrier <span className="text-[11px] opacity-70">({tabCounts.system})</span>
             </button>
           )}
         </div>
       )}
       
-      {notice && <p className="m-3 rounded-lg border border-emerald-200 bg-emerald-50/70 p-2.5 text-xs font-semibold text-emerald-800" role="status">{notice}</p>}
-      {error && <p className="m-3 rounded-lg border border-rose-200 bg-rose-50/70 p-2.5 text-xs font-semibold text-rose-800" role="alert">{error}</p>}
+      {notice && <p className="m-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-sm font-semibold text-emerald-800" role="status">{notice}</p>}
+      {error && <p className="m-4 rounded-xl border border-rose-200 bg-rose-50/70 p-3 text-sm font-semibold text-rose-800" role="alert">{error}</p>}
       
       {exceptions.length === 0 ? (
-        <div className="grid min-h-40 place-items-center p-6 text-center">
-          <CheckCircle2 className="mb-2 text-emerald-600" size={28}/>
-          <b className="text-sm font-bold text-slate-900">No cases need manual review</b>
-          <span className="mt-0.5 text-xs text-slate-500">Routine actions can continue without clinic administration.</span>
+        <div className="grid min-h-48 place-items-center p-8 text-center">
+          <CheckCircle2 className="mb-2 text-emerald-600" size={32}/>
+          <b className="text-base font-bold text-slate-900">No cases need manual review</b>
+          <span className="mt-1 text-sm font-medium text-slate-500">Routine actions can continue without clinic administration.</span>
         </div>
       ) : filteredExceptions.length === 0 ? (
-        <div className="p-6 text-center text-xs text-slate-500">
+        <div className="p-8 text-center text-sm font-medium text-slate-500">
           No items match this category filter.
         </div>
       ) : (
@@ -136,30 +136,30 @@ export function PriorityReviewQueue({
             const claimedByYou = item.assignment?.assigned_to === currentUserId;
             const claimedByOther = !!item.assignment?.assigned_to && !claimedByYou;
             return (
-              <article className="group flex flex-col gap-3 px-4 py-3 transition hover:bg-slate-50/70 sm:flex-row sm:items-start" key={`${item.type}-${item.id}`}>
+              <article className="group flex flex-col gap-4 px-6 py-4 transition hover:bg-slate-50/70 sm:flex-row sm:items-start" key={`${item.type}-${item.id}`}>
                 {/* Priority Badge */}
-                <span className={`inline-flex shrink-0 items-center justify-center rounded-md px-2 py-0.5 text-[10px] font-semibold border ${
-                  item.priority === "urgent" ? "bg-rose-50 text-rose-700 border-rose-200/50" : "bg-amber-50 text-amber-700 border-amber-200/50"
+                <span className={`inline-flex shrink-0 items-center justify-center rounded-lg px-2.5 py-1 text-xs font-bold border ${
+                  item.priority === "urgent" ? "bg-rose-50 text-rose-700 border-rose-200/60" : "bg-amber-50 text-amber-700 border-amber-200/60"
                 }`}>
                   {item.priority === "urgent" ? "Urgent" : "Review"}
                 </span>
 
                 {/* Details */}
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <b className="text-xs font-semibold text-slate-900">{item.name}</b>
-                    <span className="text-[11px] text-slate-500">· {item.type}</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <b className="text-sm font-bold text-slate-900">{item.name}</b>
+                    <span className="text-xs font-medium text-slate-500">· {item.type}</span>
                   </div>
-                  <span className="mt-0.5 block whitespace-pre-wrap text-[11px] leading-relaxed text-slate-500">{item.detail}</span>
-                  <div className="mt-1.5 flex items-center gap-2">
-                    <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold border ${
+                  <span className="mt-1 block whitespace-pre-wrap text-sm font-medium leading-relaxed text-slate-600">{item.detail}</span>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold border ${
                       claimedByYou
-                        ? "bg-teal-50 text-teal-700 border-teal-200/50"
+                        ? "bg-teal-50 text-teal-700 border-teal-200/60"
                         : claimedByOther
-                        ? "bg-slate-100 text-slate-600 border-slate-200/50"
-                        : "bg-slate-50 text-slate-500 border-slate-200/50"
+                        ? "bg-slate-100 text-slate-600 border-slate-200/60"
+                        : "bg-slate-50 text-slate-500 border-slate-200/60"
                     }`}>
-                      <UserRoundCheck size={11}/>
+                      <UserRoundCheck size={13}/>
                       {item.kind === "agent_draft" ? "AI Generated Draft" : claimedByYou ? "Owned by you" : claimedByOther ? "Owned by another administrator" : "Unassigned"}
                       {item.assignment?.status === "reviewed" ? " · review recorded" : ""}
                     </span>
@@ -167,7 +167,7 @@ export function PriorityReviewQueue({
                 </div>
 
                 {/* Actions */}
-                <nav className="flex flex-wrap items-center gap-1.5 sm:justify-end shrink-0">
+                <nav className="flex flex-wrap items-center gap-2 sm:justify-end shrink-0">
                   {item.kind === "agent_draft" ? (
                     <>
                       <button className={`${buttonBase} bg-emerald-600 text-white hover:bg-emerald-700`} type="button" onClick={() => resolveDraft(item,"approve")} disabled={working === item.id}>
