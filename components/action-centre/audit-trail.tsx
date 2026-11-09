@@ -13,24 +13,24 @@ interface AuditTrailProps {
 export function AuditTrail({ deployments }: AuditTrailProps) {
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-2xs">
-      <header className="flex items-center justify-between gap-3 border-b border-slate-100 p-4">
+      <header className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/60 px-4 py-3">
         <div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700">AUDIT TRAIL</span>
-          <h2 className="mt-1 text-sm font-bold text-slate-900">Recent deployments</h2>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">AUDIT TRAIL</span>
+          <h2 className="mt-0.5 text-xs font-bold text-slate-900">Recent deployments</h2>
         </div>
-        <Link className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 hover:text-teal-800 transition" href="/app/activity">
-          Full activity log <ArrowUpRight size={13}/>
+        <Link className="inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700 hover:text-teal-800 transition" href="/app/activity">
+          Full activity log <ArrowUpRight size={12}/>
         </Link>
       </header>
       
       {deployments.length === 0 ? (
-        <p className="p-4 text-xs text-slate-500">No one-click deployment has been run yet.</p>
+        <p className="p-4 text-[11px] text-slate-500">No one-click deployment has been run yet.</p>
       ) : (
         <div className="divide-y divide-slate-100">
           {deployments.map(d => (
-            <article className="flex items-center justify-between gap-3 p-3.5 transition hover:bg-slate-50/70" key={d.id}>
+            <article className="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-slate-50/70" key={d.id}>
               <div>
-                <b className="block text-xs font-bold text-slate-900">
+                <b className="block text-xs font-semibold text-slate-900">
                   <Clock3 className="mr-1.5 inline size-3.5 text-teal-600"/>
                   {when(d.created_at)}
                 </b>
@@ -38,7 +38,7 @@ export function AuditTrail({ deployments }: AuditTrailProps) {
                   {d.deployed_count} released · {d.automatic_count} automatic · {d.exception_count} retained
                 </span>
               </div>
-              <em className="rounded-md border border-slate-200/60 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold not-italic capitalize text-slate-600">
+              <em className="rounded-md border border-slate-200/50 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold not-italic capitalize text-slate-600">
                 {d.status}
               </em>
             </article>

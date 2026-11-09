@@ -45,14 +45,13 @@ export function PriorityReviewQueue({
   return (
     <section id="priority-review-queue" className="sandbox-step-queue scroll-mt-6 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-2xs">
       {/* Header */}
-      <header className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700">PRIORITIZED CLINIC QUEUE</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">PRIORITIZED CLINIC QUEUE</span>
           <h2 className="or-type-section mt-2">Approvals, waitlists and exceptions</h2>
         </div>
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-0.5 text-xs font-bold text-rose-700 border border-rose-200/60">
-            <span className="size-1.5 rounded-full bg-rose-500 animate-pulse" />
+          <span className="rounded-md bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 border border-rose-200/50">
             {exceptions.length} items
           </span>
         </div>
@@ -137,10 +136,10 @@ export function PriorityReviewQueue({
             const claimedByYou = item.assignment?.assigned_to === currentUserId;
             const claimedByOther = !!item.assignment?.assigned_to && !claimedByYou;
             return (
-              <article className="group flex flex-col gap-3 p-3.5 transition hover:bg-slate-50/70 sm:flex-row sm:items-start" key={`${item.type}-${item.id}`}>
+              <article className="group flex flex-col gap-3 px-4 py-3 transition hover:bg-slate-50/70 sm:flex-row sm:items-start" key={`${item.type}-${item.id}`}>
                 {/* Priority Badge */}
-                <span className={`inline-flex shrink-0 items-center justify-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border ${
-                  item.priority === "urgent" ? "bg-rose-50 text-rose-700 border-rose-200/60" : "bg-amber-50 text-amber-700 border-amber-200/60"
+                <span className={`inline-flex shrink-0 items-center justify-center rounded-md px-2 py-0.5 text-[10px] font-semibold border ${
+                  item.priority === "urgent" ? "bg-rose-50 text-rose-700 border-rose-200/50" : "bg-amber-50 text-amber-700 border-amber-200/50"
                 }`}>
                   {item.priority === "urgent" ? "Urgent" : "Review"}
                 </span>
@@ -148,17 +147,17 @@ export function PriorityReviewQueue({
                 {/* Details */}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <b className="text-xs font-bold text-slate-900">{item.name}</b>
-                    <span className="text-[11px] font-medium text-slate-400">· {item.type}</span>
+                    <b className="text-xs font-semibold text-slate-900">{item.name}</b>
+                    <span className="text-[11px] text-slate-500">· {item.type}</span>
                   </div>
-                  <span className="mt-0.5 block whitespace-pre-wrap text-xs leading-relaxed text-slate-600">{item.detail}</span>
+                  <span className="mt-0.5 block whitespace-pre-wrap text-[11px] leading-relaxed text-slate-500">{item.detail}</span>
                   <div className="mt-1.5 flex items-center gap-2">
-                    <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold border ${
+                    <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold border ${
                       claimedByYou
-                        ? "bg-teal-50 text-teal-700 border-teal-200/60"
+                        ? "bg-teal-50 text-teal-700 border-teal-200/50"
                         : claimedByOther
-                        ? "bg-slate-100 text-slate-600 border-slate-200/60"
-                        : "bg-slate-50 text-slate-500 border-slate-200/40"
+                        ? "bg-slate-100 text-slate-600 border-slate-200/50"
+                        : "bg-slate-50 text-slate-500 border-slate-200/50"
                     }`}>
                       <UserRoundCheck size={11}/>
                       {item.kind === "agent_draft" ? "AI Generated Draft" : claimedByYou ? "Owned by you" : claimedByOther ? "Owned by another administrator" : "Unassigned"}

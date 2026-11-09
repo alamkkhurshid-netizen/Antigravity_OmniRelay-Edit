@@ -83,79 +83,79 @@ export function ActionCentreWorkspace({
       )}
 
       {/* 3. UNIFIED COMMAND STRIP (Single Patient Safety Verification & One-Click Deploy) */}
-      <section className="flex flex-col gap-5 rounded-xl border border-slate-200/90 bg-white p-5 shadow-2xs">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <section className="flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="max-w-2xl">
-            <div className="flex items-center gap-2.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-teal-700">Ready to Deploy</span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200/60">
-                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Ready to Deploy</span>
+              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200/50">
+                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Safety Gates Cleared
               </span>
             </div>
-            <h2 className="mt-1.5 text-lg font-bold text-slate-900 tracking-tight">Today&apos;s Patient Action Plan</h2>
-            <p className="mt-1 text-sm text-slate-600 leading-relaxed">
+            <h2 className="mt-1 text-sm font-bold text-slate-900 leading-snug">Today&apos;s Patient Action Plan</h2>
+            <p className="mt-0.5 text-xs text-slate-500 leading-relaxed">
               Every patient communication is verified before dispatch: active consent, phone validity, 24-hour customer service window, and doctor schedule limits.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
             <button 
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-900 px-5 text-sm font-semibold text-white shadow-xs transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40" 
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40" 
               disabled={state.busy || state.deployable === 0} 
               onClick={state.deploy}
             >
-              <SendHorizontal size={15}/>
+              <SendHorizontal size={13}/>
               <span>{state.busy ? "Deploying safely…" : state.deployable ? `Review & deploy ${state.deployable} actions` : "Routine actions already automated"}</span>
             </button>
           </div>
         </div>
 
         {/* Clinical Safety Verification Trust Badges */}
-        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 text-xs text-slate-600">
-          <span className="text-xs font-bold text-slate-700">Pre-flight checks:</span>
-          <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2.5 py-1 font-medium text-slate-700 border border-slate-200/60">
-            <CheckCircle2 className="size-3.5 text-teal-600" /> Patient Consent Active
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-2.5">
+          <span className="text-[11px] font-bold text-slate-500 mr-1">Pre-flight checks:</span>
+          <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600 border border-slate-200/60">
+            <CheckCircle2 className="size-3 text-teal-600" /> Patient Consent Active
           </span>
-          <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2.5 py-1 font-medium text-slate-700 border border-slate-200/60">
-            <CheckCircle2 className="size-3.5 text-teal-600" /> WhatsApp Number Validated
+          <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600 border border-slate-200/60">
+            <CheckCircle2 className="size-3 text-teal-600" /> WhatsApp Number Validated
           </span>
-          <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2.5 py-1 font-medium text-slate-700 border border-slate-200/60">
-            <CheckCircle2 className="size-3.5 text-teal-600" /> 24h Meta Window Bound
+          <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600 border border-slate-200/60">
+            <CheckCircle2 className="size-3 text-teal-600" /> 24h Meta Window Bound
           </span>
-          <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2.5 py-1 font-medium text-slate-700 border border-slate-200/60">
-            <CheckCircle2 className="size-3.5 text-teal-600" /> Retry & Anti-Spam Guarded
+          <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600 border border-slate-200/60">
+            <CheckCircle2 className="size-3 text-teal-600" /> Retry & Anti-Spam Guarded
           </span>
         </div>
 
         {state.result && (
-          <p className="flex items-center gap-2 rounded-lg bg-emerald-50/80 border border-emerald-200 p-2.5 text-xs font-semibold text-emerald-800">
-            <CheckCircle2 size={15}/> {state.result.deployed_count} released · {state.result.automatic_count} automatic actions remain queued · {state.result.exception_count} exceptions retained
+          <p className="flex items-center gap-1.5 rounded-md bg-emerald-50/80 border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-800">
+            <CheckCircle2 size={13}/> {state.result.deployed_count} released · {state.result.automatic_count} automatic actions remain queued · {state.result.exception_count} exceptions retained
           </p>
         )}
         {state.error && (
-          <p className="flex items-center gap-2 rounded-lg bg-rose-50/80 border border-rose-200 p-2.5 text-xs font-semibold text-rose-800">
+          <p className="flex items-center gap-1.5 rounded-md bg-rose-50/80 border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-800">
             {state.error}
           </p>
         )}
       </section>
 
-      {/* 4. HIGH-DENSITY ROUTINE METRICS STRIP */}
+      {/* 4. HIGH-DENSITY ROUTINE METRICS STRIP (Overview Standard) */}
       <section className="grid gap-3 md:grid-cols-3">
         {state.routine.map(item => (
-          <article className="flex items-start justify-between gap-3 rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs" key={item.label}>
-            <div className="flex items-start gap-2.5 min-w-0">
-              <span className={`grid size-7 shrink-0 place-items-center rounded-md ${
+          <article className="flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs" key={item.label}>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{item.label}</span>
+              <div className={`grid size-7 place-items-center rounded-md ${
                 item.tone === "exception" ? "bg-rose-50 text-rose-600" : "bg-teal-50 text-teal-700"
               }`}>
                 {item.tone === "exception" ? <CircleAlert size={14}/> : <CheckCircle2 size={14}/>}
-              </span>
-              <div className="min-w-0">
-                <b className="block text-xs font-bold text-slate-900">{item.label}</b>
-                <span className="mt-0.5 block text-[11px] leading-relaxed text-slate-500">{item.detail}</span>
               </div>
             </div>
-            <strong className="or-type-stat text-lg font-bold text-slate-900 shrink-0">{item.count}</strong>
+            <div className="mt-3">
+              <span className="or-type-stat text-2xl font-bold tracking-tight text-slate-900">{item.count}</span>
+              <p className="mt-0.5 text-[11px] text-slate-500 leading-relaxed">{item.detail}</p>
+            </div>
           </article>
         ))}
       </section>
