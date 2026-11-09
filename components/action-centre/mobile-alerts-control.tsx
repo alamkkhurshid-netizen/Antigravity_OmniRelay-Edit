@@ -19,11 +19,11 @@ export function MobileAlertsControl({
     <section className="flex flex-col gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
       <div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">MOBILE ALERTS</span>
-          <span className="h-3 w-px bg-slate-200" />
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700">MOBILE ALERTS</span>
+          <span className="h-3 w-px bg-slate-300" />
           <h3 className="text-xs font-bold text-slate-900">Operator notification controls</h3>
         </div>
-        <p className="mt-0.5 text-[11px] text-slate-500">
+        <p className="mt-0.5 text-[11px] font-medium text-slate-600">
           Run a patient-free device test, or archive stale alerts. Neither action sends WhatsApp messages.
         </p>
       </div>

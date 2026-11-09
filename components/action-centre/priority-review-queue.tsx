@@ -47,7 +47,7 @@ export function PriorityReviewQueue({
       {/* Header */}
       <header className="flex flex-col gap-2 border-b border-slate-100 bg-slate-50/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">PRIORITIZED CLINIC QUEUE</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700">PRIORITIZED CLINIC QUEUE</span>
           <h2 className="or-type-section mt-2">Approvals, waitlists and exceptions</h2>
         </div>
         <div className="flex items-center gap-2">
@@ -148,9 +148,9 @@ export function PriorityReviewQueue({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <b className="text-xs font-bold text-slate-900">{item.name}</b>
-                    <span className="text-[11px] font-medium text-slate-500">· {item.type}</span>
+                    <span className="text-[11px] font-medium text-slate-600">· {item.type}</span>
                   </div>
-                  <span className="mt-0.5 block whitespace-pre-wrap text-xs font-medium leading-relaxed text-slate-600">{item.detail}</span>
+                  <span className="mt-0.5 block whitespace-pre-wrap text-xs font-medium leading-relaxed text-slate-700">{item.detail}</span>
                   <div className="mt-1.5 flex items-center gap-1.5">
                     <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium border ${
                       claimedByYou
