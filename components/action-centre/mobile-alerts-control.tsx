@@ -16,28 +16,28 @@ export function MobileAlertsControl({
   if (!canManageNotifications) return null;
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-border bg-secondary/40 p-5 lg:flex-row lg:items-center lg:justify-between">
+    <section className="flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 shadow-2xs lg:flex-row lg:items-center lg:justify-between">
       <div>
-        <span className="text-xs font-black tracking-[.15em] text-primary">MOBILE ALERTS</span>
-        <h2 className="mt-2 text-xl font-semibold">Alert controls</h2>
-        <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700">MOBILE ALERTS</span>
+        <h2 className="mt-1 text-sm font-bold text-slate-900">Operator notification controls</h2>
+        <p className="mt-0.5 max-w-2xl text-xs text-slate-500">
           Run a patient-free device test, or archive only stale alerts. Neither action sends WhatsApp messages.
         </p>
       </div>
-      <nav className="flex flex-wrap gap-2">
+      <nav className="flex flex-wrap items-center gap-2 shrink-0">
         <button 
-          className={`${buttonBase} border border-primary/20 bg-white text-primary hover:bg-primary/5`} 
+          className={`${buttonBase} border border-teal-200 bg-white text-teal-700 hover:bg-teal-50/50`} 
           onClick={testMobileAlert} 
           disabled={working!==null}
         >
-          <BellRing size={16}/>{working==="mobile-alert-test"?"Sending test…":"Send test alert"}
+          <BellRing size={14}/>{working==="mobile-alert-test"?"Sending test…":"Send test alert"}
         </button>
         <button 
-          className={`${buttonBase} border border-border bg-white text-foreground hover:bg-muted`} 
+          className={`${buttonBase} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`} 
           onClick={archiveHistoricalAlerts} 
           disabled={working!==null}
         >
-          <ClipboardCheck size={16}/>{working==="archive-historical-alerts"?"Archiving…":"Archive history"}
+          <ClipboardCheck size={14}/>{working==="archive-historical-alerts"?"Archiving…":"Archive history"}
         </button>
       </nav>
     </section>

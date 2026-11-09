@@ -43,3 +43,10 @@
    - Unified `isWhatsAppStagingAllowed` to validate dual-environment strict mapping (`staging` -> `sqcprlkhsnfbydgzpsml`, `production` -> `dwkwxrcuycsqiviozgtl`).
    - Dynamic `getWhatsAppWebhookCallbackUrl()` resolving to production Supabase webhook for live clinics.
 
+8. **Action Centre High-Density Redesign:**
+   - Unified single-bar Command Strip with real-time patient safety verification (`Consent verified · Rate limits checked`).
+   - Eliminated redundant duplicate deploy sections.
+   - High-density 3-tile routine metrics grid with 1px hairline border and crisp 12px microcopy.
+   - Refactored Priority Review Queue into Linear-grade triage with filter tabs (`All`, `AI Drafts`, `Bookings & Waitlist`, `Care Tasks`, `Launch & Carrier`).
+   - Standardized 8px radii, subtle semantic status pills, and surgical inline actions.
+
