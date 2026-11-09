@@ -1,10 +1,11 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
-export async function getWorkspace() {
+export const getWorkspace = cache(async () => {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return { supabase, organization: null };
+    return { supabase, organization: null, user: null };
   }
 
   const { data: agent } = await supabase
@@ -16,7 +17,7 @@ export async function getWorkspace() {
     .maybeSingle();
 
   if (!agent?.organization_id) {
-    return { supabase, organization: null };
+    return { supabase, organization: null, user };
   }
 
   const { data: organization } = await supabase
@@ -25,5 +26,5 @@ export async function getWorkspace() {
     .eq("id", agent.organization_id)
     .maybeSingle();
 
-  return { supabase, organization };
-}
+  return { supabase, organization, user };
+});

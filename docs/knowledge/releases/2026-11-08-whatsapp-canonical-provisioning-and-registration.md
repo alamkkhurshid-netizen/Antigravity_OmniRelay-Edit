@@ -48,5 +48,11 @@
    - Standardized typography and card hierarchy to match the Overview dashboard (`rounded-2xl`, `text-xs font-bold uppercase tracking-widest` eyebrows, `text-xl font-bold tracking-tight` section titles, `text-sm font-medium` readable body text, and `text-4xl font-extrabold` stat metrics).
    - Eliminated redundant duplicate deploy sections and tiny unreadable microcopy.
    - Refactored Priority Review Queue into Linear-grade triage with category filter tabs (`All`, `AI Drafts`, `Bookings & Waitlist`, `Care Tasks`, `Launch & Carrier`).
+
+9. **Performance Optimization & Latency Slash:**
+   - Bound Vercel serverless functions directly to Mumbai (`bom1`) in `vercel.json`, colocating execution with the primary Supabase database (`dwkwxrcuycsqiviozgtl`) and slashing query ping latency from ~200ms to <15ms.
+   - Implemented `React.cache()` on `getWorkspace()` for per-request in-memory deduplication across middleware, layouts, and page controllers.
+   - Flattened layout waterfalls in `app/app/layout.tsx` into a single concurrent `Promise.all` batch and made `refresh_priority_action_alerts` non-blocking.
+   - Pruned 46 blocking PWA splash screen links from `app/layout.tsx` `<head>` and disabled Sentry continuous DOM replay recording during standard sessions.
    - Standardized 8px radii, subtle semantic status pills, and surgical inline actions.
 
