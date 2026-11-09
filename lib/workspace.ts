@@ -17,7 +17,7 @@ export const getWorkspace = cache(async () => {
     .maybeSingle();
 
   if (!agent?.organization_id) {
-    return { supabase, organization: null, user };
+    return { supabase, organization: null, user, workspace: null };
   }
 
   const { data: organization } = await supabase
@@ -26,5 +26,6 @@ export const getWorkspace = cache(async () => {
     .eq("id", agent.organization_id)
     .maybeSingle();
 
-  return { supabase, organization, user };
+  const workspace = { organization_id: agent.organization_id };
+  return { supabase, organization, user, workspace };
 });

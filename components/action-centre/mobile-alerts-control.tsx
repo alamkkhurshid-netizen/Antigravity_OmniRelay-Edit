@@ -16,28 +16,31 @@ export function MobileAlertsControl({
   if (!canManageNotifications) return null;
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+    <section className="flex flex-col gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <span className="text-xs font-bold uppercase tracking-widest text-slate-500">MOBILE ALERTS</span>
-        <h2 className="mt-2 text-xl font-bold tracking-tight text-slate-900 leading-snug">Operator notification controls</h2>
-        <p className="mt-1.5 max-w-2xl text-sm font-medium text-slate-600 leading-relaxed">
-          Run a patient-free device test, or archive only stale alerts. Neither action sends WhatsApp messages.
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">MOBILE ALERTS</span>
+          <span className="h-3 w-px bg-slate-200" />
+          <h3 className="text-xs font-bold text-slate-900">Operator notification controls</h3>
+        </div>
+        <p className="mt-0.5 text-[11px] text-slate-500">
+          Run a patient-free device test, or archive stale alerts. Neither action sends WhatsApp messages.
         </p>
       </div>
-      <nav className="flex flex-wrap items-center gap-2.5 shrink-0">
+      <nav className="flex flex-wrap items-center gap-2 shrink-0">
         <button 
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-xs font-bold text-teal-700 hover:bg-teal-50/50 shadow-2xs transition" 
+          className="inline-flex h-7.5 items-center justify-center gap-1.5 rounded-lg border border-teal-200/80 bg-teal-50/40 px-2.5 py-1 text-xs font-semibold text-teal-800 hover:bg-teal-50 shadow-2xs transition disabled:opacity-50" 
           onClick={testMobileAlert} 
           disabled={working!==null}
         >
-          <BellRing size={14}/>{working==="mobile-alert-test"?"Sending test…":"Send test alert"}
+          <BellRing size={13}/>{working==="mobile-alert-test"?"Sending test…":"Send test alert"}
         </button>
         <button 
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-2xs transition" 
+          className="inline-flex h-7.5 items-center justify-center gap-1.5 rounded-lg border border-slate-200/80 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition disabled:opacity-50" 
           onClick={archiveHistoricalAlerts} 
           disabled={working!==null}
         >
-          <ClipboardCheck size={14}/>{working==="archive-historical-alerts"?"Archiving…":"Archive history"}
+          <ClipboardCheck size={13}/>{working==="archive-historical-alerts"?"Archiving…":"Archive history"}
         </button>
       </nav>
     </section>

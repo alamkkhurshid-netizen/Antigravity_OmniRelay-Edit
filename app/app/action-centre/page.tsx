@@ -5,10 +5,9 @@ import { ActionCentreWorkspace } from "./workspace";
 import { CarrierRecoveryEvent } from "./types";
 
 export default async function ActionCentrePage() {
-  const { supabase, organization } = await getWorkspace();
-  if (!organization) redirect("/onboarding");
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: actor } = user ? await supabase.from("agents").select("extra").eq("organization_id", organization.id).eq("user_id", user.id).maybeSingle() : { data: null };
+  const { supabase, organization, user } = await getWorkspace();
+  if (!organization || !user) redirect("/onboarding");
+  const { data: actor } = await supabase.from("agents").select("extra").eq("organization_id", organization.id).eq("user_id", user.id).maybeSingle();
   const canManageNotifications = ["owner", "admin"].includes(String((actor?.extra as Record<string, unknown> | null)?.role ?? "member"));
   const since = isoBeforeNow(30 * 24 * 60 * 60 * 1000);
 

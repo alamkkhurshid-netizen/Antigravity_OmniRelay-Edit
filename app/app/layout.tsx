@@ -10,7 +10,7 @@ import "../typography-polish.css";
 import "../workspace-ux-system.css";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { supabase, organization, user } = await getWorkspace();
+  const { supabase, organization, user, workspace } = await getWorkspace();
   if (!user) redirect("/login");
 
   // Parallelize operator check, invitations, notifications, profile, and alert refresh in one concurrent batch
@@ -37,7 +37,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       : Promise.resolve(null),
   ]);
 
-  if (!organization?.id && !isOperator) redirect("/onboarding");
+  if (!workspace?.organization_id && !isOperator) redirect("/onboarding");
 
   const businessCategory =
     (profile?.business_category as string) ||
