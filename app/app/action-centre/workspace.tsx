@@ -140,10 +140,10 @@ export function ActionCentreWorkspace({
         )}
       </section>
 
-      {/* 4. HIGH-DENSITY ROUTINE METRICS STRIP (Crisp High-Contrast Typography) */}
+      {/* 4. HIGH-DENSITY ROUTINE METRICS STRIP (Crisp High-Contrast Typography With Trademark Strip) */}
       <section className="grid gap-3 md:grid-cols-3">
         {state.routine.map(item => (
-          <article className="flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition" key={item.label}>
+          <article className="or-trademark-card flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition" key={item.label}>
             <div className="flex items-start justify-between gap-2">
               <h3 className="text-xs font-bold text-slate-900 leading-snug">{item.label}</h3>
               <div className={`grid size-7 shrink-0 place-items-center rounded-md ${item.tone === "exception" ? "bg-rose-50 text-rose-600" : "bg-teal-50 text-teal-700"

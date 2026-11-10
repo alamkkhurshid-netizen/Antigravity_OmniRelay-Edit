@@ -183,12 +183,12 @@ export default async function DashboardPage() {
         }
       />
 
-      {/* 2. STAT CARDS (4-COLUMN COMPACT GRID) */}
+      {/* 2. STAT CARDS (4-COLUMN COMPACT GRID WITH SIGNATURE TRADEMARK HIGHLIGHT) */}
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Appointments */}
         <Link
           href="/app/appointments"
-          className="group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs hover:border-slate-300 hover:shadow-xs transition"
+          className="or-trademark-card group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs hover:border-slate-300 hover:shadow-xs transition"
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Appointments</span>
@@ -205,7 +205,7 @@ export default async function DashboardPage() {
         {/* Card 2: Doctors & Roster */}
         <Link
           href="/app/team"
-          className="group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs hover:border-slate-300 hover:shadow-xs transition"
+          className="or-trademark-card group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs hover:border-slate-300 hover:shadow-xs transition"
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Active Doctors</span>
@@ -222,7 +222,7 @@ export default async function DashboardPage() {
         {/* Card 3: Action Centre */}
         <Link
           href="/app/action-centre"
-          className="group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs hover:border-slate-300 hover:shadow-xs transition"
+          className="or-trademark-card group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs hover:border-slate-300 hover:shadow-xs transition"
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Staff Attention</span>
@@ -245,7 +245,7 @@ export default async function DashboardPage() {
         {/* Card 4: WhatsApp Status */}
         <Link
           href="/app/integrations"
-          className="group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs hover:border-slate-300 hover:shadow-xs transition"
+          className="or-trademark-card group flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs hover:border-slate-300 hover:shadow-xs transition"
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">WhatsApp Channel</span>

@@ -62,10 +62,10 @@ export default async function IntegrationsPage() {
         }
       />
 
-      {/* 2. HIGH-DENSITY 4-METRIC STRIP */}
+      {/* 2. HIGH-DENSITY 4-METRIC STRIP WITH SIGNATURE TRADEMARK HIGHLIGHT */}
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Metric 1: Connection */}
-        <article className="flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs">
+        <article className="or-trademark-card flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-900 leading-snug">Connection</span>
             <div className={`grid size-7 place-items-center rounded-md ${isLive ? "bg-teal-50 text-teal-700" : isConnected ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
@@ -83,7 +83,7 @@ export default async function IntegrationsPage() {
         </article>
 
         {/* Metric 2: Approved Templates */}
-        <article className="flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs">
+        <article className="or-trademark-card flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-900 leading-snug">Approved Templates</span>
             <div className="grid size-7 place-items-center rounded-md bg-teal-50 text-teal-700">
@@ -101,7 +101,7 @@ export default async function IntegrationsPage() {
         </article>
 
         {/* Metric 3: Queued */}
-        <article className="flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs">
+        <article className="or-trademark-card flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-900 leading-snug">Queued Delivery</span>
             <div className="grid size-7 place-items-center rounded-md bg-slate-100 text-slate-700">
@@ -119,7 +119,7 @@ export default async function IntegrationsPage() {
         </article>
 
         {/* Metric 4: Delivered to Provider */}
-        <article className="flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs">
+        <article className="or-trademark-card flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-900 leading-snug">Delivered Messages</span>
             <div className="grid size-7 place-items-center rounded-md bg-emerald-50 text-emerald-700">

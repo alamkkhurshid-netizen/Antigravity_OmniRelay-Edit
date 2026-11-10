@@ -214,7 +214,7 @@ export function CarePlanOperations({
           const Icon = item.icon;
           return (
             <article
-              className="flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs transition hover:border-slate-300"
+              className="or-trademark-card flex flex-col justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs transition hover:border-slate-300"
               key={item.label}
             >
               <div className="flex items-center justify-between gap-2">
