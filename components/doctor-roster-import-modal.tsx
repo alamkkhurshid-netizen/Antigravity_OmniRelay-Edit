@@ -43,6 +43,14 @@ export function DoctorRosterImportModal({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Security Hardening: Cap upload size to 2 MB to prevent ReDoS / memory exhaustion
+    if (file.size > 2 * 1024 * 1024) {
+      setRows([]);
+      setFileName(file.name);
+      setParseError("File size exceeds the 2 MB security limit.");
+      return;
+    }
+
     setFileName(file.name);
     setParseError(null);
     setStatusMessage(null);
