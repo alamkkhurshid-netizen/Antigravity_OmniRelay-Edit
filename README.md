@@ -30,7 +30,7 @@ Do not commit credentials. Copy secret names from `docs/ENVIRONMENT.md` into the
 
 ## Handover
 
-Start with [PROJECT_STATUS.md](PROJECT_STATUS.md), then read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/SECURITY.md](docs/SECURITY.md), [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and [ROADMAP.md](ROADMAP.md).
+Start with [PROJECT_STATUS.md](PROJECT_STATUS.md) and [docs/PRODUCT_FEATURES.md](docs/PRODUCT_FEATURES.md), then read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/SECURITY.md](docs/SECURITY.md), [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md), [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and [ROADMAP.md](ROADMAP.md).
 
 ## Social impact
 
