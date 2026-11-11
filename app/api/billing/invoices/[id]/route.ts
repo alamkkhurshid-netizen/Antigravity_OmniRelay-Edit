@@ -54,10 +54,15 @@ export async function GET(
 
     // Verify user authorization: member of tenant or platform operator
     const { data: isOperator } = await supabase.rpc("is_oem_operator");
-    const { data: isMember } = await supabase.rpc("is_organization_member", {
+    const { data: isMember, error: memberError } = await supabase.rpc("is_organization_member", {
       target_organization_id: tx.organization_id,
       minimum_role: "member",
     });
+
+    if (memberError && !isOperator) {
+      console.error("[Billing Invoice] Authorization check failed:", memberError);
+      return NextResponse.json({ error: "Authorization service unavailable" }, { status: 503 });
+    }
 
     if (!isOperator && !isMember) {
       return NextResponse.json({ error: "Forbidden: You do not have access to this invoice" }, { status: 403 });

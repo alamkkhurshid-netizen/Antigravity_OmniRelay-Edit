@@ -19,10 +19,14 @@ export async function GET(request: Request) {
   }
 
   // 2. Authorize: Verify initiator is admin of the target organization
-  const { data: isMember } = await supabase.rpc("is_organization_member", {
+  const { data: isMember, error: memberError } = await supabase.rpc("is_organization_member", {
     target_organization_id: organizationId,
     minimum_role: "admin",
   });
+  if (memberError) {
+    console.error("[Google Calendar Auth] Authorization check failed:", memberError);
+    return NextResponse.json({ error: "Authorization service unavailable" }, { status: 503 });
+  }
   if (!isMember) {
     return NextResponse.json({ error: "Forbidden: Admin privileges required" }, { status: 403 });
   }

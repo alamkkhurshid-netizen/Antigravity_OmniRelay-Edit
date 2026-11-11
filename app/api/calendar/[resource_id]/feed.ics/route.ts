@@ -48,10 +48,18 @@ export async function GET(
     }
 
     // 3. Strict Authorization: Verify caller is an authenticated member of this organization
-    const { data: isMember } = await supabase.rpc("is_organization_member", {
+    const { data: isMember, error: memberError } = await supabase.rpc("is_organization_member", {
       target_organization_id: resource.organization_id,
       minimum_role: "member",
     });
+
+    if (memberError) {
+      console.error("[Resource Calendar Feed] Authorization check failed:", memberError);
+      return new NextResponse("Authorization service unavailable", {
+        status: 503,
+        headers: { "Cache-Control": "private, no-store" },
+      });
+    }
 
     if (!isMember) {
       return new NextResponse("Forbidden: Access denied to this clinical calendar feed.", {

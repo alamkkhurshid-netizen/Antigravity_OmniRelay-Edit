@@ -18,10 +18,15 @@ export async function POST(request: Request) {
     }
 
     // Verify user is owner/admin of this organization
-    const { data: isMember } = await supabase.rpc("is_organization_member", {
+    const { data: isMember, error: memberError } = await supabase.rpc("is_organization_member", {
       target_organization_id: organization_id,
       minimum_role: "admin",
     });
+
+    if (memberError) {
+      console.error("[Razorpay Topup] Authorization check failed:", memberError);
+      return NextResponse.json({ error: "Authorization service unavailable" }, { status: 503 });
+    }
 
     if (!isMember) {
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
