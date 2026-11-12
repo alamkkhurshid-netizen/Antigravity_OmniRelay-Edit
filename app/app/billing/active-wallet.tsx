@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { CreditCard, Flame, MessageSquare, AlertTriangle, ShieldCheck } from "lucide-react";
 
 type ActiveWalletProps = {
@@ -10,11 +11,24 @@ type ActiveWalletProps = {
 };
 
 export function ActiveWallet({ wallet, tier, organizationId }: ActiveWalletProps) {
+  const router = useRouter();
   const [amount, setAmount] = useState<number>(1000);
   const [loading, setLoading] = useState(false);
 
   const balance = wallet ? (wallet.balance_paise / 100) : 0;
   const isLow = balance < ((wallet?.warning_threshold_paise || 50000) / 100);
+
+  async function loadRazorpayScript(): Promise<void> {
+    if ((window as unknown as { Razorpay?: unknown }).Razorpay) return;
+    await new Promise<void>((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "https://checkout.razorpay.com/v1/checkout.js";
+      s.async = true;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error("Secure checkout could not load"));
+      document.head.appendChild(s);
+    });
+  }
 
   const handleTopUp = async () => {
     setLoading(true);
@@ -25,14 +39,38 @@ export function ActiveWallet({ wallet, tier, organizationId }: ActiveWalletProps
         body: JSON.stringify({ amount_inr: amount, organization_id: organizationId }),
       });
       const data = await res.json();
-      if (data.error) {
-        alert("Error: " + data.error);
+      if (!res.ok || data.error) {
+        alert("Error: " + (data.error || "Failed to create top-up order"));
         return;
       }
-      // Here we would initialize Razorpay checkout.js
-      alert(`Razorpay Checkout simulation: \nOrder ID: ${data.order_id}\nAmount: ₹${amount}\n\n(In production, the Razorpay window would open here).`);
+
+      await loadRazorpayScript();
+      const RazorpayConstructor = (window as unknown as { Razorpay?: new (opts: Record<string, unknown>) => { open: () => void } }).Razorpay;
+      if (!RazorpayConstructor) {
+        alert("Secure checkout is unavailable. Please refresh and try again.");
+        return;
+      }
+
+      const rzp = new RazorpayConstructor({
+        key: data.key_id,
+        amount: data.total_payable_paise,
+        currency: data.currency || "INR",
+        order_id: data.order_id,
+        name: "OmniRelay Message Wallet",
+        description: `Prepaid Wallet Top-up (₹${amount})`,
+        theme: { color: "#168de2" },
+        handler: () => {
+          alert("Payment received! Updating wallet balance...");
+          window.setTimeout(() => router.refresh(), 1000);
+        },
+        modal: {
+          ondismiss: () => setLoading(false),
+        },
+      });
+      rzp.open();
     } catch (e) {
       console.error(e);
+      alert(e instanceof Error ? e.message : "Top-up checkout failed");
     } finally {
       setLoading(false);
     }

@@ -124,7 +124,9 @@ export async function runSystemHealthChecks(): Promise<SystemHealthReport> {
   const hasWhatsAppConfig = Boolean(
     process.env.WHATSAPP_TOKEN ||
     process.env.META_WHATSAPP_TOKEN ||
-    process.env.WHATSAPP_PHONE_NUMBER_ID
+    process.env.WHATSAPP_SYSTEM_TOKEN ||
+    process.env.WHATSAPP_PHONE_NUMBER_ID ||
+    process.env.WHATSAPP_PHONE_ID
   );
 
   const metaStatus: SubsystemHealth = {
