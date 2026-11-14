@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { calculateTopUpWithGst } from "@/lib/billing/deduction-engine";
+import { isCashfreeConfigured, createCashfreeOrder } from "@/lib/billing/cashfree";
 
 export async function POST(request: Request) {
   try {
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
     });
 
     if (memberError) {
-      console.error("[Razorpay Topup] Authorization check failed:", memberError);
+      console.error("[Billing Topup] Authorization check failed:", memberError);
       return NextResponse.json({ error: "Authorization service unavailable" }, { status: 503 });
     }
 
@@ -34,49 +35,74 @@ export async function POST(request: Request) {
 
     // Calculate official 18% GST breakdown
     const gstBreakdown = calculateTopUpWithGst(amount_inr);
+    const gateway = (process.env.PAYMENT_GATEWAY || (isCashfreeConfigured() ? "cashfree" : "razorpay")).toLowerCase();
 
-    // Create Razorpay Order
-    let razorpayOrderId = "";
-    
-    if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+    let providerOrderId = "";
+    let paymentSessionId = "";
+
+    // --- BRANCH A: CASHFREE GATEWAY ---
+    if (gateway === "cashfree") {
       try {
-        const auth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString("base64");
-        const rzpRes = await fetch("https://api.razorpay.com/v1/orders", {
-          method: "POST",
-          headers: {
-            "Authorization": `Basic ${auth}`,
-            "Content-Type": "application/json",
+        const rawId = `topup_${organization_id.replace(/-/g, "").slice(0, 16)}_${Date.now().toString(36)}`;
+        const cfOrder = await createCashfreeOrder({
+          orderId: rawId,
+          amountInr: gstBreakdown.totalPayableInr,
+          customerId: user.id,
+          customerEmail: user.email || "billing@omnirelay.ai",
+          notes: {
+            organization_id,
+            base_amount_inr: String(amount_inr),
+            gst_amount_inr: String(gstBreakdown.gstAmountInr),
+            purpose: "wallet_topup",
           },
-          body: JSON.stringify({
-            amount: gstBreakdown.totalPayablePaise,
-            currency: "INR",
-            receipt: `rcpt_${organization_id.substring(0, 8)}_${Date.now()}`,
-            notes: {
-              organization_id,
-              base_amount_inr: amount_inr,
-              gst_amount_inr: gstBreakdown.gstAmountInr,
-            },
-          }),
         });
-
-        if (rzpRes.ok) {
-          const rzpData = await rzpRes.json();
-          razorpayOrderId = rzpData.id;
-        } else {
-          const errText = await rzpRes.text();
-          console.error("[Razorpay] API order creation failed:", errText);
-          return NextResponse.json({ error: "Failed to create payment order with provider" }, { status: 502 });
-        }
-      } catch (err: any) {
-        console.error("[Razorpay] Network exception during order creation:", err);
-        return NextResponse.json({ error: "Payment gateway network error" }, { status: 502 });
+        providerOrderId = cfOrder.orderId;
+        paymentSessionId = cfOrder.paymentSessionId;
+      } catch (cfErr) {
+        console.error("[Cashfree Top-up] Order creation failed:", cfErr);
+        return NextResponse.json({ error: cfErr instanceof Error ? cfErr.message : "Failed to create Cashfree top-up order" }, { status: 502 });
       }
     } else {
-      // In development/test mode only, if explicit mock testing is enabled
-      if (process.env.ALLOW_MOCK_PAYMENTS === "true" && process.env.NODE_ENV !== "production") {
-        razorpayOrderId = `order_test_${Math.random().toString(36).substring(2, 15)}`;
+      // --- BRANCH B: RAZORPAY GATEWAY (FALLBACK) ---
+      if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+        try {
+          const auth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString("base64");
+          const rzpRes = await fetch("https://api.razorpay.com/v1/orders", {
+            method: "POST",
+            headers: {
+              "Authorization": `Basic ${auth}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              amount: gstBreakdown.totalPayablePaise,
+              currency: "INR",
+              receipt: `rcpt_${organization_id.substring(0, 8)}_${Date.now()}`,
+              notes: {
+                organization_id,
+                base_amount_inr: amount_inr,
+                gst_amount_inr: gstBreakdown.gstAmountInr,
+              },
+            }),
+          });
+
+          if (rzpRes.ok) {
+            const rzpData = await rzpRes.json();
+            providerOrderId = rzpData.id;
+          } else {
+            const errText = await rzpRes.text();
+            console.error("[Razorpay] API order creation failed:", errText);
+            return NextResponse.json({ error: "Failed to create payment order with provider" }, { status: 502 });
+          }
+        } catch (err: unknown) {
+          console.error("[Razorpay] Network exception during order creation:", err);
+          return NextResponse.json({ error: "Payment gateway network error" }, { status: 502 });
+        }
       } else {
-        return NextResponse.json({ error: "Payment gateway credentials are not configured" }, { status: 500 });
+        if (process.env.ALLOW_MOCK_PAYMENTS === "true" && process.env.NODE_ENV !== "production") {
+          providerOrderId = `order_test_${Math.random().toString(36).substring(2, 15)}`;
+        } else {
+          return NextResponse.json({ error: "Payment gateway credentials are not configured" }, { status: 500 });
+        }
       }
     }
 
@@ -88,23 +114,27 @@ export async function POST(request: Request) {
       amount_paise: gstBreakdown.baseAmountInr * 100,
       gst_amount_paise: gstBreakdown.gstAmountInr * 100,
       transaction_type: "top_up",
-      razorpay_order_id: razorpayOrderId,
+      razorpay_order_id: providerOrderId,
       status: "pending",
       metadata: {
         expected_total_paise: gstBreakdown.totalPayablePaise,
         base_amount_inr: amount_inr,
         created_by_user_id: user.id,
         currency: "INR",
+        gateway,
       },
     });
 
     if (insertError) {
-      console.error("[Razorpay Top-up] Failed to pre-register pending transaction row:", insertError);
+      console.error("[Billing Top-up] Failed to pre-register pending transaction row:", insertError);
       return NextResponse.json({ error: "Failed to initialize payment order in ledger" }, { status: 500 });
     }
 
     return NextResponse.json({
-      order_id: razorpayOrderId,
+      gateway,
+      mode: (process.env.CASHFREE_MODE || "production").toLowerCase(),
+      order_id: providerOrderId,
+      payment_session_id: paymentSessionId || undefined,
       amount_inr: gstBreakdown.baseAmountInr,
       gst_inr: gstBreakdown.gstAmountInr,
       total_payable_inr: gstBreakdown.totalPayableInr,

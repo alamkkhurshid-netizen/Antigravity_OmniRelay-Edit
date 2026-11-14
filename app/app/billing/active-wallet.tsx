@@ -30,6 +30,18 @@ export function ActiveWallet({ wallet, tier, organizationId }: ActiveWalletProps
     });
   }
 
+  async function loadCashfreeScript(): Promise<void> {
+    if ((window as unknown as { Cashfree?: unknown }).Cashfree) return;
+    await new Promise<void>((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "https://sdk.cashfree.com/js/v3/cashfree.js";
+      s.async = true;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error("Cashfree checkout could not load"));
+      document.head.appendChild(s);
+    });
+  }
+
   const handleTopUp = async () => {
     setLoading(true);
     try {
@@ -44,6 +56,34 @@ export function ActiveWallet({ wallet, tier, organizationId }: ActiveWalletProps
         return;
       }
 
+      // --- BRANCH A: CASHFREE MODAL CHECKOUT ---
+      if (data.gateway === "cashfree" || data.payment_session_id) {
+        await loadCashfreeScript();
+        const CashfreeInit = (window as unknown as { Cashfree?: (opts: { mode: string }) => { checkout: (opts: Record<string, unknown>) => Promise<{ error?: unknown }> } }).Cashfree;
+        if (!CashfreeInit) {
+          alert("Cashfree checkout is unavailable. Please refresh.");
+          return;
+        }
+
+        const cf = CashfreeInit({ mode: data.mode || "production" });
+        cf.checkout({
+          paymentSessionId: data.payment_session_id,
+          redirectTarget: "_modal",
+        }).then((result) => {
+          if (result.error) {
+            alert("Payment window closed or cancelled.");
+            return;
+          }
+          alert("Payment completed! Updating wallet balance...");
+          window.setTimeout(() => router.refresh(), 1000);
+        }).catch((err) => {
+          console.error(err);
+          alert(err instanceof Error ? err.message : "Payment cancelled");
+        });
+        return;
+      }
+
+      // --- BRANCH B: RAZORPAY MODAL CHECKOUT (FALLBACK) ---
       await loadRazorpayScript();
       const RazorpayConstructor = (window as unknown as { Razorpay?: new (opts: Record<string, unknown>) => { open: () => void } }).Razorpay;
       if (!RazorpayConstructor) {

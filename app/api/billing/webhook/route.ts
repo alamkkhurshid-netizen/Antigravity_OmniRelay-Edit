@@ -1,71 +1,117 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { creditWallet } from "@/lib/billing/wallet";
+import { verifyCashfreeWebhookSignature } from "@/lib/billing/cashfree";
 
 export async function POST(request: Request) {
   try {
     const rawBody = await request.text();
-    const signature = request.headers.get("x-razorpay-signature");
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const rzpSignature = request.headers.get("x-razorpay-signature");
+    const cfSignature = request.headers.get("x-webhook-signature");
+    const cfTimestamp = request.headers.get("x-webhook-timestamp");
 
-    // Fail closed: Webhook verification required in all environments
-    if (!secret) {
-      console.error("[Billing Webhook] RAZORPAY_WEBHOOK_SECRET is not configured on server. Rejecting.");
-      return NextResponse.json({ error: "Webhook verification not configured" }, { status: 500 });
-    }
-    if (!signature) {
+    let isCashfree = false;
+    let isRazorpay = false;
+
+    // 1. Authenticate signature according to gateway format
+    if (cfSignature) {
+      if (!verifyCashfreeWebhookSignature(rawBody, cfTimestamp, cfSignature)) {
+        console.warn("[Billing Webhook] Invalid Cashfree webhook signature detected.");
+        return NextResponse.json({ error: "Invalid webhook signature" }, { status: 400 });
+      }
+      isCashfree = true;
+    } else if (rzpSignature) {
+      const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+      if (!secret) {
+        console.error("[Billing Webhook] RAZORPAY_WEBHOOK_SECRET is not configured on server.");
+        return NextResponse.json({ error: "Webhook verification not configured" }, { status: 500 });
+      }
+      const expectedSignature = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+      const sigBuf = Buffer.from(rzpSignature);
+      const expBuf = Buffer.from(expectedSignature);
+      if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+        console.warn("[Billing Webhook] Invalid Razorpay webhook signature detected.");
+        return NextResponse.json({ error: "Invalid webhook signature" }, { status: 400 });
+      }
+      isRazorpay = true;
+    } else {
       return NextResponse.json({ error: "Missing webhook signature" }, { status: 400 });
     }
 
-    const expectedSignature = crypto
-      .createHmac("sha256", secret)
-      .update(rawBody)
-      .digest("hex");
-
-    const sigBuf = Buffer.from(signature);
-    const expBuf = Buffer.from(expectedSignature);
-
-    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
-      console.warn("[Billing Webhook] Invalid webhook signature detected.");
-      return NextResponse.json({ error: "Invalid webhook signature" }, { status: 400 });
-    }
-
     const payload = JSON.parse(rawBody);
-
-    if (payload.event !== "payment.captured") {
-      return NextResponse.json({ received: true, ignored_event: payload.event });
-    }
-
-    const payment = payload.payload?.payment?.entity;
-    if (!payment) {
-      return NextResponse.json({ error: "Missing payment entity" }, { status: 400 });
-    }
-
-    const paymentId = payment.id;
-    const orderId = payment.order_id;
-    const totalPaise = payment.amount;
-    const notesOrgId = payment.notes?.organization_id;
-
-    if (!paymentId) {
-      console.error("[Billing Webhook] Missing payment_id in payment payload");
-      return NextResponse.json({ error: "Invalid payment payload" }, { status: 400 });
-    }
-
-    const currency = (payment.currency || "INR").toUpperCase();
-    if (currency !== "INR") {
-      console.error(`[Billing Webhook] Currency mismatch: Received ${currency}, expected INR`);
-      return NextResponse.json({ error: "Unsupported currency" }, { status: 400 });
-    }
-
-    // Verify order exists in database and bind tenant securely from verified order record
     const { createAdminClient } = await import("@/lib/supabase/admin");
     const adminSupabase = createAdminClient();
 
+    let paymentId = "";
+    let orderId = "";
+    let totalPaise = 0;
+    let notesOrgId: string | undefined = undefined;
+
+    // --- CASE A: CASHFREE WEBHOOK ---
+    if (isCashfree) {
+      const type = payload.type || payload.event;
+      if (type !== "PAYMENT_SUCCESS_WEBHOOK" && type !== "payment.success") {
+        return NextResponse.json({ received: true, ignored_type: type });
+      }
+      const orderData = payload.data?.order || {};
+      const paymentData = payload.data?.payment || {};
+
+      orderId = String(orderData.order_id || "");
+      paymentId = String(paymentData.cf_payment_id || orderData.cf_order_id || orderId);
+      const amountInr = Number(orderData.order_amount ?? paymentData.payment_amount ?? 0);
+      totalPaise = Math.round(amountInr * 100);
+      notesOrgId = orderData.order_tags?.organization_id;
+    }
+
+    // --- CASE B: RAZORPAY WEBHOOK ---
+    if (isRazorpay) {
+      if (payload.event !== "payment.captured") {
+        return NextResponse.json({ received: true, ignored_event: payload.event });
+      }
+      const payment = payload.payload?.payment?.entity;
+      if (!payment) return NextResponse.json({ error: "Missing payment entity" }, { status: 400 });
+
+      paymentId = payment.id;
+      orderId = payment.order_id;
+      totalPaise = payment.amount;
+      notesOrgId = payment.notes?.organization_id;
+
+      const currency = (payment.currency || "INR").toUpperCase();
+      if (currency !== "INR") {
+        console.error(`[Billing Webhook] Currency mismatch: Received ${currency}, expected INR`);
+        return NextResponse.json({ error: "Unsupported currency" }, { status: 400 });
+      }
+    }
+
+    if (!paymentId) {
+      return NextResponse.json({ error: "Missing payment identifier" }, { status: 400 });
+    }
+
+    // Check if this payment is for a SaaS Subscription (saas_billing_orders)
+    const { data: saasOrder } = await adminSupabase
+      .from("saas_billing_orders")
+      .select("id, organization_id, amount_paise, status")
+      .eq("provider_order_id", orderId)
+      .maybeSingle();
+
+    if (saasOrder) {
+      const { data: activation, error: actError } = await adminSupabase.rpc("activate_saas_subscription", {
+        p_provider_order_id: orderId,
+        p_provider_payment_id: paymentId,
+      });
+      if (actError) {
+        console.error("[Billing Webhook] SaaS activation failed:", actError);
+        return NextResponse.json({ error: actError.message }, { status: 400 });
+      }
+      return NextResponse.json({ success: true, saas_subscription: activation });
+    }
+
+    // Otherwise, check if this payment is for Wallet Top-up (wallet_transactions)
     let organizationId = notesOrgId;
     let expectedTotalPaise = totalPaise;
 
     if (orderId) {
-      const { data: pendingOrder, error: orderErr } = await adminSupabase
+      const { data: pendingOrder } = await adminSupabase
         .schema("billing")
         .from("wallet_transactions")
         .select("id, organization_id, amount_paise, gst_amount_paise, status, metadata")
@@ -73,13 +119,11 @@ export async function POST(request: Request) {
         .maybeSingle();
 
       if (pendingOrder) {
-        // Derive authoritative tenant from verified order record
         organizationId = pendingOrder.organization_id;
         expectedTotalPaise = pendingOrder.metadata?.expected_total_paise || (pendingOrder.amount_paise + (pendingOrder.gst_amount_paise || 0));
 
-        // Exact amount matching required: reject any divergence
         if (totalPaise !== expectedTotalPaise) {
-          console.error(`[Billing Webhook] Amount tampering alert: Received ${totalPaise} paise, expected exact ${expectedTotalPaise} paise`);
+          console.error(`[Billing Webhook] Amount tampering alert: Received ${totalPaise} paise, expected ${expectedTotalPaise} paise`);
           await adminSupabase.from("operational_events").insert({
             organization_id: organizationId,
             event_source: "billing_webhook",
@@ -112,7 +156,6 @@ export async function POST(request: Request) {
     }
 
     // Amount credited to wallet is base operational amount before 18% GST
-    // Total = Base * 1.18 => Base = Total / 1.18
     const basePaise = Math.round(totalPaise / 1.18);
     const gstPaise = totalPaise - basePaise;
 
@@ -123,11 +166,9 @@ export async function POST(request: Request) {
       orderId,
       gstPaise,
       {
-        razorpay_payment_id: paymentId,
-        razorpay_order_id: orderId,
-        method: payment.method,
-        email: payment.email,
-        contact: payment.contact,
+        provider_payment_id: paymentId,
+        provider_order_id: orderId,
+        gateway: isCashfree ? "cashfree" : "razorpay",
         raw_amount_paise: totalPaise,
       }
     );
@@ -145,11 +186,6 @@ export async function POST(request: Request) {
         .eq("id", creditResult.transactionId);
     }
 
-    console.log(
-      `[Billing Webhook] Wallet credit processed for org ${organizationId}: ` +
-      `credited=₹${basePaise / 100}, new_balance=₹${creditResult.balanceInr}, invoice=${invoiceNumber}, idempotent=${creditResult.alreadyProcessed}`
-    );
-
     return NextResponse.json({
       success: true,
       credited: !creditResult.alreadyProcessed,
@@ -159,8 +195,9 @@ export async function POST(request: Request) {
       invoice_url: `/api/billing/invoices/${creditResult.transactionId || invoiceNumber}`,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Internal server error";
     console.error("[Billing Webhook] Webhook processing exception:", error);
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
