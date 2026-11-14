@@ -1,7 +1,16 @@
 {
   "schema_version": 1,
-  "latest_release": "2026-11-08-whatsapp-canonical-provisioning-and-registration",
+  "latest_release": "2026-11-14-cto-security-audit-remediation",
   "releases": [
+    {
+      "id": "2026-11-14-cto-security-audit-remediation",
+      "record": "docs/knowledge/releases/2026-11-14-cto-security-audit-remediation.md",
+      "guide_reviewed_on": "2026-11-14",
+      "product_areas": ["Super CTO Webhook", "AI Observer Gate", "Runtime Control Impersonation Protection", "Cashfree Payment ID Alignment", "Voice Escalation Hardening", "Security Definer Search Path"],
+      "guide_articles": ["billing", "booking-concierge"],
+      "rag_impact": "guide_only",
+      "verified_by": ["Automated test suite", "Super CTO Security Audit", "Constant-time timingSafeEqual verification", "Cashfree payment ID alignment test", "Voice AI integration test"]
+    },
     {
       "id": "2026-11-08-whatsapp-canonical-provisioning-and-registration",
       "record": "docs/knowledge/releases/2026-11-08-whatsapp-canonical-provisioning-and-registration.md",

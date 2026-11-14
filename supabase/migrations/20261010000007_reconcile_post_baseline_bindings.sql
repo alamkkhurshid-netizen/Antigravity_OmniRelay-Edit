@@ -215,14 +215,23 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-    v_caller_id uuid := coalesce(auth.uid(), p_actor_id);
-    v_is_service_role boolean := (auth.role() = 'service_role' AND p_actor_id IS NULL);
+    v_is_service_role boolean := (auth.role() = 'service_role');
+    v_caller_id uuid;
     v_existing RECORD;
     v_old_value boolean;
     v_old_version int;
     v_new_version int;
     v_result jsonb;
 BEGIN
+    -- Strict Actor Derivation (F-01 Remediation: Prevent anonymous/unauthorized actor spoofing)
+    IF v_is_service_role THEN
+        v_caller_id := coalesce(p_actor_id, auth.uid());
+    ELSE
+        v_caller_id := auth.uid();
+        IF v_caller_id IS NULL THEN
+            RAISE EXCEPTION 'Authentication required. Anonymous actor impersonation is strictly prohibited.' USING ERRCODE = '42501';
+        END IF;
+    END IF;
     -- 1. Control Key Allowlist Validation
     IF p_control_key NOT IN (
         'WORKER_ENABLED',
@@ -432,6 +441,7 @@ $$;
 
 -- Revoke direct table mutations; enforce RPC or service-role management only
 REVOKE INSERT, UPDATE, DELETE ON public.system_runtime_controls FROM anon, authenticated, public;
+REVOKE EXECUTE ON FUNCTION public.set_runtime_control FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.set_runtime_control TO authenticated, service_role;
 
 -- 8. Action Centre Carrier Recovery & Tenant Isolation Policies on operational_events

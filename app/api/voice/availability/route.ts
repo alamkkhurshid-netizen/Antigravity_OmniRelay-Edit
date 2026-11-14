@@ -28,34 +28,64 @@ export async function GET(req: NextRequest) {
 
     const admin = createAdminClient();
 
-    // 1. Get Provider / Doctor
+    // 1. Get Provider / Doctor (Column is 'active' in canonical postgres schema)
     let doctorQuery = admin
       .from("booking_resources")
-      .select("id, name, is_active")
+      .select("id, name, active")
       .eq("organization_id", orgId)
-      .eq("is_active", true);
+      .eq("active", true);
 
     if (doctorId) {
       doctorQuery = doctorQuery.eq("id", doctorId);
     }
 
-    const { data: doctors, error: docError } = await doctorQuery;
+    let { data: doctors, error: docError } = await doctorQuery;
+
+    // Fallback attempt if column was migrated as is_active in legacy instance
+    if (docError && docError.message.includes("active")) {
+      const fallbackQuery = admin
+        .from("booking_resources")
+        .select("id, name, is_active")
+        .eq("organization_id", orgId)
+        .eq("is_active", true);
+      const fbResult = await (doctorId ? fallbackQuery.eq("id", doctorId) : fallbackQuery);
+      doctors = fbResult.data;
+      docError = fbResult.error;
+    }
 
     if (docError) {
       return NextResponse.json({ error: docError.message }, { status: 500 });
     }
 
-    const activeDoctor = doctors && doctors.length > 0 ? doctors[0] : { id: "default", name: "On-Duty Physician" };
+    if (!doctors || doctors.length === 0) {
+      return NextResponse.json({
+        available: false,
+        slots: [],
+        speech_summary: "No doctors are currently available on this date. Would you like to check another day?",
+      });
+    }
 
-    // 2. Fetch booked appointments for this date
-    const { data: booked, error: apptError } = await admin
+    const activeDoctor = doctors[0];
+
+    // 2. Fetch booked appointments for this doctor on this date (fail-closed on error - F-06)
+    let bookedQuery = admin
       .from("voice_appointments_readonly")
       .select("starts_at, ends_at, doctor_id")
       .eq("organization_id", orgId)
       .eq("appointment_date", dateQuery);
 
+    if (activeDoctor.id && activeDoctor.id !== "default") {
+      bookedQuery = bookedQuery.eq("doctor_id", activeDoctor.id);
+    }
+
+    const { data: booked, error: apptError } = await bookedQuery;
+
     if (apptError) {
-      console.warn("[Voice Availability] View query error, falling back:", apptError.message);
+      console.error("[Voice Availability] View query failure, refusing to invent fake slots:", apptError.message);
+      return NextResponse.json(
+        { error: "APPOINTMENT_DATA_UNAVAILABLE", message: "Unable to retrieve calendar availability securely." },
+        { status: 500 }
+      );
     }
 
     // 3. Compute slots

@@ -95,6 +95,17 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (saasOrder) {
+      // Amount verification guard (F-15 remediation)
+      if (totalPaise > 0 && Math.abs(saasOrder.amount_paise - totalPaise) > 100) {
+        console.error(`[Billing Webhook] SaaS Amount mismatch: Expected ${saasOrder.amount_paise}, received ${totalPaise}`);
+        return NextResponse.json({ error: "PAYMENT_AMOUNT_MISMATCH" }, { status: 400 });
+      }
+
+      // Idempotency short-circuit: If order already active/paid, acknowledge webhook safely
+      if (saasOrder.status === "paid") {
+        return NextResponse.json({ success: true, message: "Order already fulfilled (idempotent)" });
+      }
+
       const { data: activation, error: actError } = await adminSupabase.rpc("activate_saas_subscription", {
         p_provider_order_id: orderId,
         p_provider_payment_id: paymentId,

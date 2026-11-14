@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getWorkspace } from "@/lib/workspace";
 import { supabaseUrl } from "@/lib/supabase/config";
-import { getCashfreeOrder } from "@/lib/billing/cashfree";
+import { getCashfreeOrder, getCashfreeOrderPayments } from "@/lib/billing/cashfree";
 
 async function hmac(message: string, secret: string) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -48,7 +48,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Payment amount mismatch." }, { status: 400 });
       }
 
-      const paymentId = String(cfOrder.cf_order_id || cfOrderId);
+      // Resolve canonical payment ID from successful payments or order fallback (F-15 alignment)
+      const payments = await getCashfreeOrderPayments(cfOrderId);
+      const successPayment = payments.find(p => p.payment_status === "SUCCESS");
+      const paymentId = String(successPayment?.cf_payment_id || cfOrder.cf_order_id || cfOrderId);
+
       const { data, error } = await admin.rpc("activate_saas_subscription", {
         p_provider_order_id: cfOrderId,
         p_provider_payment_id: paymentId,

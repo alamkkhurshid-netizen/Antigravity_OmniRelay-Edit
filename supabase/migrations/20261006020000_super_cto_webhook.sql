@@ -3,10 +3,30 @@ CREATE EXTENSION IF NOT EXISTS pg_net;
 
 -- Create the HTTP request function for the webhook
 CREATE OR REPLACE FUNCTION trigger_super_cto_webhook()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 DECLARE
   payload JSONB;
+  webhook_secret TEXT;
 BEGIN
+  -- Retrieve secret securely from Supabase Vault (never commit plain credentials)
+  BEGIN
+    SELECT decrypted_secret INTO webhook_secret
+    FROM vault.decrypted_secrets
+    WHERE name = 'supabase_webhook_secret'
+    LIMIT 1;
+  EXCEPTION WHEN OTHERS THEN
+    webhook_secret := NULL;
+  END;
+
+  IF webhook_secret IS NULL OR webhook_secret = '123456' OR length(webhook_secret) < 16 THEN
+    -- Suppress unauthenticated/insecure dispatch
+    RETURN NEW;
+  END IF;
+
   -- Construct the payload
   payload := jsonb_build_object(
     'type', TG_OP,
@@ -16,16 +36,18 @@ BEGIN
   );
 
   -- We use pg_net extension to make an async HTTP POST request
-  -- The url must point to the production Vercel project or a proxy
   PERFORM net.http_post(
     url := 'https://omnirelay-main.vercel.app/api/ai/notify',
     body := payload,
-    headers := '{"Content-Type": "application/json", "x-webhook-secret": "123456"}'::jsonb
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-webhook-secret', webhook_secret
+    )
   );
   
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- Create the trigger on the ai_governance_queue table
 DROP TRIGGER IF EXISTS on_governance_queue_insert ON ai_governance_queue;

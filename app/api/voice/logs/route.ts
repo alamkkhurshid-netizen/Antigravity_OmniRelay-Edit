@@ -174,6 +174,7 @@ export async function POST(req: NextRequest) {
         .from("voice_call_logs")
         .select("id")
         .eq("exotel_call_sid", exotel_call_sid)
+        .eq("organization_id", orgId)
         .maybeSingle();
 
       if (existing) {

@@ -47,24 +47,33 @@ export async function POST(req: NextRequest) {
       .single();
 
     const orgExtra = (org?.extra || {}) as Record<string, unknown>;
-    const targetPhone = String(
+    const rawTarget =
       config?.receptionist_phone ||
       config?.forwarding_phone_number ||
+      orgExtra.receptionist_phone ||
       orgExtra.phone ||
-      orgExtra.emergency_phone ||
-      "919876543210"
-    );
+      orgExtra.emergency_phone;
 
-    // 3. Update call log if call_sid is provided
+    if (!rawTarget || String(rawTarget).trim() === "") {
+      console.warn(`[Voice Escalate] No approved human number configured for tenant ${org_id}`);
+      return NextResponse.json(
+        { error: "NO_APPROVED_HUMAN_NUMBER", message: "Clinic has not configured a valid human reception desk number." },
+        { status: 422 }
+      );
+    }
+    const targetPhone = String(rawTarget).replace(/[^\d+]/g, "");
+
+    // 3. Update call log if call_sid is provided (strictly scoped to organization_id - F-08)
     if (call_sid) {
       await admin
         .from("voice_call_logs")
         .update({
-          outcome: "human_transferred",
-          summary: `Call transferred to front desk (${targetPhone}). Reason: ${reason}.`,
+          outcome: "transfer_initiated",
+          summary: `Call transfer initiated to front desk (${targetPhone}). Reason: ${reason}.`,
           updated_at: new Date().toISOString(),
         })
-        .eq("exotel_call_sid", call_sid);
+        .eq("exotel_call_sid", call_sid)
+        .eq("organization_id", org_id);
     }
 
     // 4. Create internal notification for front desk
@@ -92,7 +101,7 @@ export async function POST(req: NextRequest) {
         action: "dial",
         number: targetPhone,
         callerId: config?.receptionist_phone || targetPhone,
-        record: true,
+        record: false,
       },
     });
   } catch (err: unknown) {

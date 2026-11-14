@@ -7,7 +7,21 @@ import { consumeVoiceRequestNonce } from "../lib/voice/auth.ts";
 const { Client } = pg;
 const PG_URI = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || "postgres://postgres:postgres@localhost:54322/postgres";
 
+function assertSafeDatabaseTarget(uri) {
+  try {
+    const url = new URL(uri);
+    const hostname = url.hostname.toLowerCase();
+    const isLocalOrDisposable = hostname === "localhost" || hostname === "127.0.0.1" || hostname.includes("disposable") || hostname.includes("test");
+    if (!isLocalOrDisposable && process.env.ALLOW_REMOTE_DISPOSABLE_TEST_DB !== "true") {
+      throw new Error(`[SECURITY] Refusing to run destructive disposable postgres test against non-local target: ${hostname}. Use localhost or set ALLOW_REMOTE_DISPOSABLE_TEST_DB=true.`);
+    }
+  } catch (err) {
+    if (err.message.includes("[SECURITY]")) throw err;
+  }
+}
+
 async function getClient() {
+  assertSafeDatabaseTarget(PG_URI);
   const client = new Client({ connectionString: PG_URI });
   await client.connect();
   return client;

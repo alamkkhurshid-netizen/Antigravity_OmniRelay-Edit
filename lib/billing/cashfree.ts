@@ -120,6 +120,38 @@ export async function getCashfreeOrder(orderId: string): Promise<Record<string, 
 }
 
 /**
+ * Fetches payments associated with a specific Cashfree order
+ */
+export async function getCashfreeOrderPayments(orderId: string): Promise<Array<Record<string, unknown>>> {
+  const appId = process.env.CASHFREE_APP_ID;
+  const secretKey = process.env.CASHFREE_SECRET_KEY;
+
+  if (!appId || !secretKey) {
+    return [];
+  }
+
+  try {
+    const response = await fetch(`${getCashfreeBaseUrl()}/orders/${encodeURIComponent(orderId)}/payments`, {
+      headers: {
+        "x-client-id": appId,
+        "x-client-secret": secretKey,
+        "x-api-version": "2023-08-01",
+        "Accept": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Cryptographically verifies Cashfree webhook signature
  * signedPayload := timestamp + rawPayload
  * expectedSignature := Base64Encode(HMACSHA256(signedPayload, secretKey))

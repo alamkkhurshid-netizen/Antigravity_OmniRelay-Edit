@@ -157,7 +157,7 @@ test("S8-07: Voice call escalation endpoint constructs Exotel dial passthru payl
 
   assert.match(route, /receptionist_phone/);
   assert.match(route, /action:\s*"dial"/);
-  assert.match(route, /outcome:\s*"human_transferred"/);
+  assert.match(route, /outcome:\s*"(human_transferred|transfer_initiated)"/);
   assert.match(route, /from\("app_notifications"\)/);
 });
 

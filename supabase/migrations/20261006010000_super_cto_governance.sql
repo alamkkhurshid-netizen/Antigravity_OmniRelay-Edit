@@ -36,7 +36,9 @@ ALTER TABLE public.ai_governance_queue ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Admins can view the queue for dashboard monitoring"
 ON public.ai_governance_queue
 FOR SELECT
-USING (auth.role() = 'authenticated');
+USING (
+    COALESCE((SELECT private.is_platform_operator()), false) = true
+);
 
 -- Trigger to automatically update updated_at
 CREATE OR REPLACE FUNCTION update_ai_queue_updated_at()

@@ -3,7 +3,11 @@ CREATE EXTENSION IF NOT EXISTS pg_net;
 
 -- Create the webhook function
 CREATE OR REPLACE FUNCTION public.calendar_sync_webhook()
-RETURNS trigger AS $$
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 BEGIN
   PERFORM net.http_post(
       url:='https://omnirelay-main.vercel.app/api/webhooks/appointments/calendar-sync',
@@ -11,7 +15,7 @@ BEGIN
   );
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- Set up the webhook trigger for calendar sync
 DROP TRIGGER IF EXISTS "appointments_calendar_sync" ON "public"."appointments";
