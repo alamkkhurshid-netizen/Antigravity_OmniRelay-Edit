@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RegisteredConsultant, RosterRow, OpsAlert, ImportRow, Preview } from "./types";
+import { RegisteredConsultant, RosterRow, OpsAlert, ImportRow, Preview, ClinicLocation } from "./types";
 
 export const template =
   "doctor_name,specialization,department,contact_phone,contact_email,chamber,weekdays,start_time,end_time,slot_duration_minutes\nDr Asha Sen,Cardiology,Cardiology,+919900001001,asha@example.com,Chamber 1,1|3|5,12:00,16:00,20\n";
@@ -77,6 +77,7 @@ export function useClinicOperations(today: string) {
   const [date, setDate] = useState(today);
   const [roster, setRoster] = useState<RosterRow[]>([]);
   const [consultants, setConsultants] = useState<RegisteredConsultant[]>([]);
+  const [locations, setLocations] = useState<ClinicLocation[]>([]);
   const [activeTab, setActiveTab] = useState<"roster" | "consultants">("roster");
   const [searchQuery, setSearchQuery] = useState("");
   const [updated, setUpdated] = useState("");
@@ -129,6 +130,9 @@ export function useClinicOperations(today: string) {
         setUpdated(data.updatedAt);
         if (data.consultants) {
           setConsultants(data.consultants);
+        }
+        if (data.locations) {
+          setLocations(data.locations);
         }
       }
       setLoading(false);
@@ -316,14 +320,38 @@ export function useClinicOperations(today: string) {
     [date, loadRoster]
   );
 
+  const updateDoctor = useCallback(
+    async (doctorId: string, payload: any) => {
+      setBusy(true);
+      setMessage("");
+      try {
+        const res = await fetch("/api/clinic-operations/doctor", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: doctorId, ...payload }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to update doctor details.");
+        }
+        setMessage(data.message || "Doctor details & shift schedule updated successfully.");
+        await loadRoster(date);
+        return data;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [date, loadRoster]
+  );
+
   return {
-    date, setDate, roster, setRoster, consultants, setConsultants, activeTab, setActiveTab,
+    date, setDate, roster, setRoster, consultants, setConsultants, locations, activeTab, setActiveTab,
     searchQuery, setSearchQuery, updated, setUpdated, loading, setLoading, departments,
     setDepartments, departmentFilter, setDepartmentFilter, alerts, setAlerts, rows, setRows,
     preview, setPreview, message, setMessage, busy, setBusy, queueBusy, setQueueBusy,
     queueMessage, setQueueMessage, preflightMessage, setPreflightMessage, consentRow, setConsentRow,
     consentChecked, setConsentChecked, changeDay, dayInfo, loadRoster, visibleRoster, totals,
     validate, download, setQueue, sendQueue, runPreDispatchCheck, filteredConsultants, jumpToShiftDay, jumpToDate,
-    deleteDoctor
+    deleteDoctor, updateDoctor
   };
 }

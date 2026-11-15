@@ -76,6 +76,7 @@ export async function GET(request: Request) {
     { data: departmentLinks },
     { data: exceptions },
     { data: allResources },
+    { data: allLocations },
   ] = await Promise.all([
     supabase
       .from("availability_rules")
@@ -123,6 +124,12 @@ export async function GET(request: Request) {
       )
       .eq("organization_id", organization.id)
       .eq("resource_type", "doctor")
+      .eq("active", true)
+      .order("name"),
+    supabase
+      .from("business_locations")
+      .select("id,name")
+      .eq("organization_id", organization.id)
       .eq("active", true)
       .order("name"),
   ]);
@@ -259,6 +266,7 @@ export async function GET(request: Request) {
       startTime: String(r.start_time).slice(0, 5),
       endTime: String(r.end_time).slice(0, 5),
       slotMinutes: r.slot_interval_minutes,
+      locationId: r.location_id,
       chamber: r.location?.name ?? res.location?.name ?? "Chamber",
     }));
 
@@ -290,5 +298,6 @@ export async function GET(request: Request) {
     departments,
     alerts,
     consultants,
+    locations: ((allLocations ?? []) as any[]).map((l) => ({ id: l.id, name: l.name })),
   });
 }

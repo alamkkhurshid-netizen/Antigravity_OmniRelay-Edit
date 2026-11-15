@@ -186,6 +186,8 @@ export function ClinicOperationsWorkspace({ today }: { today: string }) {
           jumpToShiftDay={state.jumpToShiftDay}
           dayInfo={state.dayInfo}
           deleteDoctor={state.deleteDoctor}
+          updateDoctor={state.updateDoctor}
+          locations={state.locations}
         />
       )}
 

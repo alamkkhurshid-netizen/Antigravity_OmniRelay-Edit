@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Trash2 } from "lucide-react";
-import { RegisteredConsultant, RosterRow } from "@/app/app/clinic-operations/types";
+import { Trash2, Pencil } from "lucide-react";
+import { RegisteredConsultant, RosterRow, ClinicLocation } from "@/app/app/clinic-operations/types";
+import { EditDoctorModal } from "./edit-doctor-modal";
 
 export function VisitingConsultants({
   filteredConsultants,
@@ -10,6 +11,8 @@ export function VisitingConsultants({
   jumpToShiftDay,
   dayInfo,
   deleteDoctor,
+  updateDoctor,
+  locations = [],
 }: {
   filteredConsultants: RegisteredConsultant[];
   visibleRoster: RosterRow[];
@@ -18,8 +21,11 @@ export function VisitingConsultants({
   jumpToShiftDay: (weekday: number) => void;
   dayInfo: { weekdayName: string };
   deleteDoctor?: (id: string, name: string) => Promise<any> | void;
+  updateDoctor?: (id: string, payload: any) => Promise<any> | void;
+  locations?: ClinicLocation[];
 }) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingDoctor, setEditingDoctor] = useState<RegisteredConsultant | null>(null);
 
   const handleDelete = async (id: string, name: string) => {
     if (!window.confirm(`Are you sure you want to remove ${name} from this clinic? Their shifts and future bookings will be discontinued.`)) {
@@ -90,12 +96,12 @@ export function VisitingConsultants({
                       </div>
                     </div>
                     {isVisitingOnSelectedDate ? (
-                      <span className="rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 text-[11px] font-extrabold flex items-center gap-1">
+                      <span className="rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 text-[11px] font-extrabold flex items-center gap-1 shrink-0">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         Visiting {dayInfo.weekdayName.slice(0, 3)}
                       </span>
                     ) : (
-                      <span className="rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600">
+                      <span className="rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600 shrink-0">
                         {doc.chambers[0] || "Chamber"}
                       </span>
                     )}
@@ -140,8 +146,17 @@ export function VisitingConsultants({
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-slate-100">
-                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                      Weekly Recurring Shifts ({doc.shifts.length})
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Weekly Recurring Shifts ({doc.shifts.length})
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditingDoctor(doc)}
+                        className="text-[11px] font-bold text-teal-600 hover:text-teal-700 hover:underline"
+                      >
+                        Edit Timings
+                      </button>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {doc.shifts.length === 0 ? (
@@ -174,16 +189,28 @@ export function VisitingConsultants({
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(doc.id, doc.name)}
-                    disabled={deletingId === doc.id}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer"
-                    title={`Remove ${doc.name} from clinic`}
-                  >
-                    <Trash2 className="size-3" />
-                    <span>{deletingId === doc.id ? "Removing…" : "Remove Doctor"}</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingDoctor(doc)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700 hover:bg-teal-100 transition-colors cursor-pointer"
+                      title={`Edit ${doc.name} timings, chamber, and credentials`}
+                    >
+                      <Pencil className="size-3" />
+                      <span>Edit Timings</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(doc.id, doc.name)}
+                      disabled={deletingId === doc.id}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer"
+                      title={`Remove ${doc.name} from clinic`}
+                    >
+                      <Trash2 className="size-3" />
+                      <span>{deletingId === doc.id ? "Removing…" : "Remove"}</span>
+                    </button>
+                  </div>
 
                   <div className="flex items-center gap-3">
                     <span className="text-[11px] text-slate-400 font-medium">
@@ -204,6 +231,19 @@ export function VisitingConsultants({
             );
           })}
         </div>
+      )}
+
+      {editingDoctor && (
+        <EditDoctorModal
+          doctor={editingDoctor}
+          locations={locations}
+          onClose={() => setEditingDoctor(null)}
+          onSave={async (id, payload) => {
+            if (updateDoctor) {
+              await updateDoctor(id, payload);
+            }
+          }}
+        />
       )}
     </section>
   );

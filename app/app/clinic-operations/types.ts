@@ -20,8 +20,14 @@ export type RegisteredConsultant = {
     endTime: string;
     slotMinutes: number;
     chamber: string;
+    locationId?: string;
   }>;
   scheduleSummary: string;
+};
+
+export type ClinicLocation = {
+  id: string;
+  name: string;
 };
 
 
