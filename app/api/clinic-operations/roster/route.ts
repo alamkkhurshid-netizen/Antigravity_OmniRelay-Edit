@@ -119,10 +119,11 @@ export async function GET(request: Request) {
     supabase
       .from("booking_resources")
       .select(
-        "id,name,active,location:business_locations(id,name),provider_profiles(specialization,contact_phone,contact_email,queue_notifications_enabled),availability_rules(id,location_id,weekday,start_time,end_time,slot_interval_minutes,location:business_locations(id,name))",
+        "id,name,active,location:business_locations(id,name),provider_profiles(specialization,qualifications,registration_number,experience_years,languages,biography,contact_phone,contact_email,queue_notifications_enabled),availability_rules(id,location_id,weekday,start_time,end_time,slot_interval_minutes,location:business_locations(id,name))",
       )
       .eq("organization_id", organization.id)
       .eq("resource_type", "doctor")
+      .eq("active", true)
       .order("name"),
   ]);
   const typedRules = (rules ?? []) as unknown as AvailabilityRecord[];
@@ -267,6 +268,11 @@ export async function GET(request: Request) {
       id: res.id,
       name: res.name,
       specialization: profile?.specialization ?? "General",
+      qualifications: profile?.qualifications ?? null,
+      registrationNumber: profile?.registration_number ?? null,
+      experienceYears: profile?.experience_years ?? null,
+      languages: Array.isArray(profile?.languages) ? profile.languages : [],
+      biography: profile?.biography ?? null,
       phone: profile?.contact_phone ?? "",
       email: profile?.contact_email ?? "",
       queueEnabled: Boolean(profile?.queue_notifications_enabled),

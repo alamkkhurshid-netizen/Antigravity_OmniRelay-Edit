@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import { Trash2 } from "lucide-react";
 import { RegisteredConsultant, RosterRow } from "@/app/app/clinic-operations/types";
 
 export function VisitingConsultants({
@@ -8,6 +9,7 @@ export function VisitingConsultants({
   setSearchQuery,
   jumpToShiftDay,
   dayInfo,
+  deleteDoctor,
 }: {
   filteredConsultants: RegisteredConsultant[];
   visibleRoster: RosterRow[];
@@ -15,7 +17,24 @@ export function VisitingConsultants({
   setSearchQuery: (query: string) => void;
   jumpToShiftDay: (weekday: number) => void;
   dayInfo: { weekdayName: string };
+  deleteDoctor?: (id: string, name: string) => Promise<any> | void;
 }) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to remove ${name} from this clinic? Their shifts and future bookings will be discontinued.`)) {
+      return;
+    }
+    if (deleteDoctor) {
+      setDeletingId(id);
+      try {
+        await deleteDoctor(id, name);
+      } finally {
+        setDeletingId(null);
+      }
+    }
+  };
+
   return (
     <section className="grid gap-5">
       {filteredConsultants.length === 0 ? (
@@ -49,9 +68,26 @@ export function VisitingConsultants({
                       <h3 className="text-base font-bold text-slate-900">
                         {doc.name}
                       </h3>
-                      <span className="inline-block mt-1 rounded-md bg-teal-50 px-2.5 py-0.5 text-xs font-bold text-teal-700 border border-teal-200">
-                        {doc.specialization}
-                      </span>
+                      {doc.qualifications && (
+                        <div className="text-[11px] text-slate-600 font-medium mt-0.5">
+                          {doc.qualifications}
+                        </div>
+                      )}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        <span className="inline-block rounded-md bg-teal-50 px-2.5 py-0.5 text-xs font-bold text-teal-700 border border-teal-200">
+                          {doc.specialization}
+                        </span>
+                        {doc.experienceYears !== null && doc.experienceYears !== undefined && (
+                          <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                            {doc.experienceYears} yrs exp
+                          </span>
+                        )}
+                        {doc.registrationNumber && (
+                          <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-mono text-slate-500" title="Medical Registration Number">
+                            Reg: {doc.registrationNumber}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {isVisitingOnSelectedDate ? (
                       <span className="rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 text-[11px] font-extrabold flex items-center gap-1">
@@ -84,6 +120,14 @@ export function VisitingConsultants({
                         <span className="text-slate-400">✉️ Email:</span>
                         <span className="font-medium text-slate-700 truncate">
                           {doc.email}
+                        </span>
+                      </div>
+                    )}
+                    {doc.languages && doc.languages.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400">🗣️ Languages:</span>
+                        <span className="font-medium text-slate-700 truncate">
+                          {doc.languages.join(", ")}
                         </span>
                       </div>
                     )}
@@ -130,19 +174,31 @@ export function VisitingConsultants({
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-400 font-medium">
-                    {doc.shifts.length} weekly recurring session
-                    {doc.shifts.length === 1 ? "" : "s"}
-                  </span>
-                  {doc.shifts.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => jumpToShiftDay(doc.shifts[0].weekday)}
-                      className="text-xs font-bold text-teal-600 hover:text-teal-700 hover:underline"
-                    >
-                      View {doc.shifts[0].dayLabel} Roster ➔
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(doc.id, doc.name)}
+                    disabled={deletingId === doc.id}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer"
+                    title={`Remove ${doc.name} from clinic`}
+                  >
+                    <Trash2 className="size-3" />
+                    <span>{deletingId === doc.id ? "Removing…" : "Remove Doctor"}</span>
+                  </button>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      {doc.shifts.length} shift{doc.shifts.length === 1 ? "" : "s"}
+                    </span>
+                    {doc.shifts.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => jumpToShiftDay(doc.shifts[0].weekday)}
+                        className="text-xs font-bold text-teal-600 hover:text-teal-700 hover:underline"
+                      >
+                        View {doc.shifts[0].dayLabel} ➔
+                      </button>
+                    )}
+                  </div>
                 </div>
               </article>
             );

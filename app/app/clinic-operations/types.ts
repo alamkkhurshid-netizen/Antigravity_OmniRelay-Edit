@@ -2,6 +2,11 @@ export type RegisteredConsultant = {
   id: string;
   name: string;
   specialization: string;
+  qualifications?: string | null;
+  registrationNumber?: string | null;
+  experienceYears?: number | null;
+  languages?: string[];
+  biography?: string | null;
   phone: string;
   email: string;
   queueEnabled: boolean;

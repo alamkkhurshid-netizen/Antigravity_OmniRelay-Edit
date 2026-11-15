@@ -9,6 +9,7 @@ interface ProviderIdentityEditorProps {
   providerId: string;
   chooseProvider: (val: string) => void;
   addDoctor: () => void;
+  deleteDoctor?: (id: string) => void;
   photoPreview: string;
   provider: ProviderProfile;
   uploadProviderPhoto: (file: File) => void;
@@ -26,7 +27,7 @@ interface ProviderIdentityEditorProps {
 }
 
 export function ProviderIdentityEditor({
-  category, resources, providerId, chooseProvider, addDoctor,
+  category, resources, providerId, chooseProvider, addDoctor, deleteDoctor,
   photoPreview, provider, uploadProviderPhoto, renameProvider,
   setProvider, clinicMode, departments, providerDepartmentMap, setProviderDepartmentMap,
   customBrochureUrl, setCustomBrochureUrl, brochureUrlError, uploadClinicBrochure, customBrochurePath
@@ -64,7 +65,26 @@ export function ProviderIdentityEditor({
                 ))}
               </select>
             </label>
-            {category === "Healthcare" && <button type="button" className="secondary-button" onClick={addDoctor}>+ Add doctor</button>}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              {category === "Healthcare" && <button type="button" className="secondary-button" onClick={addDoctor}>+ Add doctor</button>}
+              {category === "Healthcare" && resources.length > 1 && (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  style={{ color: "#e11d48", borderColor: "#fecdd3", backgroundColor: "#fff1f2" }}
+                  onClick={() => {
+                    const doc = resources.find((r) => r.id === providerId);
+                    const name = doc?.name || "this doctor";
+                    if (window.confirm(`Are you sure you want to remove ${name} from this clinic?`)) {
+                      deleteDoctor?.(providerId);
+                    }
+                  }}
+                  title="Remove selected doctor from this clinic"
+                >
+                  Delete doctor
+                </button>
+              )}
+            </div>
           </div>
           <div className="provider-main">
             <div className="provider-photo-editor">

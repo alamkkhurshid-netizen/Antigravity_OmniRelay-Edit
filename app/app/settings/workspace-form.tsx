@@ -70,7 +70,7 @@ export function WorkspaceForm({ organization, profile, locations: initialLocatio
 
       <ProviderIdentityEditor
         category={state.category} resources={state.resources} providerId={state.providerId}
-        chooseProvider={state.chooseProvider} addDoctor={state.addDoctor}
+        chooseProvider={state.chooseProvider} addDoctor={state.addDoctor} deleteDoctor={state.deleteDoctor}
         photoPreview={state.photoPreview} provider={state.provider} uploadProviderPhoto={state.uploadProviderPhoto}
         renameProvider={state.renameProvider} setProvider={state.setProvider} clinicMode={state.clinicMode}
         departments={state.departments} providerDepartmentMap={state.providerDepartmentMap} setProviderDepartmentMap={state.setProviderDepartmentMap}

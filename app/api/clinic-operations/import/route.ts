@@ -5,6 +5,12 @@ type DoctorImportRow = {
   doctor_name: string;
   specialization: string;
   department?: string | null;
+  qualifications?: string | null;
+  registration_number?: string | null;
+  experience_years?: number | null;
+  languages?: string[] | null;
+  consultation_fee?: number | null;
+  biography?: string | null;
   contact_phone?: string;
   contact_email?: string;
   chamber: string;
@@ -49,10 +55,28 @@ export async function POST(request: Request) {
     const today = new Date().toISOString().slice(0, 10);
 
     // 1. Sanitize and normalize input rows
-    const sanitizedRows: DoctorImportRow[] = rawRows.map((r, idx) => {
+    const sanitizedRows: DoctorImportRow[] = rawRows.map((r) => {
       const name = String(r.doctor_name || "").trim();
       const spec = String(r.specialization || "General").trim();
       const chamber = String(r.chamber || "Chamber 1").trim();
+
+      const qualifications = r.qualifications ? String(r.qualifications).trim() : null;
+      const registration_number = r.registration_number ? String(r.registration_number).trim() : null;
+      const parsedExp = typeof r.experience_years === "number" ? r.experience_years : parseInt(String(r.experience_years ?? ""), 10);
+      const experience_years = !isNaN(parsedExp) && parsedExp >= 0 ? parsedExp : null;
+
+      let languages: string[] = [];
+      if (Array.isArray(r.languages)) {
+        languages = r.languages.map((l) => String(l).trim()).filter(Boolean);
+      } else if (typeof r.languages === "string") {
+        languages = r.languages.split(/[,;/]+/).map((l) => l.trim()).filter(Boolean);
+      }
+
+      const parsedFee = typeof r.consultation_fee === "number" ? r.consultation_fee : parseFloat(String(r.consultation_fee ?? "").replace(/[^0-9.]/g, ""));
+      const consultation_fee = !isNaN(parsedFee) && parsedFee >= 0 ? parsedFee : null;
+
+      const biography = r.biography ? String(r.biography).trim() : null;
+      const department = r.department ? String(r.department).trim() : spec;
 
       // Normalize phone
       let phone = String(r.contact_phone || "").trim();
@@ -93,7 +117,13 @@ export async function POST(request: Request) {
       return {
         doctor_name: name,
         specialization: spec,
-        department: null, // Avoid nonexistent clinic_departments table in RPC
+        department,
+        qualifications,
+        registration_number,
+        experience_years,
+        languages,
+        consultation_fee,
+        biography,
         contact_phone: phone,
         contact_email: email,
         chamber,
@@ -108,7 +138,7 @@ export async function POST(request: Request) {
     const chamberNames = Array.from(new Set(sanitizedRows.map((r) => r.chamber)));
     const { data: existingLocations } = await supabase
       .from("business_locations")
-      .select("id, name")
+      .select("id, name, address, phone")
       .eq("organization_id", organization.id);
 
     const locationMap = new Map<string, string>();
@@ -144,10 +174,40 @@ export async function POST(request: Request) {
       });
     }
 
-    // 3. Ensure a default service exists
+    // 3. Ensure all referenced departments exist in clinic_departments
+    const departmentNames = Array.from(new Set(sanitizedRows.map((r) => r.department).filter(Boolean))) as string[];
+    const { data: existingDepartments } = await supabase
+      .from("clinic_departments")
+      .select("id, name")
+      .eq("organization_id", organization.id);
+
+    const departmentMap = new Map<string, string>();
+    (existingDepartments || []).forEach((dept) => {
+      departmentMap.set(dept.name.trim().toLowerCase(), dept.id);
+    });
+
+    const missingDepartments = departmentNames.filter((name) => !departmentMap.has(name.toLowerCase()));
+    if (missingDepartments.length > 0) {
+      const deptInserts = missingDepartments.map((deptName, idx) => ({
+        organization_id: organization.id,
+        name: deptName,
+        code: deptName.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 10),
+        active: true,
+        sort_order: (existingDepartments?.length || 0) + idx + 1,
+      }));
+      const { data: newDepts } = await supabase
+        .from("clinic_departments")
+        .insert(deptInserts)
+        .select("id, name");
+      (newDepts || []).forEach((d) => {
+        departmentMap.set(d.name.trim().toLowerCase(), d.id);
+      });
+    }
+
+    // 4. Ensure a default service exists
     let { data: defaultService } = await supabase
       .from("organization_services")
-      .select("id")
+      .select("id, price_paise")
       .eq("organization_id", organization.id)
       .eq("active", true)
       .limit(1)
@@ -165,32 +225,88 @@ export async function POST(request: Request) {
           booking_enabled: true,
           active: true,
         })
-        .select("id")
+        .select("id, price_paise")
         .single();
       defaultService = newService;
     }
 
-    // 4. Try native database RPC first
+    // 5. Try native database RPC first
     try {
+      const rpcRows = sanitizedRows.map((r) => ({
+        doctor_name: r.doctor_name,
+        specialization: r.specialization,
+        department: null,
+        contact_phone: r.contact_phone,
+        contact_email: r.contact_email,
+        chamber: r.chamber,
+        weekdays: r.weekdays,
+        start_time: r.start_time,
+        end_time: r.end_time,
+        slot_duration_minutes: r.slot_duration_minutes,
+      }));
+
       const { data: rpcData, error: rpcError } = await supabase.rpc("import_doctor_roster_v2", {
         p_organization_id: organization.id,
-        p_rows: sanitizedRows,
+        p_rows: rpcRows,
         p_commit: Boolean(body.commit),
         p_source_format: "csv",
       });
 
       if (!rpcError && rpcData && (!rpcData.errors || rpcData.errors.length === 0)) {
+        // Enrich imported doctors with credentials and department
+        for (const item of sanitizedRows) {
+          const { data: docRes } = await supabase
+            .from("booking_resources")
+            .select("id")
+            .eq("organization_id", organization.id)
+            .ilike("name", item.doctor_name)
+            .maybeSingle();
+
+          if (docRes?.id) {
+            await supabase.from("provider_profiles").upsert(
+              {
+                resource_id: docRes.id,
+                organization_id: organization.id,
+                specialization: item.specialization,
+                qualifications: item.qualifications || null,
+                registration_number: item.registration_number || null,
+                experience_years: item.experience_years ?? null,
+                languages: item.languages || [],
+                biography: item.biography || null,
+                contact_phone: item.contact_phone || null,
+                contact_email: item.contact_email || null,
+              },
+              { onConflict: "resource_id" }
+            );
+
+            if (item.department) {
+              const deptId = departmentMap.get(item.department.toLowerCase());
+              if (deptId) {
+                await supabase
+                  .from("provider_departments")
+                  .delete()
+                  .eq("organization_id", organization.id)
+                  .eq("resource_id", docRes.id);
+                await supabase.from("provider_departments").insert({
+                  organization_id: organization.id,
+                  resource_id: docRes.id,
+                  department_id: deptId,
+                  primary_department: true,
+                });
+              }
+            }
+          }
+        }
+
         return NextResponse.json(rpcData);
       }
-      
+
       console.warn("import_doctor_roster_v2 RPC reported issues or failed, executing direct provisioning fallback:", rpcError?.message, rpcData?.errors);
     } catch (rpcEx) {
       console.warn("import_doctor_roster_v2 threw exception, executing direct fallback:", rpcEx);
     }
 
-    // 5. Resilient Direct Provisioning Fallback
-    // If the database RPC failed (e.g. missing optional tables like clinic_departments or digest hash),
-    // provision the doctors, chambers, assignments, and availability rules directly!
+    // 6. Resilient Direct Provisioning Fallback
     let importedCount = 0;
 
     for (const item of sanitizedRows) {
@@ -217,6 +333,7 @@ export async function POST(request: Request) {
             name: item.doctor_name,
             resource_type: "doctor",
             timezone: "Asia/Kolkata",
+            active: true,
           })
           .select("id")
           .single();
@@ -227,16 +344,48 @@ export async function POST(request: Request) {
         }
 
         resourceId = newResource.id;
+      } else {
+        // Reactivate doctor if previously soft-deleted/deactivated
+        await supabase
+          .from("booking_resources")
+          .update({ active: true, location_id: chamberLocationId })
+          .eq("id", resourceId)
+          .eq("organization_id", organization.id);
+      }
 
-        // Create provider profile
-        await supabase.from("provider_profiles").insert({
+      // Upsert provider profile with credentials and details
+      await supabase.from("provider_profiles").upsert(
+        {
           resource_id: resourceId,
           organization_id: organization.id,
           specialization: item.specialization,
+          qualifications: item.qualifications || null,
+          registration_number: item.registration_number || null,
+          experience_years: item.experience_years ?? null,
+          languages: item.languages || [],
+          biography: item.biography || null,
           contact_phone: item.contact_phone || null,
           contact_email: item.contact_email || null,
-          languages: [],
-        });
+        },
+        { onConflict: "resource_id" }
+      );
+
+      // Link department
+      if (item.department) {
+        const deptId = departmentMap.get(item.department.toLowerCase());
+        if (deptId) {
+          await supabase
+            .from("provider_departments")
+            .delete()
+            .eq("organization_id", organization.id)
+            .eq("resource_id", resourceId);
+          await supabase.from("provider_departments").insert({
+            organization_id: organization.id,
+            resource_id: resourceId,
+            department_id: deptId,
+            primary_department: true,
+          });
+        }
       }
 
       // Check or create provider location assignment
@@ -265,12 +414,38 @@ export async function POST(request: Request) {
           .single();
 
         assignmentId = newAssignment?.id;
+      } else {
+        await supabase
+          .from("provider_location_assignments")
+          .update({ active: true })
+          .eq("id", assignmentId);
+      }
 
-        if (assignmentId && defaultService?.id) {
+      // Link provider location services with specific consultation fee if provided
+      if (assignmentId && defaultService?.id) {
+        const pricePaise = item.consultation_fee
+          ? Math.round(item.consultation_fee * 100)
+          : defaultService.price_paise ?? 50000;
+
+        const { data: existingPls } = await supabase
+          .from("provider_location_services")
+          .select("id")
+          .eq("organization_id", organization.id)
+          .eq("assignment_id", assignmentId)
+          .eq("service_id", defaultService.id)
+          .maybeSingle();
+
+        if (existingPls?.id) {
+          await supabase
+            .from("provider_location_services")
+            .update({ active: true, price_paise: pricePaise })
+            .eq("id", existingPls.id);
+        } else {
           await supabase.from("provider_location_services").insert({
             organization_id: organization.id,
             assignment_id: assignmentId,
             service_id: defaultService.id,
+            price_paise: pricePaise,
             active: true,
           });
         }

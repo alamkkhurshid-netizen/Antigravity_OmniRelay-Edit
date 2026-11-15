@@ -291,6 +291,31 @@ export function useClinicOperations(today: string) {
     setActiveTab("roster");
   }
 
+  const deleteDoctor = useCallback(
+    async (doctorId: string, doctorName: string) => {
+      setBusy(true);
+      setMessage("");
+      try {
+        const res = await fetch(`/api/clinic-operations/doctor?id=${encodeURIComponent(doctorId)}`, {
+          method: "DELETE",
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to remove doctor.");
+        }
+        setMessage(data.message || `${doctorName} was removed successfully.`);
+        await loadRoster(date);
+        return data;
+      } catch (err: any) {
+        setMessage(err.message || "Failed to remove doctor.");
+        alert(err.message || "Failed to remove doctor.");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [date, loadRoster]
+  );
+
   return {
     date, setDate, roster, setRoster, consultants, setConsultants, activeTab, setActiveTab,
     searchQuery, setSearchQuery, updated, setUpdated, loading, setLoading, departments,
@@ -298,6 +323,7 @@ export function useClinicOperations(today: string) {
     preview, setPreview, message, setMessage, busy, setBusy, queueBusy, setQueueBusy,
     queueMessage, setQueueMessage, preflightMessage, setPreflightMessage, consentRow, setConsentRow,
     consentChecked, setConsentChecked, changeDay, dayInfo, loadRoster, visibleRoster, totals,
-    validate, download, setQueue, sendQueue, runPreDispatchCheck, filteredConsultants, jumpToShiftDay, jumpToDate
+    validate, download, setQueue, sendQueue, runPreDispatchCheck, filteredConsultants, jumpToShiftDay, jumpToDate,
+    deleteDoctor
   };
 }

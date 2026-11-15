@@ -148,6 +148,42 @@ export function useWorkspaceSettings(
     setPhotoPreview("");
   }
 
+  async function deleteDoctor(id: string) {
+    if (!id) return;
+    const doc = resources.find((r) => r.id === id);
+    if (!doc) return;
+
+    if (!doc.isNew) {
+      setBusy(true);
+      try {
+        const res = await fetch(`/api/clinic-operations/doctor?id=${encodeURIComponent(id)}`, {
+          method: "DELETE",
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.error || "Failed to remove doctor.");
+          setBusy(false);
+          return;
+        }
+        setMessage(data.message || `Doctor ${doc.name} was removed.`);
+      } catch (err: any) {
+        alert(err.message || "Failed to remove doctor.");
+        setBusy(false);
+        return;
+      }
+      setBusy(false);
+    }
+
+    const nextResources = resources.filter((r) => r.id !== id);
+    setResources(nextResources);
+    setProviders((current) => current.filter((p) => p.resource_id !== id));
+    if (nextResources.length > 0) {
+      setProviderId(nextResources[0].id);
+    } else {
+      setProviderId("");
+    }
+  }
+
   async function uploadProviderPhoto(file: File) {
     if (!providerId) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) { setMessage("Use a JPG, PNG or WebP image smaller than 5 MB."); return; }
@@ -332,7 +368,7 @@ export function useWorkspaceSettings(
     dispatchEnabled, setDispatchEnabled, dispatchTime, setDispatchTime,
     dispatchClinicEmail, setDispatchClinicEmail, sendToClinic, setSendToClinic,
     sendToDoctors, setSendToDoctors, dispatchNotice, dispatchingTest, testDispatch,
-    changeLocation, changeAddress, changeService, chooseProvider, setProvider, renameProvider, addDoctor, uploadProviderPhoto, uploadClinicBrochure, save,
+    changeLocation, changeAddress, changeService, chooseProvider, setProvider, renameProvider, addDoctor, deleteDoctor, uploadProviderPhoto, uploadClinicBrochure, save,
     deleteLocation, deleteDepartment,
     organizationId: organization.id
   };
