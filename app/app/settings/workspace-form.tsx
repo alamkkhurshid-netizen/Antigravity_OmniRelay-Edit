@@ -2,6 +2,7 @@
 
 import { ChamberScheduleEditor } from "./chamber-schedule-editor";
 import { WorkspaceHero } from "@/components/workspace-hero";
+import { DoctorRosterImportModal } from "@/components/doctor-roster-import-modal";
 import { useWorkspaceSettings } from "./use-workspace-settings";
 import { BusinessProfileEditor } from "@/components/settings/business-profile-editor";
 import { ClinicOperatingModel } from "@/components/settings/clinic-operating-model";
@@ -38,6 +39,17 @@ export function WorkspaceForm({ organization, profile, locations: initialLocatio
         tag="WORKSPACE SETTINGS"
         title="Business setup"
         subtitle="Configure your business profile, providers, locations, and services."
+        action={
+          state.category === "Healthcare" ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <DoctorRosterImportModal
+                triggerClassName="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-teal-700 transition-colors cursor-pointer"
+                triggerLabel="Bulk Upload Doctor Roster & Chambers (Excel / CSV)"
+                onSuccess={() => window.location.reload()}
+              />
+            </div>
+          ) : undefined
+        }
       />
 
       <BusinessProfileEditor
@@ -53,6 +65,7 @@ export function WorkspaceForm({ organization, profile, locations: initialLocatio
       <ClinicOperatingModel
         category={state.category} clinicMode={state.clinicMode} setClinicMode={state.setClinicMode}
         departments={state.departments} setDepartments={state.setDepartments}
+        deleteDepartment={state.deleteDepartment}
       />
 
       <ProviderIdentityEditor
@@ -68,6 +81,7 @@ export function WorkspaceForm({ organization, profile, locations: initialLocatio
       <LocationsEditor
         category={state.category} locations={state.locations} setLocations={state.setLocations}
         changeLocation={state.changeLocation} changeAddress={state.changeAddress}
+        deleteLocation={state.deleteLocation}
       />
 
       <ServicesEditor

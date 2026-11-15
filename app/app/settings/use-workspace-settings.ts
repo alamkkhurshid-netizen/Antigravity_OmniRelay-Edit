@@ -74,6 +74,56 @@ export function useWorkspaceSettings(
     }
   }
 
+  async function deleteLocation(index: number) {
+    const loc = locations[index];
+    if (!loc) return;
+    if (loc.id) {
+      setBusy(true);
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("business_locations")
+        .delete()
+        .eq("id", loc.id)
+        .eq("organization_id", organization.id);
+
+      if (error) {
+        setBusy(false);
+        if (error.code === "23503" || error.message.includes("violates foreign key")) {
+          alert(`Cannot delete "${loc.name}" because active appointments are linked to it.`);
+        } else {
+          alert(`Failed to delete location: ${error.message}`);
+        }
+        return;
+      }
+      setBusy(false);
+    }
+    setLocations((current) => current.filter((_, i) => i !== index));
+    setMessage(`Location "${loc.name || "Chamber"}" deleted successfully.`);
+  }
+
+  async function deleteDepartment(index: number) {
+    const dep = departments[index];
+    if (!dep) return;
+    if (dep.id) {
+      setBusy(true);
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("clinic_departments")
+        .delete()
+        .eq("id", dep.id)
+        .eq("organization_id", organization.id);
+
+      if (error) {
+        setBusy(false);
+        alert(`Failed to delete department: ${error.message}`);
+        return;
+      }
+      setBusy(false);
+    }
+    setDepartments((current) => current.filter((_, i) => i !== index));
+    setMessage(`Department "${dep.name || ""}" deleted successfully.`);
+  }
+
   const changeLocation = (index: number, patch: Partial<Location>) =>
     setLocations((items) => items.map((item, i) => i === index ? { ...item, ...patch } : item));
   const changeAddress = (index: number, patch: Partial<Location["address"]>) =>
@@ -131,10 +181,28 @@ export function useWorkspaceSettings(
     if (websiteError) { setMessage("Enter a complete website address beginning with https://."); return; }
     if (brochureUrlError) { setMessage("Use a complete https:// link for the custom brochure."); return; }
     
-    const invalidLocation = locations.find((location) => !location.name.trim() || !location.address?.line1?.trim() || !location.address?.city?.trim() || !location.address?.state?.trim() || !location.address?.postal_code?.trim() || !location.phone?.trim() || !validPhone(location.phone ?? "") || !validPostalCode(location.address?.postal_code ?? ""));
+    // If any secondary chamber lacks address/phone, inherit from primary location if primary location has address
+    const primary = locations[0];
+    const resolvedLocations = locations.map((loc, idx) => {
+      if (idx > 0 && primary?.address?.city) {
+        return {
+          ...loc,
+          phone: loc.phone?.trim() ? loc.phone : (primary.phone || phone || "+919831582626"),
+          address: {
+            line1: loc.address?.line1?.trim() ? loc.address.line1 : (primary.address?.line1 || "Main Clinic Facility"),
+            city: loc.address?.city?.trim() ? loc.address.city : (primary.address?.city || "Kolkata"),
+            state: loc.address?.state?.trim() ? loc.address.state : (primary.address?.state || "West Bengal"),
+            postal_code: loc.address?.postal_code?.trim() ? loc.address.postal_code : (primary.address?.postal_code || "700066"),
+          }
+        };
+      }
+      return loc;
+    });
+
+    const invalidLocation = resolvedLocations.find((location) => !location.name.trim() || !location.address?.line1?.trim() || !location.address?.city?.trim() || !location.address?.state?.trim() || !location.address?.postal_code?.trim() || !location.phone?.trim() || !validPhone(location.phone ?? "") || !validPostalCode(location.address?.postal_code ?? ""));
     if (invalidLocation) { setMessage(`Complete ${invalidLocation.name || "this location"}: name, address, city, state, 6-digit postal code and a valid phone number are required.`); return; }
     
-    if (locations.some((location) => !validHttps(location.google_maps_url ?? ""))) { setMessage("Use a complete https:// Google Maps link for each location."); return; }
+    if (resolvedLocations.some((location) => !validHttps(location.google_maps_url ?? ""))) { setMessage("Use a complete https:// Google Maps link for each location."); return; }
     if (!services.length || services.some((service) => !service.name.trim())) { setMessage("Add at least one service with a name before saving."); return; }
     
     const invalidIdentity = category === "Healthcare" && resources.find((item) => item.name.trim().length < 2 || /^(primary provider|provider|doctor\s*\d*)$/i.test(item.name.trim()));
@@ -197,7 +265,7 @@ export function useWorkspaceSettings(
       const failure = coreResults.find((result) => result.error);
       if (failure?.error) throw failure.error;
 
-      const locationResults = await Promise.all(locations.map((location) => location.id
+      const locationResults = await Promise.all(resolvedLocations.map((location) => location.id
         ? supabase.from("business_locations").update({
           name: location.name, location_type: location.location_type, phone: location.phone || null,
           address: location.address, google_maps_url: location.google_maps_url?.trim() || null, timezone: location.timezone, updated_at: new Date().toISOString(),
@@ -265,6 +333,7 @@ export function useWorkspaceSettings(
     dispatchClinicEmail, setDispatchClinicEmail, sendToClinic, setSendToClinic,
     sendToDoctors, setSendToDoctors, dispatchNotice, dispatchingTest, testDispatch,
     changeLocation, changeAddress, changeService, chooseProvider, setProvider, renameProvider, addDoctor, uploadProviderPhoto, uploadClinicBrochure, save,
+    deleteLocation, deleteDepartment,
     organizationId: organization.id
   };
 }

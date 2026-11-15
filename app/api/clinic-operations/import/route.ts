@@ -66,9 +66,20 @@ export async function POST(request: Request) {
       const email = String(r.contact_email || "").trim().toLowerCase();
 
       // Normalize weekdays
-      let weekdays = Array.isArray(r.weekdays)
-        ? r.weekdays.map(Number).filter((n) => !isNaN(n) && n >= 0 && n <= 6)
-        : [1, 2, 3, 4, 5];
+      let weekdays: number[] = [];
+      if (Array.isArray(r.weekdays)) {
+        weekdays = r.weekdays.map(Number).filter((n) => !isNaN(n) && n >= 0 && n <= 6);
+      } else if (typeof r.weekdays === "string" || typeof r.weekdays === "number") {
+        const tokens = String(r.weekdays).split(/[|,;/+]+/).map((t) => t.trim().toLowerCase()).filter(Boolean);
+        const set = new Set<number>();
+        for (const token of tokens) {
+          const num = parseInt(token, 10);
+          if (!isNaN(num) && num >= 0 && num <= 7) {
+            set.add(num === 7 ? 0 : num);
+          }
+        }
+        weekdays = Array.from(set).sort((a, b) => a - b);
+      }
       if (weekdays.length === 0) weekdays = [1, 2, 3, 4, 5];
 
       let startTime = String(r.start_time || "09:00").trim();
@@ -107,13 +118,20 @@ export async function POST(request: Request) {
 
     const missingChambers = chamberNames.filter((name) => !locationMap.has(name.toLowerCase()));
     if (missingChambers.length > 0) {
+      const primaryLoc = (existingLocations || [])[0] as any;
+      const defaultAddress = primaryLoc?.address && Object.keys(primaryLoc.address).length > 0 && primaryLoc.address.city
+        ? primaryLoc.address
+        : { line1: "Main Clinic Campus", city: "Kolkata", state: "West Bengal", postal_code: "700066" };
+      const defaultPhone = primaryLoc?.phone || "+91 98315 82626";
+
       const toInsert = missingChambers.map((name) => ({
         organization_id: organization.id,
         name,
         location_type: "chamber",
         timezone: "Asia/Kolkata",
         active: true,
-        address: {},
+        address: defaultAddress,
+        phone: defaultPhone,
       }));
 
       const { data: insertedLocations } = await supabase
@@ -161,11 +179,11 @@ export async function POST(request: Request) {
         p_source_format: "csv",
       });
 
-      if (!rpcError && rpcData) {
+      if (!rpcError && rpcData && (!rpcData.errors || rpcData.errors.length === 0)) {
         return NextResponse.json(rpcData);
       }
       
-      console.warn("import_doctor_roster_v2 RPC failed, falling back to direct provisioning:", rpcError?.message);
+      console.warn("import_doctor_roster_v2 RPC reported issues or failed, executing direct provisioning fallback:", rpcError?.message, rpcData?.errors);
     } catch (rpcEx) {
       console.warn("import_doctor_roster_v2 threw exception, executing direct fallback:", rpcEx);
     }
