@@ -167,7 +167,7 @@ export function ActiveWallet({ wallet, tier, organizationId }: ActiveWalletProps
             className="mt-4 w-full flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-slate-800 disabled:opacity-70 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
           >
             <CreditCard className="size-4" />
-            {loading ? "Initializing..." : `Add ₹${amount.toLocaleString()} via Razorpay`}
+            {loading ? "Initializing..." : `Add ₹${amount.toLocaleString()} to Wallet`}
           </button>
         </div>
 
