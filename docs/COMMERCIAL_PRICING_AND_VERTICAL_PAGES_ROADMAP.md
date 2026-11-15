@@ -106,3 +106,52 @@ To maximize conversion and provide industry-tailored value propositions, the pub
   * Powered by the **Aria** persona (Guest Relations).
   * Room booking inquiries, dining table reservations, and amenities guidance.
   * Seamless transfer to human concierge for VIP guests.
+
+---
+
+## 4. Flexible Billing Collection Models (Customer Choice)
+
+During checkout or onboarding, every client (clinic or hospital) is given the **choice between two payment collection models** to suit their internal accounting and financial workflow:
+
+```
+                      ┌─────────────────────────────────────────┐
+                      │    Customer Checkout: Payment Choice     │
+                      └─────────────────────────────────────────┘
+                                           │
+                 ┌─────────────────────────┴─────────────────────────┐
+                 ▼                                                   ▼
+     ┌────────────────────────┐                          ┌────────────────────────┐
+     │   Option A: Auto-Debit │                          │ Option B: Pay Monthly  │
+     │   (UPI Autopay/Mandate)│                          │ (Manual GST Invoice)   │
+     ├────────────────────────┤                          ├────────────────────────┤
+     │ • Cashfree Subscriptions│                          │ • 30-day billing cycle │
+     │ • 1-time setup via UPI │                          │ • Invoice on Day 27    │
+     │ • Auto-renews monthly  │                          │ • 3-Day Grace Period   │
+     │ • Zero admin overhead  │                          │ • Netbanking/Cards/UPI │
+     │ • Best for Solo Clinics│                          │ • Best for Hospitals   │
+     └────────────────────────┘                          └────────────────────────┘
+```
+
+### Option A: Automated Recurring Debit (UPI Autopay / Card e-Mandate)
+* **How it works:** 
+  * Powered by Cashfree Subscriptions API.
+  * During the initial checkout, the customer registers a recurring mandate via UPI (Google Pay, PhonePe, Paytm, BHIM) or an authorized Credit/Debit Card.
+  * Under RBI guidelines (effective for recurring payments up to ₹15,000), monthly recurring fees (e.g. Starter ₹2,499, Pro ₹5,999, Hospital ₹14,999) are debited automatically without requiring an OTP each cycle.
+* **Benefits:** 
+  * Zero phone downtime; services never get paused due to forgotten invoices.
+  * Ideal for busy doctors, solo dental practices, and outpatient clinics.
+
+### Option B: Manual Monthly Invoice (Corporate / Accounts Approval)
+* **How it works:**
+  * Standard 30-day SaaS entitlement cycle.
+  * On Day 27 of each cycle, the system automatically generates and emails a verified GST Tax Invoice (with CGST/SGST/IGST breakdown and HSN/SAC code).
+  * Includes an automated WhatsApp reminder to the clinic manager or finance desk with a 1-click Cashfree payment link.
+  * Features a built-in **3-day grace period** (`grace_ends_at = period_end + 3 days`) so that internal accounting approvals or bank transfer delays do not disrupt active patient phone lines.
+* **Benefits:**
+  * Accommodates hospital finance departments requiring formal purchase orders, GST input credit filing, or TDS deductions before payment release.
+
+### Voice Minute Overage Handling (Common to Both Options)
+* For both Option A and Option B, extra minutes beyond the plan's bundled minutes (e.g., beyond 5,000 minutes) are debited in real time from their **Prepaid Usage Wallet** at their contracted tier rate (₹2.99 – ₹3.99/min).
+* If the wallet balance runs low, the system provides automated low-balance WhatsApp alerts and triggers an emergency safety buffer (`-₹50`) to guarantee zero call drops during active patient conversations.
+
+
