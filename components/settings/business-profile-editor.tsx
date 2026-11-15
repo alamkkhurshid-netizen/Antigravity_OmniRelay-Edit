@@ -29,16 +29,20 @@ export function BusinessProfileEditor({
     <section className="foundation-section">
       <header>
         <div>
-          <span className="app-eyebrow">BUSINESS PROFILE</span>
-          <h2>Tell OmniRelay how your business operates</h2>
+          <span className="app-eyebrow">{category === "Healthcare" ? "CLINIC & COMPANY PROFILE" : "BUSINESS & COMPANY PROFILE"}</span>
+          <h2>{category === "Healthcare" ? "Clinic brand and public identity" : "Tell OmniRelay how your business operates"}</h2>
+          <p style={{ fontSize: "13px", color: "#64748b", marginTop: "4px" }}>
+            This is your patient-facing organization identity ({category === "Healthcare" ? "Clinic/Hospital Name, Helpline, and Website" : "Company Name, Helpline, and Website"}) displayed at the top of booking pages, WhatsApp greetings, and receipts.
+          </p>
         </div>
-        <span className="section-status">Required</span>
+        <span className="section-status">Patient-facing</span>
       </header>
-      <p className="required-note"><Required /> Required to set up booking and customer communication.</p>
+      <p className="required-note"><Required /> Required for clinic booking and customer communications.</p>
       <div className="form-grid">
         <label>
-          Business name<Required />
-          <input value={name} onChange={(e) => setName(e.target.value)} required minLength={2} aria-invalid={!name.trim()} />
+          {category === "Healthcare" ? "Clinic / Hospital name" : "Business name"}<Required />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={category === "Healthcare" ? "Neoclinic Multispeciality" : "Business Name"} required minLength={2} aria-invalid={!name.trim()} />
+          <small className="field-help">Appears as the main brand title on WhatsApp and the booking portal.</small>
         </label>
         <label>
           Category<Required />

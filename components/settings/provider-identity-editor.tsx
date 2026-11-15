@@ -35,10 +35,23 @@ export function ProviderIdentityEditor({
     <section className="foundation-section">
       <header>
         <div>
-          <span className="app-eyebrow">{category === "Healthcare" ? "DOCTOR & STAFF PROFILE" : "STAFF & PROVIDER PROFILE"}</span>
-          <h2>Build the public provider identity</h2>
+          <span className="app-eyebrow">
+            {clinicMode === "multi_doctor_clinic"
+              ? "DOCTOR & CLINICIAN DIRECTORY"
+              : category === "Healthcare" ? "DOCTOR & STAFF PROFILE" : "STAFF & PROVIDER PROFILE"}
+          </span>
+          <h2>
+            {clinicMode === "multi_doctor_clinic"
+              ? "Doctor credentials, photos & specialties"
+              : "Build the public provider identity"}
+          </h2>
+          <p style={{ fontSize: "13px", color: "#64748b", marginTop: "4px" }}>
+            {clinicMode === "multi_doctor_clinic"
+              ? "Your primary clinic branding is set in Clinic & Company Profile above. Use this section to manage each doctor's individual photo, qualifications, and department tags."
+              : "This public identity is used across patient bookings and appointment reminders."}
+          </p>
         </div>
-        <span className="section-status">Patient-facing</span>
+        <span className="section-status">{clinicMode === "multi_doctor_clinic" ? "Doctor Roster" : "Patient-facing"}</span>
       </header>
       {resources.length ? (
         <div className="provider-editor">
