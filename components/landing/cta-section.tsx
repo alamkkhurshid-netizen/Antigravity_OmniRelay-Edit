@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export function CtaSection() {
   return (
     <section id="demo" className="py-10 px-6">
@@ -6,14 +8,14 @@ export function CtaSection() {
           Ready to modernize your operations?
         </h2>
         <p className="text-sm text-slate-400 mb-6 max-w-lg mx-auto">
-          Deploy your secure WhatsApp sales agent across your clinics, restaurants, or retail branches in 5 minutes.
+          Deploy your secure WhatsApp and voice receptionist across your clinics, restaurants, or retail branches in 5 minutes.
         </p>
-        <a
-          href="mailto:hello@omnirelay.ai"
-          className="inline-flex items-center justify-center px-6 h-10 rounded-lg bg-white text-slate-900 font-semibold hover:bg-slate-100 transition-all shadow-sm"
+        <Link
+          href="/login?mode=signup"
+          className="inline-flex items-center justify-center px-6 h-11 rounded-xl bg-gradient-to-r from-[#087fb9] to-[#18bfc5] text-white text-sm font-semibold hover:opacity-90 transition-all shadow-md hover:-translate-y-0.5"
         >
-          Get Started
-        </a>
+          Get Started Free
+        </Link>
       </div>
     </section>
   );

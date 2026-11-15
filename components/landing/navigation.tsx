@@ -19,11 +19,17 @@ export function Navigation() {
           <a href="#agents" className="text-sm font-medium text-slate-600 hover:text-[#087fb9] transition-colors py-2 lg:py-0">Agents</a>
           <Link href="/about" className="text-sm font-medium text-slate-600 hover:text-[#087fb9] transition-colors py-2 lg:py-0">About</Link>
           <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-[#087fb9] transition-colors py-2 lg:py-0 lg:ml-4">Sign in</Link>
+          <Link href="/login?mode=signup" className="lg:hidden mt-3 inline-flex items-center justify-center px-5 h-11 rounded-xl bg-gradient-to-r from-[#087fb9] to-[#18bfc5] text-white text-sm font-semibold shadow-sm text-center">
+            Get Started
+          </Link>
         </div>
 
         <div className="flex items-center gap-4 z-50">
-          <Link href="/login" className="hidden lg:inline-flex items-center justify-center px-5 h-10 rounded-xl bg-[#087fb9] text-white text-sm font-semibold hover:bg-[#066d9c] transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5">
-            Start free trial
+          <Link href="/login" className="hidden lg:inline-flex text-sm font-medium text-slate-600 hover:text-[#087fb9] transition-colors">
+            Sign in
+          </Link>
+          <Link href="/login?mode=signup" className="hidden lg:inline-flex items-center justify-center px-5 h-10 rounded-xl bg-gradient-to-r from-[#087fb9] to-[#18bfc5] text-white text-sm font-semibold hover:opacity-90 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5">
+            Get Started
           </Link>
           <button className="lg:hidden p-2 -mr-2 text-slate-600" onClick={() => setMenu(!menu)} aria-label="Toggle menu">
             <div className="w-5 h-0.5 bg-current mb-1.5" />

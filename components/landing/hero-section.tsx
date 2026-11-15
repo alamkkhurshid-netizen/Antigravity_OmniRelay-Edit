@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Mark } from "./shared";
 
 export function HeroSection() {
@@ -23,9 +24,9 @@ export function HeroSection() {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-            <a href="#demo" className="w-full sm:w-auto inline-flex items-center justify-center px-5 h-10 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-all shadow-sm">
-              Book a demo
-            </a>
+            <Link href="/login?mode=signup" className="w-full sm:w-auto inline-flex items-center justify-center px-6 h-10 rounded-lg bg-gradient-to-r from-[#087fb9] to-[#18bfc5] text-white text-sm font-semibold hover:opacity-90 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5">
+              Get Started Free
+            </Link>
             <a href="#platform" className="w-full sm:w-auto inline-flex items-center justify-center px-5 h-10 rounded-lg bg-white text-slate-700 text-sm font-semibold border border-slate-200 hover:bg-slate-50 transition-all">
               Explore platform
             </a>
