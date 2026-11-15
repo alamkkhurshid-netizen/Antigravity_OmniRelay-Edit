@@ -49,7 +49,11 @@ export async function GET(req: NextRequest) {
         .eq("organization_id", orgId)
         .eq("is_active", true);
       const fbResult = await (doctorId ? fallbackQuery.eq("id", doctorId) : fallbackQuery);
-      doctors = fbResult.data;
+      doctors = (fbResult.data || []).map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        active: d.is_active,
+      })) as any;
       docError = fbResult.error;
     }
 

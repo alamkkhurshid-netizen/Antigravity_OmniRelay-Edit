@@ -3,7 +3,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getWorkspace } from "@/lib/workspace";
 import { supabaseUrl } from "@/lib/supabase/config";
 import { consumeRateLimit } from "@/lib/operations";
-import { isCashfreeConfigured, createCashfreeOrder } from "@/lib/billing/cashfree";
+import { isCashfreeConfigured, createCashfreeOrder, createCashfreeSubscription } from "@/lib/billing/cashfree";
 
 export async function POST(request: Request) {
   const gateway = (process.env.PAYMENT_GATEWAY || (isCashfreeConfigured() ? "cashfree" : "razorpay")).toLowerCase();
@@ -24,7 +24,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Only a workspace owner or admin can manage billing." }, { status: 403 });
   }
 
-  const input = await request.json().catch(() => ({})) as { plan_id?: string };
+  const input = await request.json().catch(() => ({})) as { plan_id?: string; billing_mode?: "monthly" | "autopay" };
+  const billingMode = input.billing_mode || "monthly";
   const admin = createAdminClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: plan } = await admin.from("saas_plans").select("id,name,monthly_price_paise,currency").eq("id", String(input.plan_id ?? "")).eq("active", true).maybeSingle();
   if (!plan) return NextResponse.json({ error: "Select an available plan." }, { status: 400 });
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
     amount_paise: plan.monthly_price_paise,
     currency: plan.currency,
     receipt,
-    metadata: { source: "workspace_checkout", gateway },
+    metadata: { source: "workspace_checkout", gateway, billing_mode: billingMode },
   }).select("id").single();
 
   if (insertError || !billingOrder) {
@@ -46,6 +47,38 @@ export async function POST(request: Request) {
 
   // --- BRANCH A: CASHFREE GATEWAY ---
   if (gateway === "cashfree") {
+    // If client requested Autopay, attempt Cashfree Subscriptions
+    if (billingMode === "autopay") {
+      try {
+        const subResult = await createCashfreeSubscription({
+          subscriptionId: `sub_${billingOrder.id.replace(/-/g, "").slice(0, 32)}`,
+          planName: plan.name,
+          amountInr: plan.monthly_price_paise / 100,
+          customerId: user.id,
+          customerName: organization.name || "Clinic Owner",
+          customerEmail: user.email || "billing@omnirelay.ai",
+          returnUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://omnirelay.in"}/app/billing?subscription_id={subscription_id}`,
+        });
+
+        await admin.from("saas_billing_orders").update({ provider_order_id: subResult.subscriptionId }).eq("id", billingOrder.id);
+
+        return NextResponse.json({
+          gateway: "cashfree_subscription",
+          mode: (process.env.CASHFREE_MODE || "production").toLowerCase(),
+          subscription_id: subResult.subscriptionId,
+          auth_link: subResult.authLink,
+          amount: plan.monthly_price_paise,
+          currency: plan.currency,
+          plan_name: plan.name,
+          billing_order_id: billingOrder.id,
+          billing_mode: "autopay",
+        }, { headers: { "Cache-Control": "no-store" } });
+      } catch (subErr: any) {
+        console.warn("[Cashfree Subscriptions] Mandate creation unvailable on merchant profile, gracefully falling back to standard 1-month order:", subErr.message);
+        // Graceful fallback to standard order so payment is never blocked
+      }
+    }
+
     try {
       const cfOrder = await createCashfreeOrder({
         orderId: `cf_${billingOrder.id.replace(/-/g, "").slice(0, 32)}`,
@@ -57,6 +90,7 @@ export async function POST(request: Request) {
           billing_order_id: billingOrder.id,
           organization_id: organization.id,
           plan_id: plan.id,
+          billing_mode: billingMode,
         },
       });
 
@@ -71,6 +105,7 @@ export async function POST(request: Request) {
         currency: plan.currency,
         plan_name: plan.name,
         billing_order_id: billingOrder.id,
+        billing_mode: "monthly",
       }, { headers: { "Cache-Control": "no-store" } });
     } catch (cfErr) {
       const message = cfErr instanceof Error ? cfErr.message : "Cashfree order creation failed";

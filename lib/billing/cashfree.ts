@@ -180,3 +180,101 @@ export function verifyCashfreeWebhookSignature(
   }
 }
 
+export interface CashfreeSubscriptionParams {
+  subscriptionId: string;
+  planName: string;
+  amountInr: number;
+  customerId: string;
+  customerName?: string | null;
+  customerEmail?: string | null;
+  customerPhone?: string | null;
+  returnUrl?: string | null;
+}
+
+export interface CashfreeSubscriptionResult {
+  subscriptionId: string;
+  cfSubscriptionId?: string;
+  authLink?: string;
+  status: string;
+}
+
+/**
+ * Registers an automated recurring subscription via Cashfree Subscriptions (UPI Autopay / Cards)
+ */
+export async function createCashfreeSubscription(
+  params: CashfreeSubscriptionParams
+): Promise<CashfreeSubscriptionResult> {
+  const appId = process.env.CASHFREE_APP_ID;
+  const secretKey = process.env.CASHFREE_SECRET_KEY;
+
+  if (!appId || !secretKey) {
+    throw new Error("Cashfree credentials (CASHFREE_APP_ID / CASHFREE_SECRET_KEY) are not configured.");
+  }
+
+  const phone = (params.customerPhone || "").replace(/\D/g, "");
+  const validPhone = phone.length >= 10 ? phone.slice(-10) : "9999999999";
+  const validEmail =
+    params.customerEmail && params.customerEmail.includes("@")
+      ? params.customerEmail
+      : "billing@omnirelay.ai";
+
+  const payload = {
+    subscription_id: params.subscriptionId,
+    customer_details: {
+      customer_id: params.customerId.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 50),
+      customer_name: params.customerName || "Clinic Owner",
+      customer_email: validEmail,
+      customer_phone: validPhone,
+    },
+    plan_details: {
+      plan_name: params.planName.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40),
+      plan_type: "PERIODIC",
+      plan_amount: Number(params.amountInr.toFixed(2)),
+      plan_max_amount: Number((params.amountInr * 1.5).toFixed(2)),
+      plan_max_cycles: 120,
+      plan_intervals: 1,
+      plan_currency: "INR",
+      plan_interval_type: "MONTH",
+      plan_note: `${params.planName} Monthly Subscription`,
+    },
+    authorization_details: {
+      authorization_amount: 1,
+      authorization_amount_refund: true,
+      payment_methods: ["upi", "card"],
+    },
+    subscription_meta: {
+      return_url: params.returnUrl || null,
+      notification_channel: ["EMAIL", "SMS"],
+    },
+  };
+
+  const response = await fetch(`${getCashfreeBaseUrl()}/subscriptions`, {
+    method: "POST",
+    headers: {
+      "x-client-id": appId,
+      "x-client-secret": secretKey,
+      "x-api-version": "2023-08-01",
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const errorMsg = data.message || data.error || `Cashfree subscription creation failed (${response.status})`;
+    const error = new Error(errorMsg);
+    (error as any).code = data.code;
+    throw error;
+  }
+
+  return {
+    subscriptionId: data.subscription_id || params.subscriptionId,
+    cfSubscriptionId: data.cf_subscription_id,
+    authLink: data.auth_link,
+    status: data.subscription_status || "PENDING",
+  };
+}
+
+

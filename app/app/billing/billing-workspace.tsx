@@ -27,6 +27,7 @@ export function BillingWorkspace({
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [billingMode, setBillingMode] = useState<"autopay" | "monthly">("autopay");
 
   async function loadRazorpay(): Promise<void> {
     if ((window as unknown as { Razorpay?: unknown }).Razorpay) return;
@@ -60,10 +61,16 @@ export function BillingWorkspace({
       const response = await fetch("/api/billing/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan_id: plan.id }),
+        body: JSON.stringify({ plan_id: plan.id, billing_mode: billingMode }),
       });
       const order = await response.json();
       if (!response.ok) throw new Error(order.error || "Checkout could not start");
+
+      // --- BRANCH 0: CASHFREE RECURRING SUBSCRIPTION (AUTOPAY) ---
+      if (order.gateway === "cashfree_subscription" && order.auth_link) {
+        window.location.href = order.auth_link;
+        return;
+      }
 
       // --- BRANCH A: CASHFREE MODAL CHECKOUT ---
       if (order.gateway === "cashfree" || order.payment_session_id) {
@@ -150,6 +157,48 @@ export function BillingWorkspace({
         </div>
         <i>LIVE</i>
       </div>
+
+      {/* Dual Billing Mode Choice (Auto-Debit vs Monthly Invoice) */}
+      <div className="my-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => setBillingMode("autopay")}
+          className={`flex flex-col items-start p-4 text-left rounded-xl border-2 transition-all cursor-pointer ${
+            billingMode === "autopay"
+              ? "border-[#1bc5a8] bg-[#1bc5a8]/10 shadow-sm"
+              : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
+          }`}
+        >
+          <div className="flex w-full items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#1bc5a8]">⚡ Auto-Debit Renewal</span>
+            <span className="text-[10px] font-bold bg-[#1bc5a8]/20 text-[#0f8b76] dark:text-[#32e0c2] rounded px-1.5 py-0.5">Recommended</span>
+          </div>
+          <h4 className="mt-1 font-bold text-slate-900 dark:text-white">UPI Autopay & Card Mandate</h4>
+          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+            Hassle-free 30-day recurring debit. Zero service interruption for active patient calls.
+          </p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setBillingMode("monthly")}
+          className={`flex flex-col items-start p-4 text-left rounded-xl border-2 transition-all cursor-pointer ${
+            billingMode === "monthly"
+              ? "border-[#1bc5a8] bg-[#1bc5a8]/10 shadow-sm"
+              : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
+          }`}
+        >
+          <div className="flex w-full items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">📄 B2B Accounts</span>
+            <span className="text-[10px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded px-1.5 py-0.5">3-Day Grace</span>
+          </div>
+          <h4 className="mt-1 font-bold text-slate-900 dark:text-white">Pay Monthly (Tax Invoice)</h4>
+          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+            Monthly GST invoice with 3-day grace period. Pay manually via UPI, Cards, Netbanking.
+          </p>
+        </button>
+      </div>
+
       {message && <div className="billing-message" role="status">{message}</div>}
       <div className="plan-grid">
         {plans.map((plan) => (
