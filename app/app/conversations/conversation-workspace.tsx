@@ -38,7 +38,7 @@ export function ConversationWorkspace({
   const serviceWindowEndsAt = latestIncoming ? new Date(latestIncoming.timestamp).getTime() + 24 * 60 * 60 * 1000 : 0;
   const serviceWindowOpen = serviceWindowEndsAt > state.clock;
 
-  if (!connection || !["test", "live"].includes(connection.status)) {
+  if (!connection || !["test", "live", "connected", "acceptance_testing"].includes(connection.status)) {
     return (
       <main className="inbox-connect-state">
         <span className="app-eyebrow">SHARED INBOX</span>
