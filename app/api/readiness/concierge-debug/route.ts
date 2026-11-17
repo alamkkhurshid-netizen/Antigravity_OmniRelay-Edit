@@ -56,23 +56,26 @@ export async function GET(request: Request) {
       .order("timestamp", { ascending: false })
       .limit(10);
 
-    // 7. Check vault secrets presence
-    let vaultSecrets: Array<{ name: string; has_value: boolean; value_preview?: string }> = [];
+    // 7. Check vault secrets presence and get_whatsapp_access_token
+    let tokenLength = 0;
+    let tokenError: string | null = null;
     try {
-      const { data: vData } = await admin.from("vault_decrypted_secrets_view" as any).select("*");
-      if (vData) {
-        vaultSecrets = (vData as any[]).map(v => ({
-          name: v.name,
-          has_value: Boolean(v.decrypted_secret),
-          value_preview: v.name.includes("url") ? v.decrypted_secret : undefined
-        }));
+      const { data: tokenData, error: tErr } = await admin.rpc("get_whatsapp_access_token", {
+        p_organization_id: TARGET_ORG,
+        p_phone_number_id: "1486286344562658",
+      });
+      if (tokenData && typeof tokenData === "string") {
+        tokenLength = tokenData.length;
       }
-    } catch {
-      // vault table may not be exposed via postgrest directly
+      if (tErr) tokenError = tErr.message;
+    } catch (e: any) {
+      tokenError = e.message;
     }
 
     return NextResponse.json({
       target_org: TARGET_ORG,
+      tokenLength,
+      tokenError,
       settings: settings ?? null,
       settingsError: setErr?.message ?? null,
       connection: connection ?? null,
