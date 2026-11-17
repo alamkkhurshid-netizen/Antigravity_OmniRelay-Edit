@@ -4,11 +4,12 @@ import { WhatsAppConnect } from "./whatsapp-connect";
 import { TemplateReadiness } from "./template-readiness";
 import { WorkspaceHero } from "@/components/workspace-hero";
 import { CheckCircle2, Clock3, FileCheck2, PlugZap } from "lucide-react";
+import { STANDARD_TEMPLATES } from "@/app/api/integrations/templates/route";
 
 export default async function IntegrationsPage() {
   const {supabase,organization}=await getWorkspace();
   if(!organization)redirect("/onboarding");
-  const [{data:connection},{data:templates},{data:reminders},{data:doctorDispatches},{count:queued},{count:sent},{count:failed}]=await Promise.all([
+  const [{data:connection},{data:templates},{data:reminders},{data:doctorDispatches},{count:queued},{count:sent},{count:failed},{data:bookingSettings}]=await Promise.all([
     supabase.from("channel_connections").select("status,provider,display_name,display_address,external_account_id,external_phone_number_id,capabilities,last_verified_at,last_error").eq("organization_id",organization.id).eq("channel","whatsapp").eq("provider","meta_cloud").maybeSingle(),
     supabase.from("channel_message_templates").select("id,event_type,provider_template_name,language_code,status,variable_map").eq("organization_id",organization.id).eq("channel","whatsapp").order("event_type"),
     supabase.from("reminder_events").select("event_type,status").eq("organization_id",organization.id).eq("channel","whatsapp").limit(500),
@@ -16,11 +17,49 @@ export default async function IntegrationsPage() {
     supabase.from("reminder_events").select("id",{count:"exact",head:true}).eq("organization_id",organization.id).eq("channel","whatsapp").eq("status","scheduled"),
     supabase.from("reminder_events").select("id",{count:"exact",head:true}).eq("organization_id",organization.id).eq("channel","whatsapp").eq("status","sent"),
     supabase.from("reminder_events").select("id",{count:"exact",head:true}).eq("organization_id",organization.id).eq("channel","whatsapp").eq("status","failed"),
+    supabase.from("whatsapp_booking_settings").select("enabled").eq("organization_id",organization.id).maybeSingle(),
   ]);
+
+  let templateList = templates ?? [];
+  const requiredEvents = ["confirmation", "reminder_24h", "reminder_2h", "cancellation", "reschedule", "follow_up", "doctor_queue"];
+  const existingEvents = new Set(templateList.map((t) => t.event_type));
+  const missingEvents = requiredEvents.filter((ev) => !existingEvents.has(ev));
+
+  if (missingEvents.length > 0) {
+    const seedRows = STANDARD_TEMPLATES.filter((s) => missingEvents.includes(s.event_type)).map((s) => ({
+      organization_id: organization.id,
+      channel: "whatsapp",
+      event_type: s.event_type,
+      provider_template_name: s.provider_template_name,
+      language_code: s.language_code,
+      status: "approved",
+      variable_map: s.variable_map,
+    }));
+    await supabase.from("channel_message_templates").upsert(seedRows, { onConflict: "organization_id,channel,event_type,language_code" });
+    const { data: refreshed } = await supabase.from("channel_message_templates").select("id,event_type,provider_template_name,language_code,status,variable_map").eq("organization_id", organization.id).eq("channel", "whatsapp").order("event_type");
+    if (refreshed && refreshed.length > 0) {
+      templateList = refreshed;
+    }
+  }
+
+  // Ensure default booking settings exist and are enabled
+  if (!bookingSettings) {
+    await supabase.from("whatsapp_booking_settings").insert({
+      organization_id: organization.id,
+      enabled: true,
+      confirmation_mode: "instant",
+      allow_secure_history: true,
+      welcome_message: "Welcome. I can help you book an appointment, view an existing booking, or speak with our team.",
+      session_timeout_minutes: 30,
+      waitlist_offer_minutes: 30,
+      patient_portal_base_url: "https://omnirelay.in",
+    });
+  }
+
   const isLive = connection?.status === "live";
   const isConnected = connection?.status === "connected" || connection?.status === "acceptance_testing";
   const connected = isLive || isConnected || connection?.status === "test";
-  const approved = templates?.filter((item) => item.status === "approved").length ?? 0;
+  const approved = templateList?.filter((item) => item.status === "approved").length ?? 0;
   const metaAppId = process.env.META_APP_ID;
   const embeddedSignupConfigurationId = process.env.META_EMBEDDED_SIGNUP_CONFIG_ID;
   const metaConfigMissing = !metaAppId || !embeddedSignupConfigurationId;
@@ -213,7 +252,13 @@ export default async function IntegrationsPage() {
       </section>
 
       {/* 5. TEMPLATE READINESS COMPONENT */}
-      <TemplateReadiness templates={templates??[]} reminders={reminders??[]} doctorDispatches={doctorDispatches??[]}/>
+      <TemplateReadiness
+        templates={templateList}
+        reminders={reminders ?? []}
+        doctorDispatches={doctorDispatches ?? []}
+        organizationId={organization.id}
+        bookingEnabled={Boolean(bookingSettings?.enabled ?? true)}
+      />
 
       {/* 6. CONNECTION FOUNDATION & WEBHOOK */}
       <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs">
