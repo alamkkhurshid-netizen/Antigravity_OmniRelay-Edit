@@ -134,7 +134,7 @@ export function relationshipForChoice(input) {
 }
 
 export function isResetCommand(input) {
-  return ["menu", "start", "hi", "hello", "book"].includes(String(input).trim().toLowerCase());
+  return ["menu", "start", "hi", "hello", "book", "quick", "express"].includes(String(input).trim().toLowerCase());
 }
 
 export function isStopCommand(input) {

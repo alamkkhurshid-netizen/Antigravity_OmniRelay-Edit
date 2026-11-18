@@ -4,6 +4,7 @@ import {
   bookingMenu,
   choiceList,
   isRepeatableAppointment,
+  isResetCommand,
   matchDateChoice,
   matchDepartmentChoice,
   matchDoctorChoice,
@@ -88,4 +89,11 @@ test("choice lists support up to ten options and fall back above the limit", () 
   const rows = Array.from({ length: 10 }, (_, index) => ({ id: String(index + 1), title: `Option ${index + 1}` }));
   assert.equal(choiceList("Choose", "Open menu", rows).action.sections[0].rows.length, 10);
   assert.equal(choiceList("Choose", "Open menu", [...rows, { id: "11", title: "Option 11" }]), null);
+});
+
+test("isResetCommand recognizes quick and express booking triggers", () => {
+  assert.equal(isResetCommand("quick"), true);
+  assert.equal(isResetCommand("express"), true);
+  assert.equal(isResetCommand(" QUICK "), true);
+  assert.equal(isResetCommand("menu"), true);
 });

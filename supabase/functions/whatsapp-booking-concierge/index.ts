@@ -29,6 +29,101 @@ const supportedPaymentModes=["pay_at_location","deposit_online","full_online"] a
 const paymentModeLabel=(mode:string)=>({pay_at_location:"Pay at clinic",deposit_online:"Pay deposit",full_online:"Pay now"}[mode]??mode);
 const inr=(paise:number|null|undefined)=>`₹${Math.max(0,Number(paise??0))/100}`.replace(/\.0+$/,"" );
 
+function formatQuickSlotTitle(startsAt: string, dateIso: string, timeZone = "Asia/Kolkata") {
+  const d = new Date(startsAt);
+  const timeStr = new Intl.DateTimeFormat("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone,
+  }).format(d);
+
+  const todayIso = new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date());
+  const tomorrowDate = new Date(Date.now() + 86400000);
+  const tomorrowIso = new Intl.DateTimeFormat("en-CA", { timeZone }).format(tomorrowDate);
+
+  let prefix = "";
+  if (dateIso === todayIso) {
+    prefix = "Today";
+  } else if (dateIso === tomorrowIso) {
+    prefix = "Tomorrow";
+  } else {
+    prefix = new Intl.DateTimeFormat("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone }).format(d);
+  }
+
+  return `${prefix} · ${timeStr}`.slice(0, 24);
+}
+
+async function collectEarliestSlots(
+  db: any,
+  slug: string,
+  serviceId: string,
+  fallbackLocationId: string | undefined,
+  resources: any[],
+  assignments: any[],
+  timeZone = "Asia/Kolkata",
+  limit = 6
+) {
+  if (!resources?.length || !slug) return { slots: [], dates: [] };
+
+  const resourceIds = resources.map((r: any) => r.id);
+  const { data: rules } = await db
+    .from("availability_rules")
+    .select("weekday,resource_id")
+    .in("resource_id", resourceIds)
+    .eq("active", true);
+
+  const activeWeekdays = new Set((rules ?? []).map((r: any) => Number(r.weekday)));
+  const candidateDates = nextWorkingDates(activeWeekdays, 4, timeZone);
+  if (!candidateDates.length) return { slots: [], dates: [] };
+
+  const slotPromises: Promise<any[]>[] = [];
+  for (const date of candidateDates) {
+    for (const res of resources) {
+      const assign = assignments.find((a: any) => a.resource_id === res.id);
+      const locId = assign?.location_id || assign?.location?.id || fallbackLocationId;
+      slotPromises.push(
+        db.rpc("get_public_booking_slots", {
+          p_slug: slug,
+          p_service_id: serviceId,
+          p_location_id: locId,
+          p_resource_id: res.id,
+          p_date: date,
+        }).then((resData: any) => {
+          return (resData.data ?? []).map((s: any) => ({
+            ...s,
+            date,
+            resource_id: res.id,
+            resource_name: res.name,
+            location_id: locId,
+          }));
+        }).catch(() => [])
+      );
+    }
+  }
+
+  const allSlotArrays = await Promise.all(slotPromises);
+  const allSlots = allSlotArrays.flat();
+
+  const nowIso = new Date().toISOString();
+  const validFutureSlots = allSlots
+    .filter((s: any) => s.starts_at > nowIso)
+    .sort((a: any, b: any) => a.starts_at.localeCompare(b.starts_at));
+
+  const uniqueSlots: any[] = [];
+  const seenTimes = new Set<string>();
+  for (const s of validFutureSlots) {
+    const key = `${s.resource_id}_${s.starts_at}`;
+    if (!seenTimes.has(key)) {
+      seenTimes.add(key);
+      uniqueSlots.push(s);
+      if (uniqueSlots.length >= limit) break;
+    }
+  }
+
+  return { slots: uniqueSlots, dates: candidateDates };
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -289,6 +384,57 @@ Deno.serve(async (req) => {
     return page;
   };
 
+  const sendQuickSlots = async (resources: any[], heading: string) => {
+    let { data: page } = await db.from("booking_pages").select("slug").eq("organization_id", message.organization_id).eq("active", true).maybeSingle();
+    if (!page?.slug) {
+      const { data: prof } = await db.from("onboarding_profiles").select("business_name").eq("organization_id", message.organization_id).maybeSingle();
+      const fallbackSlug = (prof?.business_name || "clinic").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "clinic";
+      const { data: createdPage } = await db.from("booking_pages").upsert({
+        organization_id: message.organization_id,
+        slug: fallbackSlug,
+        title: prof?.business_name || "Clinic",
+        active: true,
+      }, { onConflict: "organization_id" }).select("slug").single();
+      page = createdPage;
+    }
+    context.slug = page?.slug;
+
+    const timeZone = chamberTimeZone(context);
+    const { slots: quickSlots, dates: workingDates } = await collectEarliestSlots(
+      db,
+      context.slug,
+      context.service?.id,
+      context.location?.id,
+      resources,
+      context.assignments ?? [],
+      timeZone,
+      6
+    );
+
+    context.dates = workingDates;
+
+    if (quickSlots.length > 0) {
+      context.slots = quickSlots;
+      context.is_quick_booking = true;
+      const showDocName = resources.length > 1;
+      const rows = [
+        ...quickSlots.map((s: any, idx: number) => ({
+          id: `quick_slot_${idx}`,
+          title: formatQuickSlotTitle(s.starts_at, s.date, timeZone),
+          description: (showDocName && s.resource_name ? s.resource_name.replace(/^dr\.?\s*/i, "Dr. ") : `${context.service?.name || "Consultation"}`).slice(0, 72),
+        })),
+        { id: "choose_custom_date", title: "Choose another date", description: "Browse all upcoming dates" },
+      ];
+
+      const body = `⚡ ${heading}:\n\n${quickSlots.map((s: any, i: number) => `${i + 1}. ${formatQuickSlotTitle(s.starts_at, s.date, timeZone)}${showDocName && s.resource_name ? ` (${s.resource_name.replace(/^dr\.?\s*/i, "Dr. ")})` : ""}`).join("\n")}\n\nTap below to pick an available time, or browse another date:`;
+      await sendList(body, "Choose slot", rows, "Earliest slots", "⚡ Express booking · Live availability");
+      await update("slot", context);
+      return true;
+    }
+
+    return false;
+  };
+
   const now = new Date();
   const expiry = new Date(now.getTime() + settings.session_timeout_minutes * 60_000).toISOString();
   const contactPhone = digits(message.contact_address);
@@ -447,7 +593,9 @@ Deno.serve(async (req) => {
   };
 
   if (state === "welcome") {
-    if (!reset && inbound === "1") {
+    const wantsBooking = !reset && (inbound === "1" || lower === "book" || lower === "quick" || lower === "express");
+    if (wantsBooking) {
+      const isDirectQuick = lower === "quick" || lower === "express";
       const [{ data: services }, { data: locations }, { data: profile }] = await Promise.all([
         db.from("organization_services").select("id,name,duration_minutes,price_paise").eq("organization_id", message.organization_id).eq("active", true).eq("booking_enabled", true).order("name"),
         db.from("business_locations").select("id,name,location_type,address,timezone").eq("organization_id", message.organization_id).eq("active", true).order("created_at"),
@@ -487,8 +635,20 @@ Deno.serve(async (req) => {
         const { data: depts } = await db.from("clinic_departments").select("id,name,description,sort_order").eq("organization_id", message.organization_id).order("sort_order", { ascending: true }).order("name", { ascending: true });
         if (depts && depts.length > 0) {
           context.departments = depts;
-          context.dept_page = await sendDepartmentPage(depts, 0);
-          await update("department",context);
+          if (isDirectQuick) {
+            context.is_quick_booking = true;
+            context.dept_page = await sendDepartmentPage(depts, 0);
+            await update("department", context);
+            return json({ ok: true, multi_doctor: true, quick: true });
+          }
+          await sendButtons(
+            `Welcome to ${profile?.business_name || "the clinic"}.\nHow would you like to book?\n\n1. ⚡ Quick Booking (Recommended — Earliest open slots)\n2. 🗓️ Standard Booking (Browse doctors & dates)`,
+            [
+              { id: "quick_booking", title: "⚡ Quick Booking" },
+              { id: "standard_booking", title: "🗓️ Standard Booking" },
+            ]
+          );
+          await update("booking_mode", context);
           return json({ ok: true, multi_doctor: true });
         }
       }
@@ -506,18 +666,8 @@ Deno.serve(async (req) => {
         delete context.resources;
         delete context.assignments;
 
-        let { data: page } = await db.from("booking_pages").select("slug").eq("organization_id", message.organization_id).eq("active", true).maybeSingle();
-        if (!page?.slug) {
-          const fallbackSlug = (profile?.business_name || "clinic").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "clinic";
-          const { data: createdPage } = await db.from("booking_pages").upsert({
-            organization_id: message.organization_id,
-            slug: fallbackSlug,
-            title: profile?.business_name || "Clinic",
-            active: true,
-          }, { onConflict: "organization_id" }).select("slug").single();
-          page = createdPage;
-        }
-        context.slug = page?.slug;
+        const sent = await sendQuickSlots([context.resource], `Earliest available slots for ${context.resource.name}`);
+        if (sent) return json({ ok: true, solo_quick_booking: true });
 
         const { data: rules } = await db.from("availability_rules").select("weekday").eq("organization_id", message.organization_id).eq("resource_id", context.resource.id).eq("active", true);
         const activeWeekdays = new Set((rules ?? []).map((r: any) => Number(r.weekday)));
@@ -646,6 +796,18 @@ Deno.serve(async (req) => {
     } else {await send("Reply 1 to repeat the appointment or 2 to choose something different.");return json({ok:true});}
   }
 
+  if (state === "booking_mode") {
+    const isQuick = inbound === "quick_booking" || inbound === "1" || inbound.toLowerCase().includes("quick");
+    context.is_quick_booking = isQuick;
+    const { data: depts } = await db.from("clinic_departments").select("id,name,description,sort_order").eq("organization_id", message.organization_id).order("sort_order", { ascending: true }).order("name", { ascending: true });
+    if (depts && depts.length > 0) {
+      context.departments = depts;
+      context.dept_page = await sendDepartmentPage(depts, 0);
+      await update("department", context);
+      return json({ ok: true, multi_doctor: true, quick: isQuick });
+    }
+  }
+
   if (state === "service") {
     const { data: services } = await db.from("organization_services").select("id,name,duration_minutes,price_paise").eq("organization_id", message.organization_id).eq("active", true).eq("booking_enabled", true).order("name");
     if (!context.services) { context.services = services ?? []; const body=`Choose a service:\n${context.services.map((x:any,i:number)=>`${i+1}. ${x.name} · ${x.duration_minutes} min`).join("\n")}`; await sendList(body,"Choose service",context.services.map((x:any,i:number)=>({id:String(i+1),title:x.name,description:`${x.duration_minutes} min`})),"Services"); await update("service", context); return json({ ok: true }); }
@@ -757,6 +919,12 @@ Deno.serve(async (req) => {
 
     context.resources = resources;
     context.assignments = assignments ?? [];
+
+    if (context.is_quick_booking) {
+      context.resource_mode = "any";
+      const sent = await sendQuickSlots(resources, `Earliest available slots in ${department.name}`);
+      if (sent) return json({ ok: true, quick_booking: true });
+    }
 
     const rows = [
       ...(resources.length > 1 ? [{id:"any_provider",title:"Any available doctor",description:"Earliest suitable availability"}] : []),
@@ -879,6 +1047,18 @@ Deno.serve(async (req) => {
   }
 
   if (state === "slot") {
+    const timeZone = chamberTimeZone(context);
+
+    if (inbound === "choose_custom_date" || inbound === "choose_other_date") {
+      const rows = (context.dates ?? []).map((x: string, i: number) => ({
+        id: String(i + 1),
+        title: fullDate(x, timeZone).slice(0, 24),
+      }));
+      await sendList(`Choose a date for ${context.resource?.name ?? "your appointment"}:\n${rows.map((x: any) => `${x.id}. ${x.title}`).join("\n")}`, "Choose date", rows, "Available dates");
+      await update("date", context);
+      return json({ ok: true });
+    }
+
     if (inbound === "slots_next" || inbound === "slots_prev") {
       const delta = inbound === "slots_next" ? 1 : -1;
       context.slot_page = await sendSlotPage(context.slots, Number(context.slot_page ?? 0) + delta);
@@ -886,16 +1066,26 @@ Deno.serve(async (req) => {
       return json({ ok: true, slot_page: context.slot_page });
     }
 
-    const timeZone = chamberTimeZone(context);
-    const slot = context.slots?.[choice(inbound)] ?? context.slots?.find((s: any) => slotTime(s, timeZone).toLowerCase() === inbound.toLowerCase().trim());
+    let slot: any = null;
+    if (inbound.startsWith("quick_slot_")) {
+      const qIdx = Number(inbound.replace("quick_slot_", ""));
+      slot = context.slots?.[qIdx];
+    } else {
+      slot = context.slots?.[choice(inbound)] ?? context.slots?.find((s: any) => slotTime(s, timeZone).toLowerCase() === inbound.toLowerCase().trim());
+    }
+
     if (!slot) {
       await send("Please reply with a valid time number or time from the list.");
       return json({ ok: true });
     }
 
     context.slot = slot;
-    if (context.resource_mode === "any") {
+    if (slot.date) context.date = slot.date;
+    if (context.resource_mode === "any" || !context.resource) {
       context.resource=context.resources?.find((item: any) => item.id === slot.resource_id);
+      if (!context.resource && slot.resource_id) {
+        context.resource = { id: slot.resource_id, name: slot.resource_name || "Doctor" };
+      }
       if (!context.resource) {
         await send("That doctor is no longer available. Reply MENU and choose another time.");
         await update("welcome", identityContext());
@@ -903,10 +1093,13 @@ Deno.serve(async (req) => {
       }
       delete context.resources;
     }
+    if (slot.location_id && !context.location) {
+      context.location = { id: slot.location_id };
+    }
     delete context.slots;
     delete context.slot_page;
 
-    const body = "Who is this appointment for?\n1. Myself\n2. Child\n3. Parent\n4. Spouse\n5. Other family member / dependant";
+    const body = "Who is this appointment for?\n1. Myself\n2. Child\n3. Parent\n4. Spouse\n5. Other family member / dependant\n\nOr reply with the patient's full name:";
     await sendList(body, "Choose patient", [
       { id: "1", title: "Myself" },
       { id: "2", title: "Child" },
@@ -920,7 +1113,23 @@ Deno.serve(async (req) => {
 
   if (state === "relationship") {
     const selected = relationshipForChoice(inbound);
-    if (!selected) { await send("Please reply with a number from 1 to 5."); return json({ ok: true }); }
+    if (!selected) {
+      if (inbound.trim().length >= 2 && !/^\d+$/.test(inbound.trim())) {
+        context.patient_relationship = "self";
+        context.booking_contact_phone = digits(message.contact_address);
+        context.patient_name = inbound.trim();
+        context.booking_contact_name = inbound.trim();
+        context.patient_phone = context.booking_contact_phone;
+        const doctorLabel = context.resource?.name ?? "Doctor";
+        const deptLabel = context.department?.name ? ` (${context.department.name})` : "";
+        const locLabel = context.location?.name ? `\nLocation: ${context.location.name}` : "";
+        await sendButtons(`Confirm this booking?\nPatient: ${context.patient_name}\nDoctor: ${doctorLabel}${deptLabel}${locLabel}\nTime: ${fullAppointment(context.slot.starts_at,chamberTimeZone(context))}\n\nReply 1 to confirm or 2 to cancel.`, [{ id: "1", title: "Confirm booking" }, { id: "2", title: "Cancel" }]);
+        await update("confirm", context);
+        return json({ ok: true, quick_name: true });
+      }
+      await send("Please reply with a number from 1 to 5, or reply with the patient’s full name.");
+      return json({ ok: true });
+    }
     context.patient_relationship = selected;
     context.booking_contact_phone = digits(message.contact_address);
     await send(selected === "self" ? "What is your full name?" : "What is the patient’s full name?");
