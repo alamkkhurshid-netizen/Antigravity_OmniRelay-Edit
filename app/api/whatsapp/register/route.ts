@@ -451,6 +451,48 @@ export async function POST(request: Request) {
         },
       });
 
+      // Auto-provision WhatsApp Booking Settings and Booking Page for zero-touch concierge activation
+      try {
+        await adminClient.from("whatsapp_booking_settings").upsert(
+          {
+            organization_id: organization.id,
+            enabled: true,
+            confirmation_mode: "instant",
+            allow_secure_history: true,
+            welcome_message: "Welcome. I can help you book an appointment, view an existing booking, or speak with our team.",
+            session_timeout_minutes: 30,
+            waitlist_offer_minutes: 30,
+            patient_portal_base_url: "https://omnirelay.in",
+            updated_at: nowIso,
+          },
+          { onConflict: "organization_id" }
+        );
+
+        const { data: page } = await adminClient
+          .from("booking_pages")
+          .select("slug")
+          .eq("organization_id", organization.id)
+          .maybeSingle();
+
+        if (!page) {
+          const rawSlug = (organization.name || "clinic")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "") || "clinic";
+          const slug = `${rawSlug}-${organization.id.slice(0, 6)}`;
+          await adminClient.from("booking_pages").insert({
+            organization_id: organization.id,
+            slug,
+            headline: organization.name || "Clinic Appointments",
+            description: "Official Online & WhatsApp Booking Page",
+            accent_color: "#087fb9",
+            active: true,
+          });
+        }
+      } catch (provErr) {
+        console.warn("Auto-provisioning concierge foundation error (non-fatal):", provErr);
+      }
+
       return NextResponse.json({
         success: true,
         status: "connected",

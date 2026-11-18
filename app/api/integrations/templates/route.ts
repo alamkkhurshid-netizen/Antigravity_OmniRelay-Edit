@@ -162,6 +162,29 @@ export async function POST(request: Request) {
           .eq("organization_id", organization.id);
       }
 
+      // Ensure active booking page exists for slot generation
+      const { data: existingPage } = await supabase
+        .from("booking_pages")
+        .select("slug")
+        .eq("organization_id", organization.id)
+        .maybeSingle();
+
+      if (!existingPage) {
+        const rawSlug = (organization.name || "clinic")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "") || "clinic";
+        const slug = `${rawSlug}-${organization.id.slice(0, 6)}`;
+        await supabase.from("booking_pages").insert({
+          organization_id: organization.id,
+          slug,
+          headline: organization.name || "Clinic Appointments",
+          description: "Official Online & WhatsApp Booking Page",
+          accent_color: "#087fb9",
+          active: true,
+        });
+      }
+
       return NextResponse.json({
         success: true,
         action,

@@ -56,6 +56,29 @@ export default async function IntegrationsPage() {
     });
   }
 
+  // Ensure default booking page exists and is active for slot calculations & PDF brochure
+  const { data: existingBookingPage } = await supabase
+    .from("booking_pages")
+    .select("slug")
+    .eq("organization_id", organization.id)
+    .maybeSingle();
+
+  if (!existingBookingPage) {
+    const rawSlug = (organization.name || "clinic")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "clinic";
+    const slug = `${rawSlug}-${organization.id.slice(0, 6)}`;
+    await supabase.from("booking_pages").insert({
+      organization_id: organization.id,
+      slug,
+      headline: organization.name || "Clinic Appointments",
+      description: "Official Online & WhatsApp Booking Page",
+      accent_color: "#087fb9",
+      active: true,
+    });
+  }
+
   const isLive = connection?.status === "live";
   const isConnected = connection?.status === "connected" || connection?.status === "acceptance_testing";
   const connected = isLive || isConnected || connection?.status === "test";
