@@ -100,6 +100,19 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const admin = createAdminClient();
+    const body = await request.json().catch(() => ({}));
+
+    if (body.test_slots) {
+      const { data: slots, error: slotErr } = await admin.rpc("get_public_booking_slots", {
+        p_slug: body.slug || "dr-alam-clinic",
+        p_service_id: body.service_id,
+        p_location_id: body.location_id,
+        p_resource_id: body.resource_id,
+        p_date: body.date,
+      });
+      return NextResponse.json({ slots, slotErr: slotErr?.message ?? null });
+    }
+
     const { data: latestIncoming } = await admin
       .from("messages")
       .select("id,organization_id,conversation_id,contact_address,content")
