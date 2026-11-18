@@ -119,7 +119,7 @@ export function TemplateReadiness({
         rows.every((row) => row.status === "approved");
 
       const isLiveVerified = deliveryRows.some(
-        (row) => row.status === "sent" || row.status === "delivered" || row.status === "read"
+        (row) => row.status==="sent"||row.status==="delivered"||row.status==="read"
       );
 
       const templateName = rows[0]?.provider_template_name || spec.defaultTemplateName;
@@ -319,7 +319,7 @@ export function TemplateReadiness({
                     {group.liveVerified
                       ? "Live delivery verified"
                       : group.approved
-                      ? "Active in OmniRelay"
+                      ? "Configured · test pending"
                       : "Blocked by approval"}
                   </strong>
                 </div>

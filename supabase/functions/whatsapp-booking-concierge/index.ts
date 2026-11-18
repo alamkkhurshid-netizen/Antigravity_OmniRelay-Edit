@@ -1,6 +1,19 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { bookingMenu, choiceList, isRepeatableAppointment, isResetCommand, isStopCommand, nextSevenDates, relationshipForChoice, replyButtons } from "./policy.mjs";
+import {
+  bookingMenu,
+  choiceList,
+  isRepeatableAppointment,
+  isResetCommand,
+  isStopCommand,
+  matchDateChoice,
+  matchDepartmentChoice,
+  matchDoctorChoice,
+  nextSevenDates,
+  nextWorkingDates,
+  relationshipForChoice,
+  replyButtons,
+} from "./policy.mjs";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 const digits = (value: string | null | undefined) => (value ?? "").replace(/\D/g, "");
@@ -258,6 +271,24 @@ Deno.serve(async (req) => {
     return page;
   };
 
+  const sendDepartmentPage = async (departments: any[], requestedPage = 0) => {
+    const pageSize = 8;
+    const pageCount = Math.max(1, Math.ceil(departments.length / pageSize));
+    const page = Math.min(Math.max(0, requestedPage), pageCount - 1);
+    const start = page * pageSize;
+    const visible = departments.slice(start, start + pageSize);
+    const rows = visible.map((dept: any, index: number) => ({
+      id: String(start + index + 1),
+      title: String(dept.name).slice(0, 24),
+      description: String(dept.description ?? "Clinic department").slice(0, 72),
+    }));
+    if (page > 0) rows.unshift({ id: "dept_prev", title: "« Previous page", description: "View previous departments" });
+    if (page < pageCount - 1) rows.push({ id: "dept_next", title: "More departments »", description: `View more (${departments.length - (start + visible.length)} remaining)` });
+    const body = `Choose a department${pageCount > 1 ? ` · page ${page + 1} of ${pageCount}` : ""}:\n${visible.map((dept: any, index: number) => `${start + index + 1}. ${dept.name}`).join("\n")}`;
+    await sendList(body, "Choose department", rows, "Departments", pageCount > 1 ? "Use More/Previous or reply with specialty name" : "");
+    return page;
+  };
+
   const now = new Date();
   const expiry = new Date(now.getTime() + settings.session_timeout_minutes * 60_000).toISOString();
   const contactPhone = digits(message.contact_address);
@@ -416,7 +447,93 @@ Deno.serve(async (req) => {
   };
 
   if (state === "welcome") {
-    if (!reset && inbound === "1") state = "service";
+    if (!reset && inbound === "1") {
+      const [{ data: services }, { data: locations }, { data: profile }] = await Promise.all([
+        db.from("organization_services").select("id,name,duration_minutes,price_paise").eq("organization_id", message.organization_id).eq("active", true).eq("booking_enabled", true).order("name"),
+        db.from("business_locations").select("id,name,location_type,address,timezone").eq("organization_id", message.organization_id).eq("active", true).order("created_at"),
+        db.from("onboarding_profiles").select("business_name,clinic_mode,primary_phone").eq("organization_id", message.organization_id).maybeSingle(),
+      ]);
+
+      const activeServices = services ?? [];
+      const activeLocations = locations ?? [];
+
+      const isChamberOnly = activeLocations.length > 0 && activeLocations.every((loc: any) => loc.location_type === "chamber");
+      const distinctAddresses = new Set(activeLocations.map((loc: any) => {
+        const addr = loc.address;
+        return typeof addr === "object" && addr ? `${addr.line1 || ""}|${addr.city || ""}`.toLowerCase().trim() : String(addr || "").toLowerCase().trim();
+      }));
+      const isSingleCampus = activeLocations.length <= 1 || isChamberOnly || distinctAddresses.size <= 1;
+
+      if (activeServices.length > 1) {
+        context.services = activeServices;
+        context.is_single_campus = isSingleCampus;
+        const body = `Choose a service:\n${activeServices.map((x: any, i: number) => `${i + 1}. ${x.name} · ${x.duration_minutes} min`).join("\n")}`;
+        await sendList(body, "Choose service", activeServices.map((x: any, i: number) => ({ id: String(i + 1), title: x.name, description: `${x.duration_minutes} min` })), "Services");
+        await update("service", context);
+        return json({ ok: true });
+      }
+
+      context.service = activeServices[0] ?? { id: "default", name: "Consultation", duration_minutes: 30, price_paise: 0 };
+
+      if (!isSingleCampus) {
+        context.locations = activeLocations;
+        const body = `Choose a chamber/location:\n${activeLocations.map((x: any, i: number) => `${i + 1}. ${x.name}${addressText(x.address) ? ` — ${addressText(x.address)}` : ""}`).join("\n")}`;
+        await sendList(body, "Choose chamber", activeLocations.map((x: any, i: number) => ({ id: String(i + 1), title: x.name, description: addressText(x.address) })), "Locations");
+        await update("location", context);
+        return json({ ok: true });
+      }
+
+      if (profile?.clinic_mode==="multi_doctor_clinic") {
+        const { data: depts } = await db.from("clinic_departments").select("id,name,description,sort_order").eq("organization_id", message.organization_id).order("sort_order", { ascending: true }).order("name", { ascending: true });
+        if (depts && depts.length > 0) {
+          context.departments = depts;
+          context.dept_page = await sendDepartmentPage(depts, 0);
+          await update("department",context);
+          return json({ ok: true, multi_doctor: true });
+        }
+      }
+
+      const { data: assignments } = await db.from("provider_location_assignments").select("resource_id,location_id,location:business_locations(id,name,address,timezone),resource:booking_resources(id,name,timezone)").eq("organization_id", message.organization_id).eq("active", true);
+      const uniqueResources = new Map<string, any>();
+      for (const a of assignments ?? []) if (a.resource && !uniqueResources.has(a.resource_id)) uniqueResources.set(a.resource_id, a.resource);
+      context.resources = [...uniqueResources.values()];
+      context.assignments = assignments ?? [];
+
+      if (context.resources.length === 1) {
+        context.resource = context.resources[0];
+        const assign = context.assignments.find((a: any) => a.resource_id === context.resource.id);
+        if (assign?.location) context.location = assign.location;
+        delete context.resources;
+        delete context.assignments;
+
+        let { data: page } = await db.from("booking_pages").select("slug").eq("organization_id", message.organization_id).eq("active", true).maybeSingle();
+        if (!page?.slug) {
+          const fallbackSlug = (profile?.business_name || "clinic").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "clinic";
+          const { data: createdPage } = await db.from("booking_pages").upsert({
+            organization_id: message.organization_id,
+            slug: fallbackSlug,
+            title: profile?.business_name || "Clinic",
+            active: true,
+          }, { onConflict: "organization_id" }).select("slug").single();
+          page = createdPage;
+        }
+        context.slug = page?.slug;
+
+        const { data: rules } = await db.from("availability_rules").select("weekday").eq("organization_id", message.organization_id).eq("resource_id", context.resource.id).eq("active", true);
+        const activeWeekdays = new Set((rules ?? []).map((r: any) => Number(r.weekday)));
+        const timeZone = chamberTimeZone(context);
+        context.dates = nextWorkingDates(activeWeekdays, 7, timeZone);
+        const rows = context.dates.map((x: string, i: number) => ({ id: String(i + 1), title: fullDate(x, timeZone).slice(0, 24) }));
+        await sendList(`Choose a date for ${context.resource.name}:\n${rows.map((x: any) => `${x.id}. ${x.title}`).join("\n")}`, "Choose date", rows, "Available dates");
+        await update("date", context);
+        return json({ ok: true });
+      }
+
+      const rows = context.resources.map((x: any, i: number) => ({ id: String(i + 1), title: x.name.slice(0, 24) }));
+      await sendList(`Choose a doctor/provider:\n${context.resources.map((x: any, i: number) => `${i + 1}. ${x.name}`).join("\n")}`, "Choose doctor", rows, "Providers");
+      await update("resource", context);
+      return json({ ok: true });
+    }
     else if (!reset && inbound === "2") {
       const {data:appointments}=await db.from("appointments").select("id,starts_at,status,service_id,location_id,resource_id,service:organization_services(id,name,duration_minutes),location:business_locations(id,name,timezone),resource:booking_resources(id,name,timezone)")
         .eq("organization_id",message.organization_id).or(`customer_phone.eq.${contactPhone},booking_contact_phone.eq.${contactPhone}`)
@@ -440,11 +557,27 @@ Deno.serve(async (req) => {
     else if (!reset && inbound === "7") { await sendFrontDesk(); await update("welcome",identityContext()); return json({ok:true,front_desk:true}); }
     else if (!reset && inbound === "9") { await db.from("conversations").update({ ai_paused: true, paused_at: new Date().toISOString() }).eq("id", message.conversation_id); await send("A clinic team member will assist you here. The automated concierge is now paused."); await update("human", {}); return json({ ok: true }); }
     else {
-      const recoveryNotice=recoveredExpiredSession?"Your previous booking session expired, so I started a fresh secure session.\n\n":"";
-      const startNotice=lower==="start"?"Clinic booking and care messages are active again. Marketing remains off unless you separately opt in.\n\n":"";
-      const menuBody=`${recoveryNotice}${startNotice}${bookingMenu(settings.welcome_message,context.patient_profile?.full_name)}`;
-      const menuRows=[{id:"1",title:"Choose appointment",description:"Recommended"},{id:"2",title:"My bookings"},{id:"3",title:"Last visit / prescription"},...(context.returning_patient?[{id:"4",title:"Repeat appointment"}]:[]),{id:"5",title:"Doctor directory & PDF",description:"Doctors and clinic brochure"},{id:"6",title:"Timings & location",description:"Clinic details"},{id:"7",title:"Speak to front desk",description:"Clinic phone number"},{id:"9",title:"Human assistance"}];
-      await sendList(menuBody,"Open menu",menuRows,"Patient services","Type MENU anytime to restart"); await update("welcome", context); return json({ ok: true });
+      const [{ data: clinicProfile }] = await Promise.all([
+        db.from("onboarding_profiles").select("business_name,clinic_mode,primary_phone").eq("organization_id", message.organization_id).maybeSingle(),
+      ]);
+      const clinicName = clinicProfile?.business_name || "the clinic";
+      const recoveryNotice = recoveredExpiredSession ? "Your previous booking session expired, so I started a fresh secure session.\n\n" : "";
+      const startNotice = lower === "start" ? "Clinic booking and care messages are active again. Marketing remains off unless you separately opt in.\n\n" : "";
+      const customWelcome = settings.welcome_message && settings.welcome_message !== "Welcome. I can help you book an appointment, view an existing booking, or speak with our team." ? settings.welcome_message : `Welcome to ${clinicName}. I can help you book an appointment, view an existing booking, or speak with our team.`;
+      const menuBody = `${recoveryNotice}${startNotice}${bookingMenu(customWelcome, context.patient_profile?.full_name, clinicName)}`;
+      const menuRows = [
+        { id: "1", title: "Choose appointment", description: "Recommended" },
+        { id: "2", title: "My bookings" },
+        { id: "3", title: "Last visit / prescription" },
+        ...(context.returning_patient ? [{ id: "4", title: "Repeat appointment" }] : []),
+        {id:"5",title:"Doctor directory & PDF",description:"Doctors and clinic brochure"},
+        {id:"6",title:"Timings & location",description:"Clinic details"},
+        {id:"7",title:"Speak to front desk",description:"Clinic phone number"},
+        { id: "9", title: "Human assistance" },
+      ];
+      await sendList(menuBody, "Open menu", menuRows, "Patient services", "Type MENU anytime to restart");
+      await update("welcome", context);
+      return json({ ok: true });
     }
   }
 
@@ -499,8 +632,17 @@ Deno.serve(async (req) => {
       const {data:assignment}=await db.from("provider_location_assignments").select("id").eq("organization_id",message.organization_id).eq("location_id",context.location.id).eq("resource_id",context.resource.id).eq("active",true).limit(1).maybeSingle();
       const {data:service}=await db.from("organization_services").select("id").eq("id",context.service.id).eq("organization_id",message.organization_id).eq("active",true).eq("booking_enabled",true).maybeSingle();
       if(!assignment||!service){await send("That previous clinic setup is no longer bookable. Reply 1 to choose a new appointment.");await update("welcome",context);return json({ok:true});}
-      const {data:page}=await db.from("booking_pages").select("slug").eq("organization_id",message.organization_id).eq("active",true).maybeSingle();context.slug=page?.slug;
-      context.dates=nextSevenDates();{const rows=context.dates.map((x:string,i:number)=>({id:String(i+1),title:fullDate(x,chamberTimeZone(context))}));await sendList(`Choose a new date for ${context.service.name}:\n${rows.map((x:any)=>`${x.id}. ${x.title}`).join("\n")}`,"Choose date",rows,"Available dates");}await update("date",context);return json({ok:true,returning_patient:true});
+      let {data:page}=await db.from("booking_pages").select("slug").eq("organization_id",message.organization_id).eq("active",true).maybeSingle();
+      context.slug=page?.slug;
+
+      const { data: rules } = await db.from("availability_rules").select("weekday").eq("organization_id", message.organization_id).eq("resource_id", context.resource.id).eq("active", true);
+      const activeWeekdays = new Set((rules ?? []).map((r: any) => Number(r.weekday)));
+      const timeZone = chamberTimeZone(context);
+      context.dates = nextWorkingDates(activeWeekdays, 7, timeZone);
+      const rows = context.dates.map((x: string, i: number) => ({ id: String(i + 1), title: fullDate(x, timeZone).slice(0, 24) }));
+      await sendList(`Choose a new date for ${context.service.name}:\n${rows.map((x: any) => `${x.id}. ${x.title}`).join("\n")}`, "Choose date", rows, "Available dates");
+      await update("date", context);
+      return json({ ok: true, returning_patient: true });
     } else {await send("Reply 1 to repeat the appointment or 2 to choose something different.");return json({ok:true});}
   }
 
@@ -510,72 +652,308 @@ Deno.serve(async (req) => {
     const selected = context.services[choice(inbound)];
     if (!selected) { await send("Please reply with a valid service number."); return json({ ok: true }); }
     context.service = selected; delete context.services;
-    const { data: assignments } = await db.from("provider_location_assignments").select("location_id,resource_id,location:business_locations(id,name,address,timezone),resource:booking_resources(id,name,timezone)").eq("organization_id", message.organization_id).eq("active", true);
-    const unique = new Map<string,any>(); for (const a of assignments ?? []) if (!unique.has(a.location_id)) unique.set(a.location_id, a.location);
-    context.locations = [...unique.values()]; {const body=`Choose a chamber/location:\n${context.locations.map((x:any,i:number)=>`${i+1}. ${x.name}${addressText(x.address) ? ` — ${addressText(x.address)}` : ""}`).join("\n")}`;await sendList(body,"Choose chamber",context.locations.map((x:any,i:number)=>({id:String(i+1),title:x.name,description:addressText(x.address)})),"Locations");} await update("location", context); return json({ ok: true });
+
+    const [{ data: locations }, { data: profile }] = await Promise.all([
+      db.from("business_locations").select("id,name,location_type,address,timezone").eq("organization_id", message.organization_id).eq("active", true).order("created_at"),
+      db.from("onboarding_profiles").select("clinic_mode,business_name").eq("organization_id", message.organization_id).maybeSingle(),
+    ]);
+
+    const activeLocations = locations ?? [];
+    const isChamberOnly = activeLocations.length > 0 && activeLocations.every((loc: any) => loc.location_type === "chamber");
+    const distinctAddresses = new Set(activeLocations.map((loc: any) => {
+      const addr = loc.address;
+      return typeof addr === "object" && addr ? `${addr.line1 || ""}|${addr.city || ""}`.toLowerCase().trim() : String(addr || "").toLowerCase().trim();
+    }));
+    const isSingleCampus = activeLocations.length <= 1 || isChamberOnly || distinctAddresses.size <= 1;
+
+    if (!isSingleCampus) {
+      context.locations = activeLocations;
+      const body = `Choose a chamber/location:\n${activeLocations.map((x: any, i: number) => `${i + 1}. ${x.name}${addressText(x.address) ? ` — ${addressText(x.address)}` : ""}`).join("\n")}`;
+      await sendList(body, "Choose chamber", activeLocations.map((x: any, i: number) => ({ id: String(i + 1), title: x.name, description: addressText(x.address) })), "Locations");
+      await update("location", context);
+      return json({ ok: true });
+    }
+
+    if (profile?.clinic_mode==="multi_doctor_clinic") {
+      const { data: depts } = await db.from("clinic_departments").select("id,name,description,sort_order").eq("organization_id", message.organization_id).order("sort_order", { ascending: true }).order("name", { ascending: true });
+      if (depts && depts.length > 0) {
+        context.departments = depts;
+        context.dept_page = await sendDepartmentPage(depts, 0);
+        await update("department",context);
+        return json({ ok: true, multi_doctor: true });
+      }
+    }
+
+    const { data: assignments } = await db.from("provider_location_assignments").select("resource_id,location_id,location:business_locations(id,name,address,timezone),resource:booking_resources(id,name,timezone)").eq("organization_id", message.organization_id).eq("active", true);
+    const uniqueResources = new Map<string, any>();
+    for (const a of assignments ?? []) if (a.resource && !uniqueResources.has(a.resource_id)) uniqueResources.set(a.resource_id, a.resource);
+    context.resources = [...uniqueResources.values()];
+    context.assignments = assignments ?? [];
+
+    const rows = context.resources.map((x: any, i: number) => ({ id: String(i + 1), title: x.name.slice(0, 24) }));
+    await sendList(`Choose a doctor/provider:\n${context.resources.map((x: any, i: number) => `${i + 1}. ${x.name}`).join("\n")}`, "Choose doctor", rows, "Providers");
+    await update("resource", context);
+    return json({ ok: true });
   }
 
   if (state === "location") {
-    const selected = context.locations?.[choice(inbound)]; if (!selected) { await send("Please reply with a valid chamber number."); return json({ ok: true }); }
+    const selected = context.locations?.[choice(inbound)]; if (!selected) { await send("Please reply with a valid branch number."); return json({ ok: true }); }
     context.location = selected; delete context.locations;
     const [{data:assignments},{data:profile}]=await Promise.all([
-      db.from("provider_location_assignments").select("resource:booking_resources(id,name,timezone)").eq("organization_id",message.organization_id).eq("location_id",selected.id).eq("active",true),
+      db.from("provider_location_assignments").select("resource_id,location_id,location:business_locations(id,name,address,timezone),resource:booking_resources(id,name,timezone)").eq("organization_id",message.organization_id).eq("location_id",selected.id).eq("active",true),
       db.from("onboarding_profiles").select("clinic_mode").eq("organization_id",message.organization_id).maybeSingle(),
     ]);
-    context.resources=(assignments??[]).map((x:any)=>x.resource).filter(Boolean);
-    if(profile?.clinic_mode==="multi_doctor_clinic"){
-      const resourceIds=context.resources.map((item:any)=>item.id);
-      const {data:links}=resourceIds.length?await db.from("provider_departments").select("department_id,resource_id,department:clinic_departments(id,name,description,sort_order)").eq("organization_id",message.organization_id).in("resource_id",resourceIds):{data:[]};
-      const departments=[...new Map<string,any>((links??[]).map((link:any)=>[link.department_id,link.department])).values()].filter(Boolean).sort((a:any,b:any)=>(a.sort_order??0)-(b.sort_order??0)||a.name.localeCompare(b.name));
-      if(departments.length){context.departments=departments;context.provider_departments=links??[];const body=`Choose a department:\n${departments.map((item:any,index:number)=>`${index+1}. ${item.name}`).join("\n")}`;await sendList(body,"Choose department",departments.map((item:any,index:number)=>({id:String(index+1),title:item.name,description:item.description??"Clinic department"})),"Departments");await update("department",context);return json({ok:true,multi_doctor:true});}
+    context.assignments = assignments ?? [];
+    const resourceIds = (assignments ?? []).map((x: any) => x.resource_id);
+
+    if (profile?.clinic_mode==="multi_doctor_clinic") {
+      const { data: links } = resourceIds.length
+        ? await db.from("provider_departments").select("department_id,resource_id,department:clinic_departments(id,name,description,sort_order)").eq("organization_id", message.organization_id).in("resource_id", resourceIds)
+        : { data: [] };
+      const departments = [...new Map<string, any>((links ?? []).map((link: any) => [link.department_id, link.department])).values()].filter(Boolean).sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name));
+      if (departments.length) {
+        context.departments = departments;
+        context.dept_page = await sendDepartmentPage(departments, 0);
+        await update("department",context);
+        return json({ ok: true, multi_doctor: true });
+      }
     }
-    {const body=`Choose a doctor/provider:\n${context.resources.map((x:any,i:number)=>`${i+1}. ${x.name}`).join("\n")}`;await sendList(body,"Choose doctor",context.resources.map((x:any,i:number)=>({id:String(i+1),title:x.name})),"Providers");} await update("resource", context); return json({ ok: true });
+
+    context.resources = (assignments ?? []).map((x: any) => x.resource).filter(Boolean);
+    const rows = context.resources.map((x: any, i: number) => ({ id: String(i + 1), title: x.name.slice(0, 24) }));
+    await sendList(`Choose a doctor/provider:\n${context.resources.map((x: any, i: number) => `${i + 1}. ${x.name}`).join("\n")}`, "Choose doctor", rows, "Providers");
+    await update("resource", context);
+    return json({ ok: true });
   }
 
-  if(state==="department"){
-    const department=context.departments?.[choice(inbound)];if(!department){await send("Please choose a valid department number.");return json({ok:true});}
-    const allowedIds=new Set((context.provider_departments??[]).filter((link:any)=>link.department_id===department.id).map((link:any)=>link.resource_id));
-    context.department=department;context.resources=(context.resources??[]).filter((item:any)=>allowedIds.has(item.id));delete context.departments;delete context.provider_departments;
-    if(!context.resources.length){await send("No doctor is currently bookable in that department. Reply MENU to choose again or 9 for clinic assistance.");await update("welcome",identityContext());return json({ok:true});}
-    const rows=[...(context.resources.length>1?[{id:"any_provider",title:"Any available doctor",description:"Earliest suitable availability"}]:[]),...context.resources.map((item:any,index:number)=>({id:String(index+1),title:item.name}))];
-    const body=`Choose a doctor in ${department.name}:\n${context.resources.length>1?"Any available doctor — earliest suitable availability\n":""}${context.resources.map((item:any,index:number)=>`${index+1}. ${item.name}`).join("\n")}`;
-    await sendList(body,"Choose doctor",rows,"Providers");await update("resource",context);return json({ok:true});
+  if (state === "department") {
+    if (inbound === "dept_next" || inbound === "dept_prev") {
+      const delta = inbound === "dept_next" ? 1 : -1;
+      context.dept_page = await sendDepartmentPage(context.departments, Math.max(0, Number(context.dept_page ?? 0) + delta));
+      await update("department", context);
+      return json({ ok: true, dept_page: context.dept_page });
+    }
+
+    const department = matchDepartmentChoice(inbound, context.departments);
+    if (!department) {
+      await send("Please choose a valid department number or reply with the department name.");
+      return json({ ok: true });
+    }
+
+    context.department = department;
+    delete context.departments;
+    delete context.dept_page;
+
+    const { data: deptLinks } = await db.from("provider_departments").select("department_id,resource_id,resource:booking_resources(id,name,timezone)").eq("organization_id", message.organization_id).eq("department_id", department.id);
+    const resources = (deptLinks ?? []).map((l: any) => l.resource).filter(Boolean);
+    if (!resources.length) {
+      await send(`No doctor is currently bookable in ${department.name}. Reply MENU to choose another department or 9 for clinic assistance.`);
+      await update("welcome", identityContext());
+      return json({ ok: true });
+    }
+
+    const resourceIds = resources.map((r: any) => r.id);
+    const { data: assignments } = await db.from("provider_location_assignments").select("resource_id,location_id,location:business_locations(id,name,address,timezone)").eq("organization_id", message.organization_id).in("resource_id", resourceIds).eq("active", true);
+
+    context.resources = resources;
+    context.assignments = assignments ?? [];
+
+    const rows = [
+      ...(resources.length > 1 ? [{id:"any_provider",title:"Any available doctor",description:"Earliest suitable availability"}] : []),
+      ...resources.map((item: any, index: number) => ({ id: String(index + 1), title: item.name.slice(0, 24) })),
+    ];
+    const body = `Choose a doctor in ${department.name}:\n${resources.length > 1 ? "Any available doctor — earliest suitable availability\n" : ""}${resources.map((item: any, index: number) => `${index + 1}. ${item.name}`).join("\n")}`;
+    await sendList(body, "Choose doctor", rows, "Providers");
+    await update("resource", context);
+    return json({ ok: true });
   }
 
   if (state === "resource") {
-    const anyProvider=inbound==="any_provider"&&context.resources?.length>1;
-    const selected=anyProvider?null:context.resources?.[choice(inbound)];if(!anyProvider&&!selected){await send("Please choose a valid doctor.");return json({ok:true});}
-    context.resource_mode=anyProvider?"any":"specific";if(selected)context.resource=selected;if(!anyProvider)delete context.resources;
-    const { data: page } = await db.from("booking_pages").select("slug").eq("organization_id", message.organization_id).eq("active", true).maybeSingle(); context.slug = page?.slug;
-    context.dates = nextSevenDates();
-    {const rows=context.dates.map((x:string,i:number)=>({id:String(i+1),title:fullDate(x,chamberTimeZone(context))}));await sendList(`Choose a date:\n${rows.map((x:any)=>`${x.id}. ${x.title}`).join("\n")}`,"Choose date",rows,"Available dates");} await update("date", context); return json({ ok: true });
+    const anyProvider = inbound === "any_provider" && (context.resources?.length ?? 0) > 1;
+    const selected = anyProvider ? null : matchDoctorChoice(inbound, context.resources);
+    if (!anyProvider && !selected) {
+      await send("Please choose a valid doctor from the list.");
+      return json({ ok: true });
+    }
+
+    context.resource_mode = anyProvider ? "any" : "specific";
+    if (selected) {
+      context.resource = selected;
+      const assign = context.assignments?.find((a: any) => a.resource_id === selected.id);
+      if (assign?.location) context.location = assign.location;
+    } else if (anyProvider && !context.location && context.assignments?.length) {
+      context.location = context.assignments[0].location;
+    }
+    if (!anyProvider) delete context.resources;
+    delete context.assignments;
+
+    let { data: page } = await db.from("booking_pages").select("slug").eq("organization_id", message.organization_id).eq("active", true).maybeSingle();
+    if (!page?.slug) {
+      const { data: prof } = await db.from("onboarding_profiles").select("business_name").eq("organization_id", message.organization_id).maybeSingle();
+      const fallbackSlug = (prof?.business_name || "clinic").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "clinic";
+      const { data: createdPage } = await db.from("booking_pages").upsert({
+        organization_id: message.organization_id,
+        slug: fallbackSlug,
+        title: prof?.business_name || "Clinic",
+        active: true,
+      }, { onConflict: "organization_id" }).select("slug").single();
+      page = createdPage;
+    }
+    context.slug = page?.slug;
+
+    const activeWeekdays = new Set<number>();
+    if (context.resource_mode === "any") {
+      const resIds = (context.resources ?? []).map((r: any) => r.id);
+      const { data: rules } = await db.from("availability_rules").select("weekday").eq("organization_id", message.organization_id).in("resource_id", resIds).eq("active", true);
+      for (const r of rules ?? []) activeWeekdays.add(Number(r.weekday));
+    } else if (context.resource?.id) {
+      const { data: rules } = await db.from("availability_rules").select("weekday").eq("organization_id", message.organization_id).eq("resource_id", context.resource.id).eq("active", true);
+      for (const r of rules ?? []) activeWeekdays.add(Number(r.weekday));
+    }
+
+    const timeZone = chamberTimeZone(context);
+    context.dates = nextWorkingDates(activeWeekdays, 7, timeZone);
+
+    const rows = context.dates.map((x: string, i: number) => ({ id: String(i + 1), title: fullDate(x, timeZone).slice(0, 24) }));
+    const providerName = context.resource?.name ?? `doctors in ${context.department?.name ?? "the clinic"}`;
+    await sendList(`Choose a date for ${providerName}:\n${rows.map((x: any) => `${x.id}. ${x.title}`).join("\n")}`, "Choose date", rows, "Available dates");
+    await update("date", context);
+    return json({ ok: true });
   }
 
   if (state === "date") {
-    const date = context.dates?.[choice(inbound)]; if (!date) { await send("Please reply with a valid date number."); return json({ ok: true }); }
-    let slots:any[]=[];
-    if(context.resource_mode==="any"){
-      const results=await Promise.all((context.resources??[]).map(async(resource:any)=>{const {data}=await db.rpc("get_public_booking_slots",{p_slug:context.slug,p_service_id:context.service.id,p_location_id:context.location.id,p_resource_id:resource.id,p_date:date});return(data??[]).map((slot:any)=>({...slot,resource_id:resource.id}));}));
-      slots=results.flat().sort((a:any,b:any)=>a.starts_at.localeCompare(b.starts_at)).filter((slot:any,index:number,all:any[])=>index===all.findIndex((candidate:any)=>candidate.starts_at===slot.starts_at));
-    }else{
-      const result=await db.rpc("get_public_booking_slots",{p_slug:context.slug,p_service_id:context.service.id,p_location_id:context.location.id,p_resource_id:context.resource.id,p_date:date});slots=result.data??[];
+    const timeZone = chamberTimeZone(context);
+    const date = matchDateChoice(inbound, context.dates, timeZone);
+    if (!date) {
+      await send("Please reply with a valid date from the list.");
+      return json({ ok: true });
     }
-    context.date=date;context.slots=slots;if(!context.slots.length){await send("No free slots remain on that date. Reply MENU to start again and choose another date.");await update("welcome",identityContext());return json({ok:true});}
-    context.slot_page=await sendSlotPage(context.slots,0); await update("slot",context); return json({ ok: true });
+
+    let slots: any[] = [];
+    if (context.resource_mode === "any") {
+      const results = await Promise.all((context.resources ?? []).map(async (resource: any) => {
+        const { data } = await db.rpc("get_public_booking_slots", {
+          p_slug: context.slug,
+          p_service_id: context.service.id,
+          p_location_id: context.location?.id,
+          p_resource_id: resource.id,
+          p_date: date,
+        });
+        return (data ?? []).map((slot: any) => ({ ...slot, resource_id: resource.id }));
+      }));
+      slots = results.flat().sort((a: any, b: any) => a.starts_at.localeCompare(b.starts_at))
+        .filter((slot: any, index: number, all: any[]) => index === all.findIndex((candidate: any) => candidate.starts_at === slot.starts_at));
+    } else {
+      const result = await db.rpc("get_public_booking_slots", {
+        p_slug: context.slug,
+        p_service_id: context.service.id,
+        p_location_id: context.location?.id,
+        p_resource_id: context.resource.id,
+        p_date: date,
+      });
+      slots = result.data ?? [];
+    }
+
+    context.date = date;
+    context.slots = slots;
+
+    if (!context.slots.length) {
+      const rows = (context.dates ?? []).map((x: string, i: number) => ({
+        id: String(i + 1),
+        title: fullDate(x, timeZone).slice(0, 24),
+      }));
+      await sendList(
+        `No free slots remain for ${fullDate(date, timeZone)}.\n\nPlease choose another date for ${context.resource?.name ?? "your appointment"}:\n${rows.map((x: any) => `${x.id}. ${x.title}`).join("\n")}`,
+        "Choose date",
+        rows,
+        "Available dates"
+      );
+      // Stay on "date" state so user can pick another date!
+      await update("date", context);
+      return json({ ok: true, no_slots: true });
+    }
+
+    context.slot_page = await sendSlotPage(context.slots, 0);
+    await update("slot", context);
+    return json({ ok: true });
   }
 
   if (state === "slot") {
-    if(inbound==="slots_next"||inbound==="slots_prev"){
-      const delta=inbound==="slots_next"?1:-1;
-      context.slot_page=await sendSlotPage(context.slots,Number(context.slot_page??0)+delta);
-      await update("slot",context);return json({ok:true,slot_page:context.slot_page});
+    if (inbound === "slots_next" || inbound === "slots_prev") {
+      const delta = inbound === "slots_next" ? 1 : -1;
+      context.slot_page = await sendSlotPage(context.slots, Number(context.slot_page ?? 0) + delta);
+      await update("slot", context);
+      return json({ ok: true, slot_page: context.slot_page });
     }
-    const slot = context.slots?.[choice(inbound)]; if (!slot) { await send("Please reply with a valid time number."); return json({ ok: true }); }
-    context.slot=slot;if(context.resource_mode==="any"){context.resource=context.resources?.find((item:any)=>item.id===slot.resource_id);if(!context.resource){await send("That doctor is no longer available. Reply MENU and choose another time.");await update("welcome",identityContext());return json({ok:true});}delete context.resources;} delete context.slots;delete context.slot_page; {const body="Who is this appointment for?\n1. Myself\n2. Child\n3. Parent\n4. Spouse\n5. Other family member / dependant";await sendList(body,"Choose patient",[{id:"1",title:"Myself"},{id:"2",title:"Child"},{id:"3",title:"Parent"},{id:"4",title:"Spouse"},{id:"5",title:"Other dependant"}],"Patient");} await update("relationship",context); return json({ ok: true });
+
+    const timeZone = chamberTimeZone(context);
+    const slot = context.slots?.[choice(inbound)] ?? context.slots?.find((s: any) => slotTime(s, timeZone).toLowerCase() === inbound.toLowerCase().trim());
+    if (!slot) {
+      await send("Please reply with a valid time number or time from the list.");
+      return json({ ok: true });
+    }
+
+    context.slot = slot;
+    if (context.resource_mode === "any") {
+      context.resource=context.resources?.find((item: any) => item.id === slot.resource_id);
+      if (!context.resource) {
+        await send("That doctor is no longer available. Reply MENU and choose another time.");
+        await update("welcome", identityContext());
+        return json({ ok: true });
+      }
+      delete context.resources;
+    }
+    delete context.slots;
+    delete context.slot_page;
+
+    const body = "Who is this appointment for?\n1. Myself\n2. Child\n3. Parent\n4. Spouse\n5. Other family member / dependant";
+    await sendList(body, "Choose patient", [
+      { id: "1", title: "Myself" },
+      { id: "2", title: "Child" },
+      { id: "3", title: "Parent" },
+      { id: "4", title: "Spouse" },
+      { id: "5", title: "Other dependant" },
+    ], "Patient");
+    await update("relationship", context);
+    return json({ ok: true });
   }
-  if (state === "relationship") { const selected=relationshipForChoice(inbound);if(!selected){await send("Please reply with a number from 1 to 5.");return json({ok:true});}context.patient_relationship=selected;context.booking_contact_phone=digits(message.contact_address);await send(selected==="self"?"What is your full name?":"What is the patient’s full name?");await update("name",context);return json({ok:true}); }
-  if (state === "name") { if (inbound.length < 2) { await send("Please enter the patient’s full name."); return json({ok:true}); } context.patient_name=inbound;if(context.patient_relationship==="self"){context.booking_contact_name=inbound;context.patient_phone=context.booking_contact_phone;await sendButtons(`Confirm this booking?\n${context.patient_name}\n${context.service.name}\n${context.location.name}\n${context.resource.name}\n${fullAppointment(context.slot.starts_at,chamberTimeZone(context))}\n\nReply 1 to confirm or 2 to cancel.`,[{id:"1",title:"Confirm booking"},{id:"2",title:"Cancel"}]);await update("confirm",context);return json({ok:true});}await send("What is your name as the parent, guardian or booking contact?");await update("guardian_name",context);return json({ok:true}); }
-  if (state === "guardian_name") {if(inbound.length<2){await send("Please enter the booking contact’s full name.");return json({ok:true});}context.booking_contact_name=inbound;context.patient_phone=context.booking_contact_phone;await sendButtons(`Confirm this booking?\nPatient: ${context.patient_name}\nBooked by: ${context.booking_contact_name} (${context.patient_relationship})\n${context.service.name}\n${context.location.name}\n${context.resource.name}\n${fullAppointment(context.slot.starts_at,chamberTimeZone(context))}\n\nReply 1 to confirm or 2 to cancel.`,[{id:"1",title:"Confirm booking"},{id:"2",title:"Cancel"}]);await update("confirm",context);return json({ok:true});}
+
+  if (state === "relationship") {
+    const selected = relationshipForChoice(inbound);
+    if (!selected) { await send("Please reply with a number from 1 to 5."); return json({ ok: true }); }
+    context.patient_relationship = selected;
+    context.booking_contact_phone = digits(message.contact_address);
+    await send(selected === "self" ? "What is your full name?" : "What is the patient’s full name?");
+    await update("name", context);
+    return json({ ok: true });
+  }
+
+  if (state === "name") {
+    if (inbound.length < 2) { await send("Please enter the patient’s full name."); return json({ ok: true }); }
+    context.patient_name = inbound;
+    if (context.patient_relationship === "self") {
+      context.booking_contact_name = inbound;
+      context.patient_phone = context.booking_contact_phone;
+      const doctorLabel = context.resource?.name ?? "Doctor";
+      const deptLabel = context.department?.name ? ` (${context.department.name})` : "";
+      const locLabel = context.location?.name ? `\nLocation: ${context.location.name}` : "";
+      await sendButtons(`Confirm this booking?\nPatient: ${context.patient_name}\nDoctor: ${doctorLabel}${deptLabel}${locLabel}\nTime: ${fullAppointment(context.slot.starts_at,chamberTimeZone(context))}\n\nReply 1 to confirm or 2 to cancel.`, [{ id: "1", title: "Confirm booking" }, { id: "2", title: "Cancel" }]);
+      await update("confirm", context);
+      return json({ ok: true });
+    }
+    await send("What is your name as the parent, guardian or booking contact?");
+    await update("guardian_name", context);
+    return json({ ok: true });
+  }
+
+  if (state === "guardian_name") {
+    if (inbound.length < 2) { await send("Please enter the booking contact’s full name."); return json({ ok: true }); }
+    context.booking_contact_name = inbound;
+    context.patient_phone = context.booking_contact_phone;
+    await sendButtons(`Confirm this booking?\nPatient: ${context.patient_name}\nBooked by: ${context.booking_contact_name} (${context.patient_relationship})\n${context.service.name}\n${context.location?.name ?? "Clinic"}\n${context.resource.name}\n${fullAppointment(context.slot.starts_at,chamberTimeZone(context))}\n\nReply 1 to confirm or 2 to cancel.`, [{ id: "1", title: "Confirm booking" }, { id: "2", title: "Cancel" }]);
+    await update("confirm", context);
+    return json({ ok: true });
+  }
   if (state === "confirm") {
     if (inbound === "2") { await send("Booking cancelled. Reply MENU whenever you want to start again."); await update("welcome",identityContext()); return json({ok:true}); }
     if (inbound !== "1") { await send("Reply 1 to confirm or 2 to cancel."); return json({ok:true}); }
