@@ -80,25 +80,31 @@ async function collectEarliestSlots(
   const slotPromises: Promise<any[]>[] = [];
   for (const date of candidateDates) {
     for (const res of resources) {
-      const assign = assignments.find((a: any) => a.resource_id === res.id);
-      const locId = assign?.location_id || assign?.location?.id || fallbackLocationId;
-      slotPromises.push(
-        db.rpc("get_public_booking_slots", {
-          p_slug: slug,
-          p_service_id: serviceId,
-          p_location_id: locId,
-          p_resource_id: res.id,
-          p_date: date,
-        }).then((resData: any) => {
-          return (resData.data ?? []).map((s: any) => ({
-            ...s,
-            date,
-            resource_id: res.id,
-            resource_name: res.name,
-            location_id: locId,
-          }));
-        }).catch(() => [])
-      );
+      const matchingAssignments = assignments.filter((a: any) => a.resource_id === res.id);
+      const locAssignments = matchingAssignments.length > 0 ? matchingAssignments : [{ location_id: fallbackLocationId, location: null }];
+
+      for (const assign of locAssignments) {
+        const locId = assign.location_id || assign.location?.id || fallbackLocationId;
+        const locName = assign.location?.name || "";
+        slotPromises.push(
+          db.rpc("get_public_booking_slots", {
+            p_slug: slug,
+            p_service_id: serviceId,
+            p_location_id: locId,
+            p_resource_id: res.id,
+            p_date: date,
+          }).then((resData: any) => {
+            return (resData.data ?? []).map((s: any) => ({
+              ...s,
+              date,
+              resource_id: res.id,
+              resource_name: res.name,
+              location_id: locId,
+              location_name: locName,
+            }));
+          }).catch(() => [])
+        );
+      }
     }
   }
 
@@ -418,11 +424,22 @@ Deno.serve(async (req) => {
       context.is_quick_booking = true;
       const showDocName = resources.length > 1;
       const rows = [
-        ...quickSlots.map((s: any, idx: number) => ({
-          id: `quick_slot_${idx}`,
-          title: formatQuickSlotTitle(s.starts_at, s.date, timeZone),
-          description: (showDocName && s.resource_name ? s.resource_name.replace(/^dr\.?\s*/i, "Dr. ") : `${context.service?.name || "Consultation"}`).slice(0, 72),
-        })),
+        ...quickSlots.map((s: any, idx: number) => {
+          let desc = "";
+          if (showDocName && s.resource_name) {
+            const cleanDoc = s.resource_name.replace(/^dr\.?\s*/i, "Dr. ");
+            desc = s.location_name ? `${cleanDoc} · ${s.location_name}` : cleanDoc;
+          } else if (s.location_name) {
+            desc = s.location_name;
+          } else {
+            desc = context.service?.name || "Consultation";
+          }
+          return {
+            id: `quick_slot_${idx}`,
+            title: formatQuickSlotTitle(s.starts_at, s.date, timeZone),
+            description: desc.slice(0, 72),
+          };
+        }),
         { id: "choose_custom_date", title: "Choose another date", description: "Browse all upcoming dates" },
       ];
 
@@ -535,6 +552,36 @@ Deno.serve(async (req) => {
         ({error:completeError}=await db.rpc("complete_whatsapp_booking_handoff",{p_handoff_token:handoff.token,p_booking_reference:recovered.booking_reference,p_manage_token:recovered.manage_token}));
         if(completeError){await send("The appointment is safe, but confirmation needs staff review.");return json({ok:false,error:completeError.message});}
       }
+
+      const doc = String(context.resource?.name ?? "Doctor").replace(/^dr\.?\s*/i, "Dr. ");
+      const dept = context.department?.name ? ` · ${context.department.name}` : "";
+      const loc = context.location?.name ? `\nChamber: ${context.location.name}` : "";
+      const timeStr = fullAppointment(context.slot.starts_at, chamberTimeZone(context));
+      const ref = appointment.booking_reference;
+      const feeStr = context.service?.price_paise ? ` · ${inr(context.service.price_paise)} (Pay at clinic)` : "";
+
+      await sendButtons(
+        `✅ Booked — ${context.patient_name}\n${timeStr}\n${doc}${dept}${loc}\nBooking reference: ${ref}${feeStr}\n\nPlease arrive 10 minutes early.`,
+        [
+          { id: "1", title: "Reschedule" },
+          { id: "2", title: "Cancel booking" },
+          { id: "3", title: "Main menu" },
+        ],
+        "Reply 1, 2, or MENU anytime"
+      );
+
+      context.managed_appointment = {
+        id: appointment.id,
+        starts_at: context.slot.starts_at,
+        service_id: context.service.id,
+        location_id: context.location?.id,
+        resource_id: context.resource.id,
+        service: context.service,
+        location: context.location,
+        resource: context.resource,
+      };
+      await update("manage_booking_action", context);
+      return json({ ok: true, booking_confirmed: true, reference: ref, payment_mode: selectedPaymentMode });
     }
     await update("welcome",identityContext());return json({ok:true,payment_mode:selectedPaymentMode});
   };
@@ -593,9 +640,39 @@ Deno.serve(async (req) => {
   };
 
   if (state === "welcome") {
-    const wantsBooking = !reset && (inbound === "1" || lower === "book" || lower === "quick" || lower === "express");
+    const isMainMenuTrigger = lower === "menu" || lower === "main menu" || inbound === "main_menu" || (!reset && context.welcome_choice_shown && (inbound === "2" || lower === "more"));
+    const wantsBooking = !reset && (inbound === "1" || lower === "book" || lower === "quick" || lower === "express" || inbound === "quick_booking" || inbound === "express_booking");
+
+    if (isMainMenuTrigger) {
+      delete context.welcome_choice_shown;
+      context.viewing_main_menu = true;
+      const [{ data: clinicProfile }] = await Promise.all([
+        db.from("onboarding_profiles").select("business_name,clinic_mode,primary_phone").eq("organization_id", message.organization_id).maybeSingle(),
+      ]);
+      const clinicName = clinicProfile?.business_name || "the clinic";
+      const recoveryNotice = recoveredExpiredSession ? "Your previous booking session expired, so I started a fresh secure session.\n\n" : "";
+      const startNotice = lower === "start" ? "Clinic booking and care messages are active again. Marketing remains off unless you separately opt in.\n\n" : "";
+      const customWelcome = settings.welcome_message && settings.welcome_message !== "Welcome. I can help you book an appointment, view an existing booking, or speak with our team." ? settings.welcome_message : `Welcome to ${clinicName}. I can help you book an appointment, view an existing booking, or speak with our team.`;
+      const menuBody = `${recoveryNotice}${startNotice}${bookingMenu(customWelcome, context.patient_profile?.full_name, clinicName)}`;
+      const menuRows = [
+        { id: "1", title: "Choose appointment", description: "Recommended" },
+        { id: "2", title: "My bookings" },
+        { id: "3", title: "Last visit / prescription" },
+        ...(context.returning_patient ? [{ id: "4", title: "Repeat appointment" }] : []),
+        {id:"5",title:"Doctor directory & PDF",description:"Doctors and clinic brochure"},
+        {id:"6",title:"Timings & location",description:"Clinic details"},
+        {id:"7",title:"Speak to front desk",description:"Clinic phone number"},
+        { id: "9", title: "Human assistance" },
+      ];
+      await sendList(menuBody, "Open menu", menuRows, "Patient services", "Type MENU anytime to restart");
+      await update("welcome", context);
+      return json({ ok: true });
+    }
+
     if (wantsBooking) {
-      const isDirectQuick = lower === "quick" || lower === "express";
+      const isExpress = !context.viewing_main_menu || lower === "quick" || lower === "express" || inbound === "quick_booking" || inbound === "express_booking";
+      context.is_quick_booking = isExpress;
+
       const [{ data: services }, { data: locations }, { data: profile }] = await Promise.all([
         db.from("organization_services").select("id,name,duration_minutes,price_paise").eq("organization_id", message.organization_id).eq("active", true).eq("booking_enabled", true).order("name"),
         db.from("business_locations").select("id,name,location_type,address,timezone").eq("organization_id", message.organization_id).eq("active", true).order("created_at"),
@@ -612,7 +689,7 @@ Deno.serve(async (req) => {
       }));
       const isSingleCampus = activeLocations.length <= 1 || isChamberOnly || distinctAddresses.size <= 1;
 
-      if (activeServices.length > 1) {
+      if (!isExpress && activeServices.length > 1) {
         context.services = activeServices;
         context.is_single_campus = isSingleCampus;
         const body = `Choose a service:\n${activeServices.map((x: any, i: number) => `${i + 1}. ${x.name} · ${x.duration_minutes} min`).join("\n")}`;
@@ -623,7 +700,7 @@ Deno.serve(async (req) => {
 
       context.service = activeServices[0] ?? { id: "default", name: "Consultation", duration_minutes: 30, price_paise: 0 };
 
-      if (!isSingleCampus) {
+      if (!isExpress && !isSingleCampus) {
         context.locations = activeLocations;
         const body = `Choose a chamber/location:\n${activeLocations.map((x: any, i: number) => `${i + 1}. ${x.name}${addressText(x.address) ? ` — ${addressText(x.address)}` : ""}`).join("\n")}`;
         await sendList(body, "Choose chamber", activeLocations.map((x: any, i: number) => ({ id: String(i + 1), title: x.name, description: addressText(x.address) })), "Locations");
@@ -631,11 +708,11 @@ Deno.serve(async (req) => {
         return json({ ok: true });
       }
 
-      if (profile?.clinic_mode==="multi_doctor_clinic") {
+      if (profile?.clinic_mode === "multi_doctor_clinic") {
         const { data: depts } = await db.from("clinic_departments").select("id,name,description,sort_order").eq("organization_id", message.organization_id).order("sort_order", { ascending: true }).order("name", { ascending: true });
         if (depts && depts.length > 0) {
           context.departments = depts;
-          if (isDirectQuick) {
+          if (isExpress) {
             context.is_quick_booking = true;
             context.dept_page = await sendDepartmentPage(depts, 0);
             await update("department", context);
@@ -659,8 +736,8 @@ Deno.serve(async (req) => {
       context.resources = [...uniqueResources.values()];
       context.assignments = assignments ?? [];
 
-      if (context.resources.length === 1) {
-        context.resource = context.resources[0];
+      if (context.resources.length === 1 || isExpress) {
+        context.resource = context.resources[0] ?? { id: "default", name: "Doctor" };
         const assign = context.assignments.find((a: any) => a.resource_id === context.resource.id);
         if (assign?.location) context.location = assign.location;
         delete context.resources;
@@ -684,7 +761,7 @@ Deno.serve(async (req) => {
       await update("resource", context);
       return json({ ok: true });
     }
-    else if (!reset && inbound === "2") {
+    else if (!reset && inbound === "2" && context.viewing_main_menu) {
       const {data:appointments}=await db.from("appointments").select("id,starts_at,status,service_id,location_id,resource_id,service:organization_services(id,name,duration_minutes),location:business_locations(id,name,timezone),resource:booking_resources(id,name,timezone)")
         .eq("organization_id",message.organization_id).or(`customer_phone.eq.${contactPhone},booking_contact_phone.eq.${contactPhone}`)
         .gt("starts_at",new Date().toISOString()).in("status",["pending","confirmed","rescheduling_required"]).order("starts_at").limit(10);
@@ -711,23 +788,19 @@ Deno.serve(async (req) => {
         db.from("onboarding_profiles").select("business_name,clinic_mode,primary_phone").eq("organization_id", message.organization_id).maybeSingle(),
       ]);
       const clinicName = clinicProfile?.business_name || "the clinic";
-      const recoveryNotice = recoveredExpiredSession ? "Your previous booking session expired, so I started a fresh secure session.\n\n" : "";
-      const startNotice = lower === "start" ? "Clinic booking and care messages are active again. Marketing remains off unless you separately opt in.\n\n" : "";
-      const customWelcome = settings.welcome_message && settings.welcome_message !== "Welcome. I can help you book an appointment, view an existing booking, or speak with our team." ? settings.welcome_message : `Welcome to ${clinicName}. I can help you book an appointment, view an existing booking, or speak with our team.`;
-      const menuBody = `${recoveryNotice}${startNotice}${bookingMenu(customWelcome, context.patient_profile?.full_name, clinicName)}`;
-      const menuRows = [
-        { id: "1", title: "Choose appointment", description: "Recommended" },
-        { id: "2", title: "My bookings" },
-        { id: "3", title: "Last visit / prescription" },
-        ...(context.returning_patient ? [{ id: "4", title: "Repeat appointment" }] : []),
-        {id:"5",title:"Doctor directory & PDF",description:"Doctors and clinic brochure"},
-        {id:"6",title:"Timings & location",description:"Clinic details"},
-        {id:"7",title:"Speak to front desk",description:"Clinic phone number"},
-        { id: "9", title: "Human assistance" },
-      ];
-      await sendList(menuBody, "Open menu", menuRows, "Patient services", "Type MENU anytime to restart");
+      context.welcome_choice_shown = true;
+      delete context.viewing_main_menu;
+
+      await sendButtons(
+        `Welcome to ${clinicName}.\nHow can we help you today?\n\n1. ⚡ Express Booking (Earliest open slots)\n2. 📋 Main Menu (All clinic services)`,
+        [
+          { id: "quick_booking", title: "⚡ Express Booking" },
+          { id: "main_menu", title: "📋 Main Menu" },
+        ],
+        "Reply 1 or 2, or type MENU anytime"
+      );
       await update("welcome", context);
-      return json({ ok: true });
+      return json({ ok: true, welcome_options: true });
     }
   }
 
@@ -1093,11 +1166,27 @@ Deno.serve(async (req) => {
       }
       delete context.resources;
     }
-    if (slot.location_id && !context.location) {
-      context.location = { id: slot.location_id };
+    if (slot.location_id) {
+      context.location = {
+        id: slot.location_id,
+        name: slot.location_name || context.location?.name || "Clinic Chamber",
+      };
     }
     delete context.slots;
     delete context.slot_page;
+
+    if (context.is_quick_booking) {
+      const timeFormatted = fullAppointment(context.slot.starts_at, timeZone);
+      const doctorLabel = String(context.resource?.name ?? "Doctor").replace(/^dr\.?\s*/i, "Dr. ");
+      const deptLabel = context.department?.name ? ` (${context.department.name})` : "";
+      const locLabel = context.location?.name ? `\nChamber: ${context.location.name}` : "";
+      const feeFormatted = context.service?.price_paise ? inr(context.service.price_paise) : "";
+
+      const promptBody = `${timeFormatted}\n${doctorLabel}${deptLabel}${locLabel}${feeFormatted ? `\n${feeFormatted} · Pay at clinic` : ""}\n\nReply with the patient's full name to confirm.\nWe use your number for booking & reminders only. Reply STOP anytime.`;
+      await send(promptBody);
+      await update("quick_name", context);
+      return json({ ok: true, express_name_prompt: true });
+    }
 
     const body = "Who is this appointment for?\n1. Myself\n2. Child\n3. Parent\n4. Spouse\n5. Other family member / dependant\n\nOr reply with the patient's full name:";
     await sendList(body, "Choose patient", [
@@ -1109,6 +1198,42 @@ Deno.serve(async (req) => {
     ], "Patient");
     await update("relationship", context);
     return json({ ok: true });
+  }
+
+  if (state === "quick_name") {
+    const patientName = inbound.trim();
+    if (patientName.length < 2) {
+      await send("Please reply with the patient's full name to confirm this booking.");
+      return json({ ok: true });
+    }
+
+    context.patient_name = patientName;
+    context.booking_contact_name = patientName;
+    context.patient_relationship = "self";
+    context.booking_contact_phone = digits(message.contact_address);
+    context.patient_phone = context.booking_contact_phone;
+
+    // Record DPDP compliance consent in database
+    const { data: consentId } = await db.rpc("record_whatsapp_booking_consent", {
+      p_organization_id: message.organization_id,
+      p_conversation_id: message.conversation_id,
+      p_session_id: session.id,
+      p_source_message_id: message.id,
+      p_channel_identity: message.contact_address,
+      p_notice_version: "whatsapp-booking-v1",
+      p_notice_text: consentNotice,
+      p_action: "accepted",
+    });
+    context.consent_evidence_id = consentId;
+    context.consent_source_message_id = message.id;
+
+    await db.from("communication_opt_outs").delete()
+      .eq("organization_id", message.organization_id)
+      .eq("channel", "whatsapp")
+      .eq("address", contactPhone)
+      .in("scope", ["all", "care"]);
+
+    return await finishBooking("pay_at_location");
   }
 
   if (state === "relationship") {
