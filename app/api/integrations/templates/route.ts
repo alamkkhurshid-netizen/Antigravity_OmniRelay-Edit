@@ -146,6 +146,19 @@ export const STANDARD_TEMPLATES = [
     },
     body_text: "Hello {{1}}, this is an important service update from {{2}} regarding your scheduled care: {{3}} will remain closed on {{4}}. Our team will contact you to reschedule. Please reply if you need assistance.",
     sample_values: ["Rahul Sharma", "Neoclinic", "Chamber 1", "31 July"]
+  },
+  {
+    event_type: "booking_resume",
+    provider_template_name: "omnirelay_booking_resume",
+    language_code: "en",
+    group_key: "booking-resume",
+    category: "UTILITY",
+    variable_map: {
+      "1": "patient_name",
+      "2": "clinic_name"
+    },
+    body_text: "Hello {{1}}, your appointment booking with {{2}} was not completed. Your previous selection has not been confirmed. Reply below if you would like to continue or contact the clinic.",
+    sample_values: ["Rahul Sharma", "Neoclinic"]
   }
 ];
 

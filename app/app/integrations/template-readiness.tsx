@@ -211,6 +211,23 @@ const lifecycleSpecs: LifecycleGroupSpec[] = [
       "3": "Chamber 1",
       "4": "31 July"
     }
+  },
+  {
+    key: "booking-resume",
+    title: "Abandoned booking recovery",
+    description: "Sent to patients who initiated booking but dropped off before completing.",
+    events: ["booking_resume"],
+    defaultTemplateName: "omnirelay_booking_resume",
+    category: "UTILITY",
+    bodyText: "Hello {{1}}, your appointment booking with {{2}} was not completed. Your previous selection has not been confirmed. Reply below if you would like to continue or contact the clinic.",
+    variables: {
+      "1": "patient_name",
+      "2": "clinic_name"
+    },
+    sampleValues: {
+      "1": "Rahul Sharma",
+      "2": "Neoclinic"
+    }
   }
 ];
 
