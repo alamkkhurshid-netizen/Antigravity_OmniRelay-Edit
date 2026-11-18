@@ -517,6 +517,59 @@ Deno.serve(async (req) => {
     await db.from("whatsapp_booking_sessions").update({ state: nextState, context: nextContext, last_message_id: message.id, expires_at: expiry, updated_at: new Date().toISOString() }).eq("id", session.id);
   };
 
+  const getConsultationFee = async (resId?: string, locId?: string, srvId?: string) => {
+    const resourceId = resId || context.resource?.id;
+    const locationId = locId || context.location?.id;
+    const serviceId = srvId || context.service?.id;
+
+    let fee = Number(context.service?.price_paise ?? 0);
+    if (resourceId) {
+      const { data: assigns } = await db.from("provider_location_assignments")
+        .select("id")
+        .eq("organization_id", message.organization_id)
+        .eq("resource_id", resourceId)
+        .eq("active", true)
+        .filter("location_id", locationId ? "eq" : "is", locationId ? locationId : null);
+
+      const assignIds = (assigns ?? []).map((row: any) => row.id);
+      if (assignIds.length > 0) {
+        let q = db.from("provider_location_services")
+          .select("price_paise,deposit_paise,allowed_payment_modes")
+          .eq("organization_id", message.organization_id)
+          .in("assignment_id", assignIds)
+          .eq("active", true);
+
+        if (serviceId && serviceId !== "default") {
+          q = q.eq("service_id", serviceId);
+        }
+
+        const { data: pls } = await q.order("price_paise", { ascending: false }).limit(1).maybeSingle();
+        if (pls?.price_paise && pls.price_paise > 0) {
+          fee = pls.price_paise;
+        }
+      } else {
+        const { data: anyAssigns } = await db.from("provider_location_assignments")
+          .select("id")
+          .eq("organization_id", message.organization_id)
+          .eq("resource_id", resourceId)
+          .eq("active", true);
+        const anyIds = (anyAssigns ?? []).map((row: any) => row.id);
+        if (anyIds.length > 0) {
+          const { data: anyPls } = await db.from("provider_location_services")
+            .select("price_paise")
+            .eq("organization_id", message.organization_id)
+            .in("assignment_id", anyIds)
+            .eq("active", true)
+            .gt("price_paise", 0)
+            .limit(1)
+            .maybeSingle();
+          if (anyPls?.price_paise) fee = anyPls.price_paise;
+        }
+      }
+    }
+    return fee;
+  };
+
   const finishBooking = async (selectedPaymentMode: string) => {
     context.payment_mode=selectedPaymentMode;
     if(selectedPaymentMode==="deposit_online"||selectedPaymentMode==="full_online"){
@@ -558,7 +611,8 @@ Deno.serve(async (req) => {
       const loc = context.location?.name ? `\nChamber: ${context.location.name}` : "";
       const timeStr = fullAppointment(context.slot.starts_at, chamberTimeZone(context));
       const ref = appointment.booking_reference;
-      const feeStr = context.service?.price_paise ? ` · ${inr(context.service.price_paise)} (Pay at clinic)` : "";
+      const feePaise = context.fee_paise ?? (await getConsultationFee(context.resource?.id, context.location?.id, context.service?.id));
+      const feeStr = feePaise > 0 ? `\nFee: ${inr(feePaise)} · Pay at clinic` : "\nPayment: Pay at clinic";
 
       await sendButtons(
         `✅ Booked — ${context.patient_name}\n${timeStr}\n${doc}${dept}${loc}\nBooking reference: ${ref}${feeStr}\n\nPlease arrive 10 minutes early.`,
@@ -1180,9 +1234,11 @@ Deno.serve(async (req) => {
       const doctorLabel = String(context.resource?.name ?? "Doctor").replace(/^dr\.?\s*/i, "Dr. ");
       const deptLabel = context.department?.name ? ` (${context.department.name})` : "";
       const locLabel = context.location?.name ? `\nChamber: ${context.location.name}` : "";
-      const feeFormatted = context.service?.price_paise ? inr(context.service.price_paise) : "";
+      const docFeePaise = await getConsultationFee(context.resource?.id, context.location?.id, context.service?.id);
+      context.fee_paise = docFeePaise;
+      const feeFormatted = docFeePaise > 0 ? inr(docFeePaise) : "";
 
-      const promptBody = `${timeFormatted}\n${doctorLabel}${deptLabel}${locLabel}${feeFormatted ? `\n${feeFormatted} · Pay at clinic` : ""}\n\nReply with the patient's full name to confirm.\nWe use your number for booking & reminders only. Reply STOP anytime.`;
+      const promptBody = `${timeFormatted}\n${doctorLabel}${deptLabel}${locLabel}${feeFormatted ? `\nFee: ${feeFormatted} · Pay at clinic` : "\nPayment: Pay at clinic"}\n\nReply with the patient's full name to confirm.\nWe use your number for booking & reminders only. Reply STOP anytime.`;
       await send(promptBody);
       await update("quick_name", context);
       return json({ ok: true, express_name_prompt: true });
