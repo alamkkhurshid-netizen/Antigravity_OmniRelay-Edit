@@ -55,10 +55,10 @@ function parameters(eventType: string, appointment: Appointment, scheduledFor?: 
   const reference = appointmentReference(appointment.id);
   const values: Record<string, string[]> = {
     confirmation: [appointment.customer_name, doctor, appointment.organization.name, service, date, time, location, reference],
-    reminder_24h: [appointment.customer_name, doctor, date, time, location, reference, "15"],
-    reminder_2h: [appointment.customer_name, doctor, date, time, location, reference, "15"],
+    reminder_24h: [appointment.customer_name, doctor, date, time, location, reference],
+    reminder_2h: [appointment.customer_name, doctor, date, time, location, reference],
     cancellation: [appointment.customer_name, doctor, date, time, reference],
-    reschedule: [appointment.customer_name, doctor, time, date, location, reference],
+    reschedule: [appointment.customer_name, doctor, date, time, location, reference],
     follow_up: [appointment.customer_name, doctor, date, followUpDue],
   };
   return (values[eventType] || []).map((text) => ({ type: "text", text }));

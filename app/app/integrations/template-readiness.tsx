@@ -35,9 +35,27 @@ const lifecycleSpecs: LifecycleGroupSpec[] = [
     events: ["confirmation"],
     defaultTemplateName: "omnirelay_booking_confirmation",
     category: "UTILITY",
-    bodyText: "Hello {{1}}, your appointment with {{2}} is confirmed for {{3}} at {{4}}. Manage or reschedule your appointment here: {{5}}",
-    variables: { "1": "patient_name", "2": "clinic_name", "3": "appointment_time", "4": "chamber_location", "5": "manage_url" },
-    sampleValues: { "1": "Rahul Sharma", "2": "Dr Alam's Clinic", "3": "Tuesday 18 Nov at 4:00 PM", "4": "Chamber 1", "5": "https://omnirelay.in/m/abc123" }
+    bodyText: "Hello {{1}}, your appointment with Dr {{2}} is confirmed.\nClinic: {{3}}\nService: {{4}}\nDate: {{5}}\nTime: {{6}}\nChamber: {{7}}\nBooking reference: {{8}}\nThanks for Your booking with us",
+    variables: {
+      "1": "patient_name",
+      "2": "doctor_name",
+      "3": "clinic_name",
+      "4": "service_name",
+      "5": "appointment_date",
+      "6": "appointment_time",
+      "7": "chamber_name",
+      "8": "booking_reference"
+    },
+    sampleValues: {
+      "1": "Rahul Sharma",
+      "2": "Ananya Sen",
+      "3": "Neoclinic",
+      "4": "General Consultation",
+      "5": "18 August 2026",
+      "6": "5:30 PM",
+      "7": "Chamber 1",
+      "8": "OR-28491"
+    }
   },
   {
     key: "appointment-reminder",
@@ -46,31 +64,92 @@ const lifecycleSpecs: LifecycleGroupSpec[] = [
     events: ["reminder_24h", "reminder_2h"],
     defaultTemplateName: "omnirelay_appointment_reminder",
     category: "UTILITY",
-    bodyText: "Reminder: Hello {{1}}, your appointment with {{2}} is scheduled for {{3}} at {{4}}. If you need to make changes, visit: {{5}}",
-    variables: { "1": "patient_name", "2": "clinic_name", "3": "appointment_time", "4": "chamber_location", "5": "manage_url" },
-    sampleValues: { "1": "Rahul Sharma", "2": "Dr Alam's Clinic", "3": "Tomorrow at 4:00 PM", "4": "Chamber 1", "5": "https://omnirelay.in/m/abc123" }
+    bodyText: "Hello {{1}}, this is a reminder for your appointment with Dr {{2}}.\nDate: {{3}}\nTime: {{4}}\nChamber: {{5}}\nBooking reference: {{6}}\nPlease arrive 15 minutes early.",
+    variables: {
+      "1": "patient_name",
+      "2": "doctor_name",
+      "3": "appointment_date",
+      "4": "appointment_time",
+      "5": "chamber_name",
+      "6": "booking_reference"
+    },
+    sampleValues: {
+      "1": "Rahul Sharma",
+      "2": "Ananya Sen",
+      "3": "18 August 2026",
+      "4": "5:30 PM",
+      "5": "Chamber 1",
+      "6": "OR-28491"
+    }
   },
   {
-    key: "booking-change",
-    title: "Cancellation and reschedule",
-    description: "Keeps affected patients informed in real time when a doctor cancels or shifts chamber timings.",
-    events: ["cancellation", "reschedule"],
-    defaultTemplateName: "omnirelay_booking_change",
+    key: "cancellation",
+    title: "Booking cancellation",
+    description: "Keeps affected patients informed in real time when an appointment is cancelled.",
+    events: ["cancellation"],
+    defaultTemplateName: "omnirelay_booking_cancelled",
     category: "UTILITY",
-    bodyText: "Hello {{1}}, regarding your appointment with {{2}} on {{3}}: {{4}}. To book a new time or view details: {{5}}",
-    variables: { "1": "patient_name", "2": "clinic_name", "3": "appointment_time", "4": "action_summary", "5": "manage_url" },
-    sampleValues: { "1": "Rahul Sharma", "2": "Dr Alam's Clinic", "3": "Tuesday 18 Nov at 4:00 PM", "4": "Your appointment has been rescheduled", "5": "https://omnirelay.in/m/abc123" }
+    bodyText: "Hello {{1}}, your appointment with Dr {{2}} scheduled for {{3}} at {{4}} has been cancelled.\nBooking reference: {{5}}\nYou can start a new booking whenever required.",
+    variables: {
+      "1": "patient_name",
+      "2": "doctor_name",
+      "3": "appointment_date",
+      "4": "appointment_time",
+      "5": "booking_reference"
+    },
+    sampleValues: {
+      "1": "Rahul Sharma",
+      "2": "Ananya Sen",
+      "3": "18 August 2026",
+      "4": "5:30 PM",
+      "5": "OR-28491"
+    }
+  },
+  {
+    key: "reschedule",
+    title: "Booking reschedule",
+    description: "Keeps affected patients informed when doctor or chamber timing is rescheduled.",
+    events: ["reschedule"],
+    defaultTemplateName: "omnirelay_booking_rescheduled",
+    category: "UTILITY",
+    bodyText: "Hello {{1}}, your appointment with Dr {{2}} has been rescheduled.\nNew date: {{3}}\nNew time: {{4}}\nChamber: {{5}}\nBooking reference: {{6}}\nPlease reach before 15min before.",
+    variables: {
+      "1": "patient_name",
+      "2": "doctor_name",
+      "3": "appointment_date",
+      "4": "appointment_time",
+      "5": "chamber_name",
+      "6": "booking_reference"
+    },
+    sampleValues: {
+      "1": "Rahul Sharma",
+      "2": "Ananya Sen",
+      "3": "19 August 2026",
+      "4": "6:00 PM",
+      "5": "Chamber 1",
+      "6": "OR-28491"
+    }
   },
   {
     key: "follow-up",
     title: "Follow-up and revisit",
-    description: "Dispatched on the doctor-recommended follow-up date with a 1-click booking link.",
+    description: "Dispatched on the doctor-recommended follow-up date with quick reply actions.",
     events: ["follow_up"],
     defaultTemplateName: "omnirelay_follow_up",
     category: "UTILITY",
-    bodyText: "Hello {{1}}, this is a follow-up check from {{2}} regarding your care with Dr. {{3}}. To schedule your follow-up consultation, please visit: {{4}}",
-    variables: { "1": "patient_name", "2": "clinic_name", "3": "doctor_name", "4": "booking_url" },
-    sampleValues: { "1": "Rahul Sharma", "2": "Dr Alam's Clinic", "3": "Dr Alok Ray", "4": "https://omnirelay.in/book" }
+    bodyText: "Hello {{1}}, Dr {{2}} has scheduled a follow-up for your recent visit on {{3}}.\nFollow-up due: {{4}}\nPlease reply to contact the clinic or arrange an appointment.",
+    variables: {
+      "1": "patient_name",
+      "2": "doctor_name",
+      "3": "visit_date",
+      "4": "follow_up_due"
+    },
+    sampleValues: {
+      "1": "Rahul Sharma",
+      "2": "Ananya Sen",
+      "3": "18 August 2026",
+      "4": "25 August 2026"
+    }
   },
   {
     key: "doctor-queue",
@@ -79,10 +158,60 @@ const lifecycleSpecs: LifecycleGroupSpec[] = [
     events: ["doctor_queue"],
     defaultTemplateName: "omnirelay_doctor_queue",
     category: "UTILITY",
-    bodyText: "Good day Dr. {{1}}, your upcoming shift at {{2}} ({{3}}) currently has {{4}} scheduled patient bookings.",
-    variables: { "1": "doctor_name", "2": "clinic_name", "3": "shift_and_chamber", "4": "booking_count" },
-    sampleValues: { "1": "Dr Alok Ray", "2": "Dr Alam's Clinic", "3": "Tuesday 15:00-19:00 (Chamber 5)", "4": "8" }
+    bodyText: "Hello Dr. {{1}}, Sir\n\nYour upcoming schedule at {{2}}:\n\nShift: {{3}}\nTotal appointments: {{4}}\n\nPlease contact the clinic if any schedule adjustment is required.",
+    variables: {
+      "1": "doctor_name",
+      "2": "clinic_name",
+      "3": "shift_and_chamber",
+      "4": "booking_count"
+    },
+    sampleValues: {
+      "1": "Khurshid Alam",
+      "2": "Neoclinic",
+      "3": "5th Aug 2 PM",
+      "4": "6"
+    }
   },
+  {
+    key: "care-reminder",
+    title: "Medication reminder",
+    description: "Sent according to prescription schedule to improve patient medication adherence.",
+    events: ["care_reminder"],
+    defaultTemplateName: "omnirelay_medication_reminder",
+    category: "UTILITY",
+    bodyText: "Hello {{1}}, this is your scheduled medication reminder from {{2}}.\nSchedule: {{3}}\nFollow the instructions provided in your doctor-issued prescription. Do not change or stop medication without consulting your doctor.",
+    variables: {
+      "1": "patient_name",
+      "2": "clinic_name",
+      "3": "schedule"
+    },
+    sampleValues: {
+      "1": "Rahul Sharma",
+      "2": "Neoclinic",
+      "3": "Evening dose after food"
+    }
+  },
+  {
+    key: "emergency-notice",
+    title: "Emergency service notice",
+    description: "Broadcast to scheduled patients if doctor is unavailable or clinic is closed.",
+    events: ["emergency_notice"],
+    defaultTemplateName: "omnirelay_emergency_notic",
+    category: "UTILITY",
+    bodyText: "Hello {{1}}, this is an important service update from {{2}} regarding your scheduled care: {{3}} will remain closed on {{4}}. Our team will contact you to reschedule. Please reply if you need assistance.",
+    variables: {
+      "1": "patient_name",
+      "2": "clinic_name",
+      "3": "closure_details",
+      "4": "closure_date"
+    },
+    sampleValues: {
+      "1": "Rahul Sharma",
+      "2": "Neoclinic",
+      "3": "Chamber 1",
+      "4": "31 July"
+    }
+  }
 ];
 
 export function TemplateReadiness({

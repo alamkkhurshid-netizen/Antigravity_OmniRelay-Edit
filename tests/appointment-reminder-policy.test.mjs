@@ -25,10 +25,10 @@ test("booking confirmation matches the approved eight-variable Meta contract",()
   assert.match(dispatcher,/hour12: true/);
 });
 
-test("appointment reminders match the approved seven-variable Meta contract",()=>{
-  assert.match(dispatcher,/reminder_24h: \[appointment\.customer_name, doctor, date, time, location, reference, "15"\]/);
+test("appointment reminders match the approved Meta contract",()=>{
+  assert.match(dispatcher,/reminder_24h: \[appointment\.customer_name, doctor, date, time, location, reference\]/);
   assert.match(dispatcher,/cancellation: \[appointment\.customer_name, doctor, date, time, reference\]/);
-  assert.match(dispatcher,/reschedule: \[appointment\.customer_name, doctor, time, date, location, reference\]/);
+  assert.match(dispatcher,/reschedule: \[appointment\.customer_name, doctor, date, time, location, reference\]/);
   assert.match(dispatcher,/follow_up: \[appointment\.customer_name, doctor, date, followUpDue\]/);
-  assert.match(dispatcher,/reminder_2h: \[appointment\.customer_name, doctor, date, time, location, reference, "15"\]/);
+  assert.match(dispatcher,/reminder_2h: \[appointment\.customer_name, doctor, date, time, location, reference\]/);
 });

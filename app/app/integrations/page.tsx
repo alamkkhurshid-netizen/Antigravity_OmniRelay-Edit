@@ -21,12 +21,13 @@ export default async function IntegrationsPage() {
   ]);
 
   let templateList = templates ?? [];
-  const requiredEvents = ["confirmation", "reminder_24h", "reminder_2h", "cancellation", "reschedule", "follow_up", "doctor_queue"];
-  const existingEvents = new Set(templateList.map((t) => t.event_type));
-  const missingEvents = requiredEvents.filter((ev) => !existingEvents.has(ev));
+  const needsSync = STANDARD_TEMPLATES.some((spec) => {
+    const existing = templateList.find((t) => t.event_type === spec.event_type);
+    return !existing || existing.provider_template_name !== spec.provider_template_name || existing.status !== "approved";
+  });
 
-  if (missingEvents.length > 0) {
-    const seedRows = STANDARD_TEMPLATES.filter((s) => missingEvents.includes(s.event_type)).map((s) => ({
+  if (needsSync) {
+    const seedRows = STANDARD_TEMPLATES.map((s) => ({
       organization_id: organization.id,
       channel: "whatsapp",
       event_type: s.event_type,

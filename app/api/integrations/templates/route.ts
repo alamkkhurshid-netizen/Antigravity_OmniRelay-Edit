@@ -8,9 +8,18 @@ export const STANDARD_TEMPLATES = [
     language_code: "en",
     group_key: "confirmation",
     category: "UTILITY",
-    variable_map: { "1": "patient_name", "2": "business_name", "3": "appointment_time", "4": "location_name", "5": "manage_url" },
-    body_text: "Hello {{1}}, your appointment with {{2}} is confirmed for {{3}} at {{4}}. Manage or reschedule your appointment here: {{5}}",
-    sample_values: ["Rahul Sharma", "Dr Alam's Clinic", "Tuesday 18 Nov at 4:00 PM", "Chamber 1", "https://omnirelay.in/m/abc123"]
+    variable_map: {
+      "1": "patient_name",
+      "2": "doctor_name",
+      "3": "clinic_name",
+      "4": "service_name",
+      "5": "appointment_date",
+      "6": "appointment_time",
+      "7": "chamber_name",
+      "8": "booking_reference"
+    },
+    body_text: "Hello {{1}}, your appointment with Dr {{2}} is confirmed.\nClinic: {{3}}\nService: {{4}}\nDate: {{5}}\nTime: {{6}}\nChamber: {{7}}\nBooking reference: {{8}}\nThanks for Your booking with us",
+    sample_values: ["Rahul Sharma", "Ananya Sen", "Neoclinic", "General Consultation", "18 August 2026", "5:30 PM", "Chamber 1", "OR-28491"]
   },
   {
     event_type: "reminder_24h",
@@ -18,9 +27,16 @@ export const STANDARD_TEMPLATES = [
     language_code: "en",
     group_key: "appointment-reminder",
     category: "UTILITY",
-    variable_map: { "1": "patient_name", "2": "business_name", "3": "appointment_time", "4": "location_name", "5": "manage_url" },
-    body_text: "Reminder: Hello {{1}}, your appointment with {{2}} is scheduled for {{3}} at {{4}}. If you need to make changes, visit: {{5}}",
-    sample_values: ["Rahul Sharma", "Dr Alam's Clinic", "Tomorrow at 4:00 PM", "Chamber 1", "https://omnirelay.in/m/abc123"]
+    variable_map: {
+      "1": "patient_name",
+      "2": "doctor_name",
+      "3": "appointment_date",
+      "4": "appointment_time",
+      "5": "chamber_name",
+      "6": "booking_reference"
+    },
+    body_text: "Hello {{1}}, this is a reminder for your appointment with Dr {{2}}.\nDate: {{3}}\nTime: {{4}}\nChamber: {{5}}\nBooking reference: {{6}}\nPlease arrive 15 minutes early.",
+    sample_values: ["Rahul Sharma", "Ananya Sen", "18 August 2026", "5:30 PM", "Chamber 1", "OR-28491"]
   },
   {
     event_type: "reminder_2h",
@@ -28,29 +44,49 @@ export const STANDARD_TEMPLATES = [
     language_code: "en",
     group_key: "appointment-reminder",
     category: "UTILITY",
-    variable_map: { "1": "patient_name", "2": "business_name", "3": "appointment_time", "4": "location_name", "5": "manage_url" },
-    body_text: "Reminder: Hello {{1}}, your appointment with {{2}} is scheduled for {{3}} at {{4}}. If you need to make changes, visit: {{5}}",
-    sample_values: ["Rahul Sharma", "Dr Alam's Clinic", "Today at 4:00 PM", "Chamber 1", "https://omnirelay.in/m/abc123"]
+    variable_map: {
+      "1": "patient_name",
+      "2": "doctor_name",
+      "3": "appointment_date",
+      "4": "appointment_time",
+      "5": "chamber_name",
+      "6": "booking_reference"
+    },
+    body_text: "Hello {{1}}, this is a reminder for your appointment with Dr {{2}}.\nDate: {{3}}\nTime: {{4}}\nChamber: {{5}}\nBooking reference: {{6}}\nPlease arrive 15 minutes early.",
+    sample_values: ["Rahul Sharma", "Ananya Sen", "18 August 2026", "5:30 PM", "Chamber 1", "OR-28491"]
   },
   {
     event_type: "cancellation",
-    provider_template_name: "omnirelay_booking_change",
+    provider_template_name: "omnirelay_booking_cancelled",
     language_code: "en",
-    group_key: "booking-change",
+    group_key: "cancellation",
     category: "UTILITY",
-    variable_map: { "1": "patient_name", "2": "business_name", "3": "appointment_time", "4": "action_summary", "5": "manage_url" },
-    body_text: "Hello {{1}}, regarding your appointment with {{2}} on {{3}}: {{4}}. To book a new time or view details: {{5}}",
-    sample_values: ["Rahul Sharma", "Dr Alam's Clinic", "Tuesday 18 Nov at 4:00 PM", "Your appointment has been cancelled", "https://omnirelay.in/m/abc123"]
+    variable_map: {
+      "1": "patient_name",
+      "2": "doctor_name",
+      "3": "appointment_date",
+      "4": "appointment_time",
+      "5": "booking_reference"
+    },
+    body_text: "Hello {{1}}, your appointment with Dr {{2}} scheduled for {{3}} at {{4}} has been cancelled.\nBooking reference: {{5}}\nYou can start a new booking whenever required.",
+    sample_values: ["Rahul Sharma", "Ananya Sen", "18 August 2026", "5:30 PM", "OR-28491"]
   },
   {
     event_type: "reschedule",
-    provider_template_name: "omnirelay_booking_change",
+    provider_template_name: "omnirelay_booking_rescheduled",
     language_code: "en",
-    group_key: "booking-change",
+    group_key: "reschedule",
     category: "UTILITY",
-    variable_map: { "1": "patient_name", "2": "business_name", "3": "appointment_time", "4": "action_summary", "5": "manage_url" },
-    body_text: "Hello {{1}}, regarding your appointment with {{2}} on {{3}}: {{4}}. To book a new time or view details: {{5}}",
-    sample_values: ["Rahul Sharma", "Dr Alam's Clinic", "Wednesday 19 Nov at 5:00 PM", "Your appointment has been rescheduled", "https://omnirelay.in/m/abc123"]
+    variable_map: {
+      "1": "patient_name",
+      "2": "doctor_name",
+      "3": "appointment_date",
+      "4": "appointment_time",
+      "5": "chamber_name",
+      "6": "booking_reference"
+    },
+    body_text: "Hello {{1}}, your appointment with Dr {{2}} has been rescheduled.\nNew date: {{3}}\nNew time: {{4}}\nChamber: {{5}}\nBooking reference: {{6}}\nPlease reach before 15min before.",
+    sample_values: ["Rahul Sharma", "Ananya Sen", "19 August 2026", "6:00 PM", "Chamber 1", "OR-28491"]
   },
   {
     event_type: "follow_up",
@@ -58,9 +94,14 @@ export const STANDARD_TEMPLATES = [
     language_code: "en",
     group_key: "follow-up",
     category: "UTILITY",
-    variable_map: { "1": "patient_name", "2": "business_name", "3": "doctor_name", "4": "booking_url" },
-    body_text: "Hello {{1}}, this is a follow-up check from {{2}} regarding your care with Dr. {{3}}. To schedule your follow-up consultation, please visit: {{4}}",
-    sample_values: ["Rahul Sharma", "Dr Alam's Clinic", "Dr Alok Ray", "https://omnirelay.in/book"]
+    variable_map: {
+      "1": "patient_name",
+      "2": "doctor_name",
+      "3": "visit_date",
+      "4": "follow_up_due"
+    },
+    body_text: "Hello {{1}}, Dr {{2}} has scheduled a follow-up for your recent visit on {{3}}.\nFollow-up due: {{4}}\nPlease reply to contact the clinic or arrange an appointment.",
+    sample_values: ["Rahul Sharma", "Ananya Sen", "18 August 2026", "25 August 2026"]
   },
   {
     event_type: "doctor_queue",
@@ -68,9 +109,43 @@ export const STANDARD_TEMPLATES = [
     language_code: "en",
     group_key: "doctor-queue",
     category: "UTILITY",
-    variable_map: { "1": "doctor_name", "2": "clinic_name", "3": "shift_and_chamber", "4": "booking_count" },
-    body_text: "Good day Dr. {{1}}, your upcoming shift at {{2}} ({{3}}) currently has {{4}} scheduled patient bookings.",
-    sample_values: ["Dr Alok Ray", "Dr Alam's Clinic", "Tuesday 15:00-19:00 (Chamber 5)", "8"]
+    variable_map: {
+      "1": "doctor_name",
+      "2": "clinic_name",
+      "3": "shift_and_chamber",
+      "4": "booking_count"
+    },
+    body_text: "Hello Dr. {{1}}, Sir\n\nYour upcoming schedule at {{2}}:\n\nShift: {{3}}\nTotal appointments: {{4}}\n\nPlease contact the clinic if any schedule adjustment is required.",
+    sample_values: ["Khurshid Alam", "Neoclinic", "5th Aug 2 PM", "6"]
+  },
+  {
+    event_type: "care_reminder",
+    provider_template_name: "omnirelay_medication_reminder",
+    language_code: "en",
+    group_key: "care-reminder",
+    category: "UTILITY",
+    variable_map: {
+      "1": "patient_name",
+      "2": "clinic_name",
+      "3": "schedule"
+    },
+    body_text: "Hello {{1}}, this is your scheduled medication reminder from {{2}}.\nSchedule: {{3}}\nFollow the instructions provided in your doctor-issued prescription. Do not change or stop medication without consulting your doctor.",
+    sample_values: ["Rahul Sharma", "Neoclinic", "Evening dose after food"]
+  },
+  {
+    event_type: "emergency_notice",
+    provider_template_name: "omnirelay_emergency_notic",
+    language_code: "en",
+    group_key: "emergency-notice",
+    category: "UTILITY",
+    variable_map: {
+      "1": "patient_name",
+      "2": "clinic_name",
+      "3": "closure_details",
+      "4": "closure_date"
+    },
+    body_text: "Hello {{1}}, this is an important service update from {{2}} regarding your scheduled care: {{3}} will remain closed on {{4}}. Our team will contact you to reschedule. Please reply if you need assistance.",
+    sample_values: ["Rahul Sharma", "Neoclinic", "Chamber 1", "31 July"]
   }
 ];
 
