@@ -159,6 +159,41 @@ export const STANDARD_TEMPLATES = [
     },
     body_text: "Hello {{1}}, your appointment booking with {{2}} was not completed. Your previous selection has not been confirmed. Reply below if you would like to continue or contact the clinic.",
     sample_values: ["Rahul Sharma", "Neoclinic"]
+  },
+  {
+    event_type: "payment_confirmation",
+    provider_template_name: "omnirelay_payment_confirmation",
+    language_code: "en",
+    group_key: "payment",
+    category: "UTILITY",
+    variable_map: {
+      "1": "patient_name",
+      "2": "amount",
+      "3": "doctor_name",
+      "4": "payment_status",
+      "5": "appointment_date_time",
+      "6": "booking_reference",
+      "7": "payment_reference"
+    },
+    body_text: "Hello {{1}}, we received your payment of ₹{{2}} for your appointment with Dr {{3}}.\nPayment status: {{4}}\nAppointment: {{5}}\nBooking reference: {{6}}\nPayment reference: {{7}}\nThanks",
+    sample_values: ["Rahul", "300", "Ananya Sen", "Deposit received", "18 August 2026 at 5:30 PM", "OR-28491", "pay_QX2841"]
+  },
+  {
+    event_type: "payment_action",
+    provider_template_name: "omnirelay_payment_action",
+    language_code: "en",
+    group_key: "payment",
+    category: "UTILITY",
+    variable_map: {
+      "1": "patient_name",
+      "2": "doctor_name",
+      "3": "payment_type",
+      "4": "amount",
+      "5": "due_date_time",
+      "6": "booking_reference"
+    },
+    body_text: "Hello {{1}}, your selected appointment slot with Dr {{2}} is awaiting {{3}} payment.\nAmount: ₹{{4}}\nComplete payment securely before {{5}} to confirm the booking.\nBooking reference: {{6}}\n\nThanks for the Payment",
+    sample_values: ["Rahul", "Ananya Sen", "Deposit", "300", "8 Aug, 4:30 PM", "OR-28491"]
   }
 ];
 

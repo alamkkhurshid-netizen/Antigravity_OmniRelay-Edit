@@ -3,6 +3,7 @@ import { getWorkspace } from "@/lib/workspace";
 import { supabaseUrl } from "@/lib/supabase/config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isWhatsAppStagingAllowed } from "@/lib/whatsapp-staging-guard";
+import { STANDARD_TEMPLATES } from "@/app/api/integrations/templates/route";
 
 type SignupPayload = {
   token?: string;
@@ -209,6 +210,21 @@ export async function POST(request: Request) {
         active: true,
       });
     }
+
+    // Auto-seed standard approved Meta message templates for zero-touch readiness
+    const templateRows = STANDARD_TEMPLATES.map((item) => ({
+      organization_id: organization.id,
+      channel: "whatsapp",
+      event_type: item.event_type,
+      provider_template_name: item.provider_template_name,
+      language_code: item.language_code,
+      status: "approved",
+      variable_map: item.variable_map,
+      updated_at: nowIso,
+    }));
+    await adminClient
+      .from("channel_message_templates")
+      .upsert(templateRows, { onConflict: "organization_id,channel,event_type,language_code" });
   } catch (provErr) {
     console.warn("Auto-provisioning concierge foundation error (non-fatal):", provErr);
   }
