@@ -1,6 +1,7 @@
 import {NextResponse} from "next/server";
 import {getWorkspace} from "@/lib/workspace";
 import {isWorkerPaused, recordWorkerPauseAudit} from "@/lib/runtime-controls";
+import {executeCampaignDispatch} from "@/lib/campaign-dispatcher";
 const eventByType:Record<string,string>={care:"care_campaign",marketing:"marketing_campaign",emergency:"emergency_notice"};
 const normalizeAddress=(value:string)=>value.replace(/\D/g,"");
 export async function POST(request:Request){
@@ -110,11 +111,20 @@ export async function PATCH(request:Request){
  const updates:Record<string,unknown>={updated_at:new Date().toISOString()};
  if(action==="pause"&&["scheduled","running"].includes(campaign.status))updates.status="paused";
  else if(action==="resume"&&campaign.status==="paused")updates.status="scheduled";
- else if(action==="send_now"&&["scheduled","paused"].includes(campaign.status)){updates.status="scheduled";updates.scheduled_for=new Date().toISOString();await supabase.from("campaign_recipients").update({scheduled_for:updates.scheduled_for}).eq("campaign_id",id).eq("status","approved")}
+ else if(action==="send_now"&&["scheduled","paused"].includes(campaign.status)){
+   updates.status="running";
+   updates.scheduled_for=new Date().toISOString();
+   await supabase.from("campaign_recipients").update({scheduled_for:updates.scheduled_for}).eq("campaign_id",id).eq("status","approved");
+ }
  else if(action==="cancel"&&!["completed","cancelled"].includes(campaign.status)){updates.status="cancelled";await supabase.from("campaign_recipients").update({status:"skipped",failure_reason:"Campaign cancelled."}).eq("campaign_id",id).in("status",["pending","approved"])}
  else return NextResponse.json({error:"That action is not valid for the current campaign state."},{status:409});
  const {error}=await supabase.from("campaigns").update(updates).eq("id",id).eq("organization_id",organization.id);
  if(error)return NextResponse.json({error:error.message},{status:400});
  await supabase.from("campaign_events").insert({organization_id:organization.id,campaign_id:id,event_type:action,actor_user_id:user.id,payload:{previous_status:campaign.status}});
+ 
+ if(action==="send_now"){
+   const dispatchResult = await executeCampaignDispatch(id, organization.id, user.id);
+   return NextResponse.json({ok:true, ...dispatchResult});
+ }
  return NextResponse.json({ok:true});
 }

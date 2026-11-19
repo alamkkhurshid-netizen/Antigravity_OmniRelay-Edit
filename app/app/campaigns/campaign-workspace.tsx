@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { parseCampaignCsv, generateSampleCampaignCsv, ParsedContact } from "@/lib/campaign-csv";
 import { CampaignList } from "./campaign-list";
 
@@ -32,6 +32,7 @@ export function CampaignWorkspace({
   optOuts: { address: string; scope: string }[];
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -54,6 +55,39 @@ export function CampaignWorkspace({
   const [csvContacts, setCsvContacts] = useState<ParsedContact[]>([]);
   const [csvMeta, setCsvMeta] = useState<{ invalidCount: number; duplicateCount: number; totalRows: number } | null>(null);
   const [csvFileName, setCsvFileName] = useState("");
+
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      const type = searchParams.get("type") || "emergency";
+      const resourceId = searchParams.get("resourceId") || "";
+      const locationId = searchParams.get("locationId") || "";
+      const appointmentDate = searchParams.get("date") || "";
+      const reason = searchParams.get("reason") || "";
+
+      const docName = resources.find((r) => r.id === resourceId)?.name;
+      const defaultName = reason
+        ? `Notice: ${reason.slice(0, 30)}`
+        : docName
+        ? `Disruption · ${doctorLabel(docName)}`
+        : "Emergency Chamber Notice";
+
+      const targetEvent = { care: "care_campaign", marketing: "marketing_campaign", emergency: "emergency_notice" }[type];
+      const matchingTpl = templates.find((t) => t.event_type === targetEvent && t.status === "approved");
+
+      setF((prev) => ({
+        ...prev,
+        name: prev.name || defaultName,
+        campaignType: type,
+        templateId: prev.templateId || matchingTpl?.id || "",
+        resourceId: resourceId || prev.resourceId,
+        locationId: locationId || prev.locationId,
+        appointmentDate: appointmentDate || prev.appointmentDate,
+        messageNote: reason || prev.messageNote,
+        action: "notify_only",
+      }));
+      setOpen(true);
+    }
+  }, [searchParams, resources, templates]);
 
   const event = { care: "care_campaign", marketing: "marketing_campaign", emergency: "emergency_notice" }[f.campaignType];
   const approved = templates.filter((t) => t.status === "approved" && t.event_type === event);

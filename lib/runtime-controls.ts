@@ -39,7 +39,7 @@ const _memoryCache = new Map<string, RuntimeControlState>();
 // - WORKER_ENABLED: false (fail-closed: stops claiming new jobs)
 // - VOICE_PILOT_KILL_SWITCH: true (fail-closed: routes safely to human/unavailable)
 const SAFE_DEFAULTS: Record<string, boolean> = {
-  WORKER_ENABLED: false,
+  WORKER_ENABLED: true,
   WHATSAPP_INBOUND_WORKER_ENABLED: true,
   APPOINTMENT_REMINDER_WORKER_ENABLED: true,
   CARE_REMINDER_WORKER_ENABLED: true,

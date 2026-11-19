@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getWorkspace } from "@/lib/workspace";
 import { CampaignWorkspace } from "./campaign-workspace";
@@ -14,5 +15,9 @@ export default async function CampaignsPage() {
     supabase.from("appointments").select("patient_id,location_id,resource_id,starts_at,status").eq("organization_id",organization.id),
     supabase.from("communication_opt_outs").select("address,scope").eq("organization_id",organization.id).eq("channel","whatsapp"),
   ]);
-  return <CampaignWorkspace patients={patients??[]} campaigns={campaigns??[]} templates={templates??[]} locations={locations??[]} resources={resources??[]} appointments={appointments??[]} optOuts={optOuts??[]}/>;
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500 text-sm font-medium">Loading campaign workspace...</div>}>
+      <CampaignWorkspace patients={patients??[]} campaigns={campaigns??[]} templates={templates??[]} locations={locations??[]} resources={resources??[]} appointments={appointments??[]} optOuts={optOuts??[]}/>
+    </Suspense>
+  );
 }
