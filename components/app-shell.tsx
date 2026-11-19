@@ -397,6 +397,22 @@ export function AppShell({
             <X className="size-5" />
           </button>
         </div>
+        {browserAlertState === "default" && (
+          <div className="mb-4 rounded-xl border border-teal-200 bg-teal-50/90 p-3 text-xs text-teal-900 lg:hidden">
+            <div className="flex items-center gap-2 font-bold">
+              <BellRing className="size-4 text-teal-600" />
+              <span>Enable App Push Alerts</span>
+            </div>
+            <p className="mt-1 text-teal-700">Receive instant lock-screen notifications for appointments and critical clinic alerts.</p>
+            <button
+              type="button"
+              onClick={enableBrowserAlerts}
+              className="mt-2.5 w-full rounded-lg bg-teal-600 py-2 text-center text-xs font-bold text-white shadow-sm hover:bg-teal-700 cursor-pointer"
+            >
+              Turn on alerts
+            </button>
+          </div>
+        )}
         <div className="mb-6 flex items-center justify-center group-hover:justify-start group-focus-within:justify-start">
           <Brand compact className="group-hover:hidden group-focus-within:hidden max-lg:hidden" />
           <Brand className="hidden h-11 w-44 group-hover:flex group-focus-within:flex max-lg:flex" />
@@ -562,6 +578,21 @@ export function AppShell({
                       View all
                     </Link>
                   </header>
+                  {browserAlertState === "default" && (
+                    <div className="flex items-center justify-between gap-3 border-b border-[#e8eef2] bg-teal-50/80 px-4 py-2.5 text-xs text-teal-900">
+                      <div className="flex items-center gap-2">
+                        <BellRing className="size-4 shrink-0 text-teal-600" />
+                        <span>Enable PWA & push alerts for instant phone notifications</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={enableBrowserAlerts}
+                        className="shrink-0 rounded-lg bg-teal-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm hover:bg-teal-700 cursor-pointer"
+                      >
+                        Enable
+                      </button>
+                    </div>
+                  )}
                   {notifications.length ? (
                     <div className="max-h-[min(28rem,calc(100vh-8rem))] overflow-y-auto">
                       {notifications.map((item) => (
