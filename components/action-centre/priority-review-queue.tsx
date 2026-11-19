@@ -232,6 +232,18 @@ export function PriorityReviewQueue({
                     <button className={`${buttonBase} bg-slate-900 text-white hover:bg-slate-800`} type="button" onClick={() => retry(item)} disabled={working === item.id}>
                       {working === item.id ? "Releasing…" : "Review & retry"}
                     </button>
+                  ) : item.kind === "schedule_disruption" ? (
+                    <>
+                      <button className={`${buttonBase} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`} type="button" onClick={() => coordinate(item,item.assignment?.assigned_to === currentUserId ? "review" : "claim")} disabled={working === item.id}>
+                        {item.assignment?.assigned_to === currentUserId ? "Mark reviewed" : "Claim"}
+                      </button>
+                      <Link className={`${buttonBase} border border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 font-bold`} href="/app/campaigns">
+                        Broadcast notice →
+                      </Link>
+                      <Link className={`${buttonBase} bg-slate-900 text-white hover:bg-slate-800`} href={item.href}>
+                        Appointments <ArrowUpRight size={13}/>
+                      </Link>
+                    </>
                   ) : (
                     <>
                       <button className={`${buttonBase} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`} type="button" onClick={() => coordinate(item,item.assignment?.assigned_to === currentUserId ? "review" : "claim")} disabled={working === item.id || item.kind === "blocked"}>
