@@ -223,3 +223,50 @@ export async function resolveAgentDraft(draftId: string, action: 'approve' | 're
   revalidatePath("/app/action-centre");
   return { success: true };
 }
+
+export async function resolveEmergencyContact(recipientId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { error } = await supabase
+    .from("campaign_recipients")
+    .update({
+      status: "delivered",
+      failure_reason: "Resolved manually by clinic staff",
+      delivered_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", recipientId);
+
+  if (error) {
+    console.error("Failed to resolve emergency recipient:", error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/app/action-centre");
+  return { success: true };
+}
+
+export async function resolveDisruption(disruptionId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const { error } = await supabase
+    .from("schedule_exceptions")
+    .update({
+      status: "cancelled",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", disruptionId);
+
+  if (error) {
+    console.error("Failed to resolve disruption:", error);
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/app/action-centre");
+  revalidatePath("/app/appointments");
+  return { success: true };
+}

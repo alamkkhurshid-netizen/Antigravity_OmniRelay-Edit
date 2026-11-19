@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { resolveEmergencyContact, resolveDisruption } from "./actions";
 import {
   CareRun, AppointmentRun, Task, Deployment, BookingRequest, WaitlistItem,
   Disruption, EmergencyRecipient, Assignment, ReadinessCheck, PilotControl, AiDraft, CarrierRecoveryEvent, ExceptionItem
@@ -48,7 +49,7 @@ export function useActionCentre({
     ...aiDrafts.map(r=>withOwner({id:r.id,kind:"agent_draft" as const,type:`AI Draft: ${r.proposed_action}`,name:`Agent: ${r.agent_role}`,detail:typeof r.draft_payload?.text === 'string' ? r.draft_payload.text : 'Review required.',priority:"urgent",rank:105,href:"#",draft_payload:r.draft_payload})),
     ...bookingRequests.map(r=>withOwner({id:r.id,kind:"booking_approval" as const,type:"Booking approval required",name:r.patient_name,detail:`${r.service?.name??"Appointment"} · ${r.location?.name??"Clinic"} · ${r.resource?.name??"Provider"} · ${when(r.starts_at)}`,priority:"urgent",rank:100,href:"/app/booking-concierge#booking-requests"})),
     ...disruptions.map(r=>withOwner({id:r.id,kind:"schedule_disruption" as const,type:`${r.exception_type.replaceAll("_"," ")} disruption`,name:r.resource?.name??"Clinic schedule",detail:`${r.location?.name??"All locations"} · ${when(r.starts_at)} · ${r.reason}`,priority:"urgent",rank:95,href:`/app/campaigns?new=1&type=emergency&resourceId=${r.resource_id??""}&locationId=${r.location_id??""}&date=${r.starts_at.slice(0,10)}&reason=${encodeURIComponent(r.reason??"")}`})),
-    ...emergencyRecipients.map(r=>withOwner({id:r.id,kind:"blocked" as const,type:"Emergency notice needs manual contact",name:r.patient?.full_name??"Patient",detail:r.failure_reason??"WhatsApp emergency notice was not delivered. Call the patient and record the outcome.",priority:"urgent",rank:94,href:"/app/campaigns"})),
+    ...emergencyRecipients.map(r=>withOwner({id:r.id,kind:"emergency_recipient" as const,type:"Emergency notice needs manual contact",name:r.patient?.full_name??"Patient",detail:r.failure_reason??"WhatsApp emergency notice was not delivered. Call the patient and record the outcome.",priority:"urgent",rank:94,href:"/app/campaigns"})),
     ...carrierRecoveryEvents.map(r => {
       const attemptsCount = r.metadata?.attempts?.length ?? 0;
       const destination = r.metadata?.destination ?? "Patient";
@@ -189,11 +190,36 @@ export function useActionCentre({
     setWorking(null);
   }
 
+  async function resolveEmergencyRecipient(item: ExceptionItem) {
+    setWorking(item.id); setError(""); setNotice("");
+    const res = await resolveEmergencyContact(item.id);
+    if (!res.success) {
+      setError(res.error || "Could not resolve emergency recipient.");
+    } else {
+      setNotice(`Resolved: manual contact recorded for ${item.name}.`);
+      router.refresh();
+    }
+    setWorking(null);
+  }
+
+  async function resolveScheduleDisruption(item: ExceptionItem) {
+    if (!window.confirm("Clear this disruption exception? This unblocks the schedule period.")) return;
+    setWorking(item.id); setError(""); setNotice("");
+    const res = await resolveDisruption(item.id);
+    if (!res.success) {
+      setError(res.error || "Could not clear disruption.");
+    } else {
+      setNotice("Disruption cleared. Schedule unblocked.");
+      router.refresh();
+    }
+    setWorking(null);
+  }
+
   return {
     busy, error, notice, working, result, runTour,
     deployable, automaticCare, automaticAppointments, exceptions, routine,
     deploy, updateTask, retry, coordinate, testMobileAlert, archiveHistoricalAlerts, resolveDraft,
-    resolveCarrierRecovery
+    resolveCarrierRecovery, resolveEmergencyRecipient, resolveScheduleDisruption
   };
 }
 

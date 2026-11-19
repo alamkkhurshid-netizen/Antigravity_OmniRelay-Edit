@@ -17,11 +17,14 @@ interface PriorityReviewQueueProps {
   updateTask: (item: ExceptionItem, status: "in_progress"|"completed") => void;
   retry: (item: ExceptionItem) => void;
   resolveCarrierRecovery?: (item: ExceptionItem, action: "resolve" | "retry") => void;
+  resolveEmergencyRecipient?: (item: ExceptionItem) => void;
+  resolveScheduleDisruption?: (item: ExceptionItem) => void;
 }
 
 export function PriorityReviewQueue({
   exceptions, currentUserId, working, notice, error, buttonBase,
-  resolveDraft, coordinate, updateTask, retry, resolveCarrierRecovery
+  resolveDraft, coordinate, updateTask, retry, resolveCarrierRecovery,
+  resolveEmergencyRecipient, resolveScheduleDisruption
 }: PriorityReviewQueueProps) {
   const [activeTab, setActiveTab] = useState<"all" | "draft" | "booking" | "task" | "system">("all");
 
@@ -232,18 +235,44 @@ export function PriorityReviewQueue({
                     <button className={`${buttonBase} bg-slate-900 text-white hover:bg-slate-800`} type="button" onClick={() => retry(item)} disabled={working === item.id}>
                       {working === item.id ? "Releasing…" : "Review & retry"}
                     </button>
+                  ) : item.kind === "emergency_recipient" ? (
+                    <>
+                      <button
+                        className={`${buttonBase} bg-emerald-600 text-white hover:bg-emerald-700 font-bold`}
+                        type="button"
+                        onClick={() => resolveEmergencyRecipient?.(item)}
+                        disabled={working === item.id}
+                      >
+                        {working === item.id ? "Resolving…" : "Mark contacted & resolve"}
+                      </button>
+                      <Link className={`${buttonBase} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`} href="/app/campaigns">
+                        Campaigns <ArrowUpRight size={13}/>
+                      </Link>
+                    </>
                   ) : item.kind === "schedule_disruption" ? (
                     <>
                       <button className={`${buttonBase} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`} type="button" onClick={() => coordinate(item,item.assignment?.assigned_to === currentUserId ? "review" : "claim")} disabled={working === item.id}>
                         {item.assignment?.assigned_to === currentUserId ? "Mark reviewed" : "Claim"}
                       </button>
-                      <Link className={`${buttonBase} border border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 font-bold`} href="/app/campaigns">
+                      <Link className={`${buttonBase} border border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 font-bold`} href={item.href}>
                         Broadcast notice →
                       </Link>
-                      <Link className={`${buttonBase} bg-slate-900 text-white hover:bg-slate-800`} href={item.href}>
+                      <button
+                        className={`${buttonBase} border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100`}
+                        type="button"
+                        onClick={() => resolveScheduleDisruption?.(item)}
+                        disabled={working === item.id}
+                      >
+                        {working === item.id ? "Clearing…" : "Clear disruption"}
+                      </button>
+                      <Link className={`${buttonBase} bg-slate-900 text-white hover:bg-slate-800`} href="/app/appointments">
                         Appointments <ArrowUpRight size={13}/>
                       </Link>
                     </>
+                  ) : item.id === "clinic-pilot-control" ? (
+                    <Link className={`${buttonBase} bg-emerald-600 text-white hover:bg-emerald-700 font-bold`} href="/app/readiness#pilot-control">
+                      Record Pilot GO Decision →
+                    </Link>
                   ) : (
                     <>
                       <button className={`${buttonBase} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`} type="button" onClick={() => coordinate(item,item.assignment?.assigned_to === currentUserId ? "review" : "claim")} disabled={working === item.id || item.kind === "blocked"}>

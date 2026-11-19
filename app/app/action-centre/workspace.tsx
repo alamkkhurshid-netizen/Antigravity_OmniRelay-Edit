@@ -172,6 +172,8 @@ export function ActionCentreWorkspace({
         updateTask={state.updateTask}
         retry={state.retry}
         resolveCarrierRecovery={state.resolveCarrierRecovery}
+        resolveEmergencyRecipient={state.resolveEmergencyRecipient}
+        resolveScheduleDisruption={state.resolveScheduleDisruption}
       />
 
       {/* 6. MOBILE ALERT CONTROLS (Compact Utility Strip) */}
