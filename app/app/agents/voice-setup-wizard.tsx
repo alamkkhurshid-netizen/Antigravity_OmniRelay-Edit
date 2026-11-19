@@ -25,7 +25,9 @@ import {
   Tag,
   UserCheck,
   ShoppingBag,
-  Building2
+  Building2,
+  Copy,
+  Check
 } from "lucide-react";
 
 import {
@@ -58,6 +60,13 @@ export function VoiceSetupWizard({
   const [testCallRole, setTestCallRole] = useState<"receptionist" | "sales">("receptionist");
   const [testCallStatus, setTestCallStatus] = useState<string | null>(null);
   const [activeAudioPreview, setActiveAudioPreview] = useState<string | null>(null);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard?.writeText(text);
+    setCopiedCode(id);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
 
   const initialVertical: BusinessVertical = (initialConfig?.business_vertical as BusinessVertical) || "healthcare";
   const initialDef = VERTICALS.find(v => v.id === initialVertical) || VERTICALS[0];
@@ -838,14 +847,80 @@ export function VoiceSetupWizard({
                       </div>
                     </div>
 
-                    <div className="p-2.5 rounded-lg bg-background border font-mono text-xs">
-                      <span className="text-[10px] text-muted-foreground uppercase font-sans font-semibold block mb-0.5">
-                        Dial this on your clinic phone to activate:
-                      </span>
-                      <code className="text-emerald-600 dark:text-emerald-400 font-bold text-sm">
-                        *401*{formData.virtual_number || "08047283676"}#
-                      </code>
-                    </div>
+                    {(() => {
+                      const carrier = formData.forwarding_carrier || "jio";
+                      const targetNumber = formData.virtual_number || "08047283676";
+                      // Reliance Jio uses CDMA/LTE shortcodes (*401*number) with NO trailing '#'
+                      // Airtel, Vi, BSNL use standard GSM MMI codes (*21*number#)
+                      const activationCode = carrier === "jio" ? `*401*${targetNumber}` : `*21*${targetNumber}#`;
+                      const deactivationCode = carrier === "jio" ? "*402" : "##21#";
+
+                      return (
+                        <div className="space-y-2">
+                          <div className="p-3 rounded-lg bg-background border font-mono text-xs space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-muted-foreground uppercase font-sans font-semibold">
+                                Dial this on your clinic phone to activate:
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(activationCode, "activation")}
+                                className="text-[10px] text-emerald-600 dark:text-emerald-400 font-sans font-medium flex items-center gap-1 hover:underline cursor-pointer"
+                              >
+                                {copiedCode === "activation" ? (
+                                  <>
+                                    <Check className="h-3 w-3 text-emerald-600" /> Copied!
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="h-3 w-3" /> Copy
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                            <code className="text-emerald-600 dark:text-emerald-400 font-bold text-base block">
+                              {activationCode}
+                            </code>
+                            {carrier === "jio" && (
+                              <p className="text-[10px] font-sans text-amber-600 dark:text-amber-400">
+                                ⚠️ Note for Jio: Do NOT dial '#' at the end. Dial exactly <code>{activationCode}</code> to avoid invalid MMI code errors.
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="p-2.5 rounded-lg bg-muted/30 border font-mono text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-muted-foreground uppercase font-sans font-semibold">
+                                To cancel / deactivate anytime (stops call divert):
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(deactivationCode, "deactivation")}
+                                className="text-[10px] text-muted-foreground font-sans font-medium flex items-center gap-1 hover:underline cursor-pointer"
+                              >
+                                {copiedCode === "deactivation" ? (
+                                  <>
+                                    <Check className="h-3 w-3 text-emerald-600" /> Copied!
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="h-3 w-3" /> Copy
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                            <code className="text-foreground font-bold text-sm block mt-0.5">
+                              {deactivationCode}
+                            </code>
+                            <p className="text-[10px] font-sans text-muted-foreground mt-0.5">
+                              {carrier === "jio" 
+                                ? "Dial *402 on your phone to cancel forwarding. Normal calls to your mobile immediately resume."
+                                : "Dial ##21# on your phone to cancel forwarding anytime."}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     <div>
                       <label className="text-[11px] font-semibold text-foreground uppercase tracking-wider block mb-1">

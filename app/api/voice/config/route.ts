@@ -77,8 +77,24 @@ export async function GET() {
       outbound_calling_window: { start: "09:30", end: "19:30" },
     };
 
+    let effectiveConfig = config || defaultConfig;
+    if (config?.operating_hours && typeof config.operating_hours === "object") {
+      const extra = (config.operating_hours as any)._persona_settings;
+      if (extra && typeof extra === "object") {
+        const cleanHours = Object.fromEntries(
+          Object.entries(config.operating_hours).filter(([k]) => k !== "_persona_settings")
+        );
+        effectiveConfig = {
+          ...defaultConfig,
+          ...extra,
+          ...config,
+          operating_hours: cleanHours,
+        };
+      }
+    }
+
     return NextResponse.json({
-      config: config || defaultConfig,
+      config: effectiveConfig,
       is_new: !config,
     });
   } catch (err: any) {
@@ -168,15 +184,98 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     };
 
-    const { data: savedConfig, error } = await supabase
+    // Attempt 1: Try full column upsert (for instances where latest migrations are applied)
+    let savedConfig: any = null;
+    const { data: directSaved, error: directError } = await supabase
       .from("voice_agent_configs")
       .upsert(payload, { onConflict: "org_id" })
       .select("*")
       .single();
 
-    if (error) {
-      console.error("[VOICE_CONFIG_POST] Supabase upsert error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (directError) {
+      // Check if failure is due to missing columns in PostgREST schema cache
+      const isColumnMismatch =
+        directError.code === "PGRST204" ||
+        directError.code === "42703" ||
+        directError.message?.includes("in the schema cache") ||
+        directError.message?.includes("does not exist");
+
+      if (isColumnMismatch) {
+        console.warn(
+          "[VOICE_CONFIG_POST] Schema mismatch detected, switching to JSONB compatibility mode:",
+          directError.message
+        );
+
+        const rawHours =
+          typeof body.operating_hours === "object" && body.operating_hours
+            ? body.operating_hours
+            : { mon_sat: "09:00 - 19:00", sunday: "closed" };
+
+        const compatHours = {
+          ...rawHours,
+          _persona_settings: {
+            bot_name: payload.bot_name,
+            agent_persona: payload.agent_persona,
+            voice_id: payload.voice_id,
+            receptionist_phone: payload.receptionist_phone,
+            greeting_message: payload.greeting_message,
+            auto_language_switch: payload.auto_language_switch,
+            enabled_languages: payload.enabled_languages,
+            emergency_instructions: payload.emergency_instructions,
+            sms_confirmation_enabled: payload.sms_confirmation_enabled,
+            whatsapp_confirmation_enabled: payload.whatsapp_confirmation_enabled,
+            onboarding_completed: payload.onboarding_completed,
+            business_vertical: payload.business_vertical,
+            business_category: payload.business_category,
+            vertical_settings: payload.vertical_settings,
+            receptionist_eq_tone: payload.receptionist_eq_tone,
+            sales_agent_name: payload.sales_agent_name,
+            sales_agent_active: payload.sales_agent_active,
+            sales_eq_style: payload.sales_eq_style,
+            sales_packages: payload.sales_packages,
+            sales_campaign_type: payload.sales_campaign_type,
+            outbound_calling_window: payload.outbound_calling_window,
+          },
+        };
+
+        const safePayload = {
+          org_id: organization.id,
+          clinic_name: businessName,
+          virtual_number: payload.virtual_number,
+          primary_language: payload.primary_language,
+          operating_hours: compatHours,
+          is_active: payload.is_active,
+          telephony_mode: payload.telephony_mode,
+          forwarding_carrier: payload.forwarding_carrier,
+          forwarding_phone_number: payload.forwarding_phone_number,
+          vmn_number: payload.vmn_number,
+          vmn_status: payload.vmn_status,
+          vmn_plan_active: payload.vmn_plan_active,
+          updated_at: payload.updated_at,
+        };
+
+        const { data: compatSaved, error: compatError } = await supabase
+          .from("voice_agent_configs")
+          .upsert(safePayload, { onConflict: "org_id" })
+          .select("*")
+          .single();
+
+        if (compatError) {
+          console.error("[VOICE_CONFIG_POST] Compatibility upsert error:", compatError);
+          return NextResponse.json({ error: compatError.message }, { status: 500 });
+        }
+
+        savedConfig = {
+          ...payload,
+          ...compatSaved,
+          operating_hours: rawHours,
+        };
+      } else {
+        console.error("[VOICE_CONFIG_POST] Supabase upsert error:", directError);
+        return NextResponse.json({ error: directError.message }, { status: 500 });
+      }
+    } else {
+      savedConfig = directSaved;
     }
 
     return NextResponse.json({
