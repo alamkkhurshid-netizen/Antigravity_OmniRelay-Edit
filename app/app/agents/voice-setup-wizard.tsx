@@ -882,9 +882,14 @@ export function VoiceSetupWizard({
                               {activationCode}
                             </code>
                             {carrier === "jio" && (
-                              <p className="text-[10px] font-sans text-amber-600 dark:text-amber-400">
-                                ⚠️ Note for Jio: Do NOT dial '#' at the end. Dial exactly <code>{activationCode}</code> to avoid invalid MMI code errors.
-                              </p>
+                              <div className="text-[10px] font-sans text-amber-600 dark:text-amber-400 space-y-1 pt-1">
+                                <p>
+                                  ⚠️ <strong>For Jio SIMs:</strong> If <code>*401*08047283676</code> says <em>&quot;number is invalid&quot;</em>, try 10 digits without leading 0: <code>*401*8047283676</code>.
+                                </p>
+                                <p className="text-foreground/80 dark:text-foreground/70">
+                                  💡 <strong>Most Reliable on Jio:</strong> Phone app &rarr; Settings &rarr; Call Forwarding &rarr; Always forward &rarr; Enter <code>08047283676</code>.
+                                </p>
+                              </div>
                             )}
                           </div>
 

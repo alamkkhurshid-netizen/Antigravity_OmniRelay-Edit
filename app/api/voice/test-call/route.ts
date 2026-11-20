@@ -64,8 +64,13 @@ export async function POST(request: Request) {
       const data = await response.json();
 
       if (!response.ok) {
+        let errorMsg = data.detail?.reason || data.detail?.message || "Failed to initiate test call.";
+        const attemptsStr = JSON.stringify(data.detail?.attempts || "");
+        if (attemptsStr.includes("KYC compliant")) {
+          errorMsg = "Exotel outbound calling requires telecom KYC verification. Inbound calls are live! Call 08047283676 directly from your mobile to speak with Maya.";
+        }
         return NextResponse.json(
-          { error: data.detail?.reason || data.detail?.message || "Failed to initiate test call." },
+          { error: errorMsg },
           { status: response.status }
         );
       }
