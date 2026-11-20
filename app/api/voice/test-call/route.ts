@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       doctor_name: body.bot_name || "Maya AI",
       appointment_time: "Now (Interactive Test)",
       campaign_type: body.campaign_type || (body.agent_role === "sales" ? "sales_package" : "demo_test"),
-      caller_id: body.caller_id || "08047283676",
+      caller_id: body.caller_id || "08047291019",
     };
 
     try {
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
         let errorMsg = data.detail?.reason || data.detail?.message || "Failed to initiate test call.";
         const attemptsStr = JSON.stringify(data.detail?.attempts || "");
         if (attemptsStr.includes("KYC compliant")) {
-          errorMsg = "Exotel outbound calling requires telecom KYC verification. Inbound calls are live! Call 08047283676 directly from your mobile to speak with Maya.";
+          errorMsg = "Exotel outbound calling requires telecom KYC verification. Inbound calls are live! Call 08047291019 directly from your mobile to speak with Maya.";
         }
         return NextResponse.json(
           { error: errorMsg },

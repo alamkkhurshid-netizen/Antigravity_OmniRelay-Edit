@@ -77,7 +77,7 @@ export function VoiceSetupWizard({
     bot_name: initialConfig?.bot_name || initialDef.defaultBotName,
     agent_persona: initialConfig?.agent_persona || "receptionist",
     voice_id: initialConfig?.voice_id || "sonic-english-indian-1",
-    virtual_number: initialConfig?.virtual_number || "08047283676",
+    virtual_number: initialConfig?.virtual_number || "08047291019",
     receptionist_phone: initialConfig?.receptionist_phone || "",
     greeting_message: initialConfig?.greeting_message || initialDef.greeting(initialConfig?.clinic_name || "our company"),
     primary_language: initialConfig?.primary_language || "en-IN",
@@ -653,7 +653,7 @@ export function VoiceSetupWizard({
                   className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 font-medium"
                   value={formData.receptionist_phone}
                   onChange={(e) => setFormData(prev => ({ ...prev, receptionist_phone: e.target.value }))}
-                  placeholder="e.g. +91 98450 12345 or 08047283676"
+                  placeholder="e.g. +91 98450 12345 or 08047291019"
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">
                   {activeVerticalDef.transferHelp}
@@ -849,7 +849,7 @@ export function VoiceSetupWizard({
 
                     {(() => {
                       const carrier = formData.forwarding_carrier || "jio";
-                      const targetNumber = formData.virtual_number || "08047283676";
+                      const targetNumber = formData.virtual_number || "08047291019";
                       // Reliance Jio uses CDMA/LTE shortcodes (*401*number) with NO trailing '#'
                       // Airtel, Vi, BSNL use standard GSM MMI codes (*21*number#)
                       const activationCode = carrier === "jio" ? `*401*${targetNumber}` : `*21*${targetNumber}#`;
@@ -884,10 +884,10 @@ export function VoiceSetupWizard({
                             {carrier === "jio" && (
                               <div className="text-[10px] font-sans text-amber-600 dark:text-amber-400 space-y-1 pt-1">
                                 <p>
-                                  ⚠️ <strong>For Jio SIMs:</strong> If <code>*401*08047283676</code> says <em>&quot;number is invalid&quot;</em>, try 10 digits without leading 0: <code>*401*8047283676</code>.
+                                  ⚠️ <strong>For Jio SIMs:</strong> If <code>*401*08047291019</code> says <em>&quot;number is invalid&quot;</em>, try 10 digits without leading 0: <code>*401*8047291019</code>.
                                 </p>
                                 <p className="text-foreground/80 dark:text-foreground/70">
-                                  💡 <strong>Most Reliable on Jio:</strong> Phone app &rarr; Settings &rarr; Call Forwarding &rarr; Always forward &rarr; Enter <code>08047283676</code>.
+                                  💡 <strong>Most Reliable on Jio:</strong> Phone app &rarr; Settings &rarr; Call Forwarding &rarr; Always forward &rarr; Enter <code>08047291019</code>.
                                 </p>
                               </div>
                             )}

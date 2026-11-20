@@ -145,7 +145,7 @@ export function VoiceDashboard({
                 <span className="font-mono font-bold text-foreground">
                   {config?.telephony_mode === "dedicated_vmn"
                     ? (config?.vmn_number || "+91 98450 24001")
-                    : (config?.virtual_number || "08047283676")}
+                    : (config?.virtual_number || "08047291019")}
                 </span>
               </div>
               <div>
@@ -445,7 +445,7 @@ export function VoiceDashboard({
               <PhoneCall className="h-8 w-8 text-muted-foreground mb-4" />
               <p className="text-sm font-medium">No calls logged yet</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                Dial <span className="font-mono font-semibold text-foreground">{config?.virtual_number || "08047283676"}</span> from any mobile phone to test your newly configured AI receptionist.
+                Dial <span className="font-mono font-semibold text-foreground">{config?.virtual_number || "08047291019"}</span> from any mobile phone to test your newly configured AI receptionist.
               </p>
             </div>
           ) : (
