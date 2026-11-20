@@ -22,6 +22,16 @@ export default async function AgentsPage() {
     supabase.from("voice_agent_configs").select("*").eq("org_id", organization.id).maybeSingle()
   ]);
 
+  const sanitizedConfig = voiceConfig
+    ? {
+        ...voiceConfig,
+        virtual_number:
+          !voiceConfig.virtual_number || voiceConfig.virtual_number === "08047283676"
+            ? "08047291019"
+            : voiceConfig.virtual_number,
+      }
+    : null;
+
   return (
     <AgentsClientView
       organizationId={organization.id}
@@ -29,7 +39,7 @@ export default async function AgentsPage() {
       agents={agents ?? []}
       orgInfo={orgInfo}
       voiceLogs={voiceLogs ?? []}
-      voiceConfig={voiceConfig}
+      voiceConfig={sanitizedConfig}
     />
   );
 }

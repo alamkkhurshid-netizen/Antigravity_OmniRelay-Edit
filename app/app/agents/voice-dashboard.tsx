@@ -44,12 +44,48 @@ export function VoiceDashboard({
   callLogs?: VoiceCallLog[];
   initialConfig?: any;
 }) {
-  const [config, setConfig] = useState(initialConfig);
+  const [config, setConfig] = useState(() => {
+    if (!initialConfig) return initialConfig;
+    return {
+      ...initialConfig,
+      virtual_number:
+        !initialConfig.virtual_number || initialConfig.virtual_number === "08047283676"
+          ? "08047291019"
+          : initialConfig.virtual_number,
+    };
+  });
   const [isWizardOpen, setIsWizardOpen] = useState(!initialConfig?.onboarding_completed);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
+  const virtualNumber = (!config?.virtual_number || config?.virtual_number === "08047283676") ? "08047291019" : config.virtual_number;
+
   const totalMinutes = callLogs.reduce((acc, log) => acc + (log.duration_seconds || 0), 0) / 60;
   const totalCost = callLogs.reduce((acc, log) => acc + (log.cost_inr || 0), 0);
+
+  // Time-windowed minutes calculations
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).getTime();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+  const todaySeconds = callLogs
+    .filter(l => new Date(l.created_at).getTime() >= startOfDay)
+    .reduce((acc, l) => acc + (l.duration_seconds || 0), 0);
+  const weekSeconds = callLogs
+    .filter(l => new Date(l.created_at).getTime() >= startOfWeek)
+    .reduce((acc, l) => acc + (l.duration_seconds || 0), 0);
+  const monthSeconds = callLogs
+    .filter(l => new Date(l.created_at).getTime() >= startOfMonth)
+    .reduce((acc, l) => acc + (l.duration_seconds || 0), 0);
+  const totalSeconds = callLogs.reduce((acc, l) => acc + (l.duration_seconds || 0), 0);
+
+  const formatMinutes = (secs: number) => {
+    const mins = Math.floor(secs / 60);
+    const remSecs = secs % 60;
+    if (mins === 0 && remSecs === 0) return "0 min";
+    if (mins === 0) return `${remSecs}s`;
+    return `${mins}m ${remSecs}s`;
+  };
 
   if (isWizardOpen) {
     return (
@@ -145,7 +181,7 @@ export function VoiceDashboard({
                 <span className="font-mono font-bold text-foreground">
                   {config?.telephony_mode === "dedicated_vmn"
                     ? (config?.vmn_number || "+91 98450 24001")
-                    : (config?.virtual_number || "08047291019")}
+                    : virtualNumber}
                 </span>
               </div>
               <div>
@@ -374,6 +410,41 @@ export function VoiceDashboard({
         </Card>
       </div>
 
+      {/* Telephony Usage & Minutes Analytics */}
+      <Card className="bg-card/60 border shadow-xs">
+        <CardHeader className="py-3 px-4 flex flex-row items-center justify-between border-b bg-muted/15">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="font-semibold text-sm">Telephony Call Minutes &amp; Usage</span>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            Total Talk Time: <strong className="text-foreground font-mono">{formatMinutes(totalSeconds)}</strong> ({Math.ceil(totalSeconds / 60)} billable mins)
+          </span>
+        </CardHeader>
+        <CardContent className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+          <div className="p-3 rounded-lg bg-background border">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block">Today</span>
+            <div className="text-xl font-bold font-mono text-foreground mt-0.5">{formatMinutes(todaySeconds)}</div>
+            <span className="text-[11px] text-muted-foreground">{callLogs.filter(l => new Date(l.created_at).getTime() >= startOfDay).length} calls</span>
+          </div>
+          <div className="p-3 rounded-lg bg-background border">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block">This Week (7d)</span>
+            <div className="text-xl font-bold font-mono text-foreground mt-0.5">{formatMinutes(weekSeconds)}</div>
+            <span className="text-[11px] text-muted-foreground">{callLogs.filter(l => new Date(l.created_at).getTime() >= startOfWeek).length} calls</span>
+          </div>
+          <div className="p-3 rounded-lg bg-background border">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block">This Month</span>
+            <div className="text-xl font-bold font-mono text-foreground mt-0.5">{formatMinutes(monthSeconds)}</div>
+            <span className="text-[11px] text-muted-foreground">{callLogs.filter(l => new Date(l.created_at).getTime() >= startOfMonth).length} calls</span>
+          </div>
+          <div className="p-3 rounded-lg bg-background border">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block">All Time</span>
+            <div className="text-xl font-bold font-mono text-foreground mt-0.5">{formatMinutes(totalSeconds)}</div>
+            <span className="text-[11px] text-muted-foreground">{callLogs.length} calls</span>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Staff Escalations & Priority Handover Box (Only shown if escalations exist) */}
       {callLogs.some(l => l.emergency_flag || l.outcome === 'emergency_escalated' || l.outcome === 'transferred_to_human' || l.outcome === 'transferred') && (
         <Card className="border-amber-500/30 bg-amber-500/5">
@@ -445,7 +516,7 @@ export function VoiceDashboard({
               <PhoneCall className="h-8 w-8 text-muted-foreground mb-4" />
               <p className="text-sm font-medium">No calls logged yet</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                Dial <span className="font-mono font-semibold text-foreground">{config?.virtual_number || "08047291019"}</span> from any mobile phone to test your newly configured AI receptionist.
+                Dial <span className="font-mono font-semibold text-foreground">{virtualNumber}</span> from any mobile phone to test your newly configured AI receptionist.
               </p>
             </div>
           ) : (
@@ -470,7 +541,9 @@ export function VoiceDashboard({
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-muted-foreground font-mono">{log.duration_seconds}s</span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {log.duration_seconds >= 60 ? `${Math.floor(log.duration_seconds / 60)}m ${log.duration_seconds % 60}s` : `${log.duration_seconds}s`}
+                        </span>
                         
                         <Badge 
                           variant="outline"

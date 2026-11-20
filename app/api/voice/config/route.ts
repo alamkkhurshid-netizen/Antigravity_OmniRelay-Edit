@@ -93,6 +93,10 @@ export async function GET() {
       }
     }
 
+    if (!effectiveConfig.virtual_number || effectiveConfig.virtual_number === "08047283676") {
+      effectiveConfig.virtual_number = "08047291019";
+    }
+
     return NextResponse.json({
       config: effectiveConfig,
       is_new: !config,
@@ -147,7 +151,7 @@ export async function POST(request: Request) {
       bot_name: body.bot_name?.trim() || (businessVertical === "retail" ? "Priya" : businessVertical === "hospitality" ? "Aria" : "Maya"),
       agent_persona: body.agent_persona || "receptionist",
       voice_id: body.voice_id || "sonic-english-indian-1",
-      virtual_number: body.virtual_number || "08047291019",
+      virtual_number: (!body.virtual_number || body.virtual_number === "08047283676") ? "08047291019" : body.virtual_number,
       receptionist_phone: body.receptionist_phone.trim(),
       greeting_message: body.greeting_message?.trim() || `Hello! Thank you for calling ${businessName}. How can I help you today?`,
       primary_language: body.primary_language || "en-IN",

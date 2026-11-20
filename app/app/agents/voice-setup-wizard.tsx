@@ -77,7 +77,7 @@ export function VoiceSetupWizard({
     bot_name: initialConfig?.bot_name || initialDef.defaultBotName,
     agent_persona: initialConfig?.agent_persona || "receptionist",
     voice_id: initialConfig?.voice_id || "sonic-english-indian-1",
-    virtual_number: initialConfig?.virtual_number || "08047291019",
+    virtual_number: (!initialConfig?.virtual_number || initialConfig?.virtual_number === "08047283676") ? "08047291019" : initialConfig.virtual_number,
     receptionist_phone: initialConfig?.receptionist_phone || "",
     greeting_message: initialConfig?.greeting_message || initialDef.greeting(initialConfig?.clinic_name || "our company"),
     primary_language: initialConfig?.primary_language || "en-IN",
@@ -849,7 +849,7 @@ export function VoiceSetupWizard({
 
                     {(() => {
                       const carrier = formData.forwarding_carrier || "jio";
-                      const targetNumber = formData.virtual_number || "08047291019";
+                      const targetNumber = (!formData.virtual_number || formData.virtual_number === "08047283676") ? "08047291019" : formData.virtual_number;
                       // Reliance Jio uses CDMA/LTE shortcodes (*401*number) with NO trailing '#'
                       // Airtel, Vi, BSNL use standard GSM MMI codes (*21*number#)
                       const activationCode = carrier === "jio" ? `*401*${targetNumber}` : `*21*${targetNumber}#`;
