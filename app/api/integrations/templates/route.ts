@@ -194,6 +194,34 @@ export const STANDARD_TEMPLATES = [
     },
     body_text: "Hello {{1}}, your selected appointment slot with Dr {{2}} is awaiting {{3}} payment.\nAmount: ₹{{4}}\nComplete payment securely before {{5}} to confirm the booking.\nBooking reference: {{6}}\n\nThanks for the Payment",
     sample_values: ["Rahul", "Ananya Sen", "Deposit", "300", "8 Aug, 4:30 PM", "OR-28491"]
+  },
+  {
+    event_type: "marketing_campaign",
+    provider_template_name: "omnirelay_patient_news",
+    language_code: "en",
+    group_key: "marketing-campaign",
+    category: "MARKETING",
+    variable_map: {
+      "1": "patient_name",
+      "2": "clinic_name",
+      "3": "campaign_message"
+    },
+    body_text: "Hello {{1}}, {{2}}:\n{{3}}\n\nReply STOP anytime to unsubscribe.",
+    sample_values: ["Rahul Sharma", "Neoclinic", "Free Eye & Vision Screening Camp this Sunday from 10 AM to 2 PM. Consult our expert ophthalmologists."]
+  },
+  {
+    event_type: "care_campaign",
+    provider_template_name: "omnirelay_care_update",
+    language_code: "en",
+    group_key: "care-campaign",
+    category: "UTILITY",
+    variable_map: {
+      "1": "patient_name",
+      "2": "clinic_name",
+      "3": "care_update_details"
+    },
+    body_text: "Hello {{1}}, this is a health update from {{2}}:\n{{3}}\n\nPlease reply if you need assistance.",
+    sample_values: ["Rahul Sharma", "Neoclinic", "Regular blood sugar monitoring is recommended for diabetic care. Contact us to schedule your routine review."]
   }
 ];
 
@@ -240,16 +268,35 @@ export async function POST(request: Request) {
     }
 
     if (action === "activate_all" || action === "activate_group") {
-      const rowsToUpsert = targetSpecs.map((item) => ({
-        organization_id: organization.id,
-        channel: "whatsapp",
-        event_type: item.event_type,
-        provider_template_name: item.provider_template_name,
-        language_code: item.language_code,
-        status: "approved",
-        variable_map: item.variable_map,
-        updated_at: nowIso,
-      }));
+      const DB_ALLOWED_EVENTS = new Set([
+        "confirmation",
+        "reminder_24h",
+        "reminder_2h",
+        "follow_up",
+        "cancellation",
+        "reschedule",
+        "care_campaign",
+        "marketing_campaign",
+        "emergency_notice",
+        "booking_otp",
+        "doctor_queue",
+        "care_reminder",
+        "payment_action",
+        "payment_confirmation",
+      ]);
+
+      const rowsToUpsert = targetSpecs
+        .filter((item) => DB_ALLOWED_EVENTS.has(item.event_type))
+        .map((item) => ({
+          organization_id: organization.id,
+          channel: "whatsapp",
+          event_type: item.event_type,
+          provider_template_name: item.provider_template_name,
+          language_code: item.language_code,
+          status: "approved",
+          variable_map: item.variable_map,
+          updated_at: nowIso,
+        }));
 
       const { data: upserted, error: upErr } = await supabase
         .from("channel_message_templates")

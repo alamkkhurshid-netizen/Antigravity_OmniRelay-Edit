@@ -18,7 +18,7 @@ export interface CampaignListProps {
   campaigns: CampaignItem[];
   busy: boolean;
   error?: string;
-  onAction: (id: string, actionName: "pause" | "resume" | "send_now" | "cancel") => void;
+  onAction: (id: string, actionName: "pause" | "resume" | "send_now" | "cancel" | "send_test", extra?: { testPhone?: string }) => void;
 }
 
 export function CampaignList({ campaigns, busy, error, onAction }: CampaignListProps) {
@@ -71,9 +71,21 @@ export function CampaignList({ campaigns, busy, error, onAction }: CampaignListP
                   </button>
                 )}
                 {["scheduled", "paused"].includes(c.status) && (
-                  <button disabled={busy} onClick={() => onAction(c.id, "send_now")}>
-                    Send now
-                  </button>
+                  <>
+                    <button
+                      disabled={busy}
+                      onClick={() => {
+                        const phone = prompt("Enter mobile number to send a test WhatsApp preview:", "+919831582626");
+                        if (phone) onAction(c.id, "send_test", { testPhone: phone });
+                      }}
+                      title="Send a sample WhatsApp message to verify formatting before bulk dispatch"
+                    >
+                      Test
+                    </button>
+                    <button disabled={busy} onClick={() => onAction(c.id, "send_now")}>
+                      Send now
+                    </button>
+                  </>
                 )}
                 {!["completed", "cancelled"].includes(c.status) && (
                   <button className="danger" disabled={busy} onClick={() => onAction(c.id, "cancel")}>

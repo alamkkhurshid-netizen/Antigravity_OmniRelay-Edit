@@ -1,7 +1,7 @@
 import {NextResponse} from "next/server";
 import {getWorkspace} from "@/lib/workspace";
 import {isWorkerPaused, recordWorkerPauseAudit} from "@/lib/runtime-controls";
-import {executeCampaignDispatch} from "@/lib/campaign-dispatcher";
+import {executeCampaignDispatch, executeCampaignTestDispatch} from "@/lib/campaign-dispatcher";
 const eventByType:Record<string,string>={care:"care_campaign",marketing:"marketing_campaign",emergency:"emergency_notice"};
 const normalizeAddress=(value:string)=>value.replace(/\D/g,"");
 export async function POST(request:Request){
@@ -19,11 +19,15 @@ export async function POST(request:Request){
   const [{data:patients},{data:outs},{data:appointments}]=await Promise.all([
    supabase.from("patient_profiles").select("id,phone,health_concern,care_communications_consent,marketing_consent").eq("organization_id",organization.id),
    supabase.from("communication_opt_outs").select("address,scope").eq("organization_id",organization.id).eq("channel","whatsapp"),
-   type==="emergency"?supabase.from("appointments").select("id,patient_id,status,starts_at").eq("organization_id",organization.id).eq("location_id",b.locationId).eq("resource_id",b.resourceId).gte("starts_at",`${b.appointmentDate}T00:00:00+05:30`).lt("starts_at",`${b.appointmentDate}T23:59:59+05:30`).in("status",["pending","payment_pending","confirmed","arrived","rescheduling_required"]):Promise.resolve({data:[] as {id:string;patient_id:string|null;status:string;starts_at:string}[]})
+   supabase.from("appointments").select("id,patient_id,service_name,status,starts_at").eq("organization_id",organization.id)
   ]);
 
   let eligible: Array<{ id: string; phone: string | null }> = [];
-  const affectedRows=appointments??[],affected=new Set(affectedRows.map(a=>a.patient_id).filter(Boolean));
+  const allAppointments = appointments ?? [];
+  const affectedRows = type === "emergency" 
+    ? allAppointments.filter(a => a.starts_at >= `${b.appointmentDate}T00:00:00+05:30` && a.starts_at <= `${b.appointmentDate}T23:59:59+05:30` && ["pending","payment_pending","confirmed","arrived","rescheduling_required"].includes(a.status))
+    : [];
+  const affected=new Set(affectedRows.map(a=>a.patient_id).filter(Boolean));
 
   if (b.segment === "csv") {
     const rawCsvContacts: Array<{ name: string; phone: string; notes?: string }> = Array.isArray(b.csvContacts) ? b.csvContacts : [];
@@ -70,13 +74,30 @@ export async function POST(request:Request){
       }
     }
   } else {
-    eligible=(patients??[]).filter(p=>{if(!p.phone)return false;const scope=type==="marketing"?"marketing":"care";if(type==="marketing"?!p.marketing_consent:!p.care_communications_consent)return false;if((outs??[]).some(o=>normalizeAddress(o.address)===normalizeAddress(p.phone!)&&(o.scope==="all"||o.scope===scope)))return false;if(type==="emergency"&&!affected.has(p.id))return false;if(b.segment==="health"&&!String(p.health_concern??"").toLowerCase().includes(String(b.keyword??"").toLowerCase()))return false;return true});
+    // 90 days ago cutoff for dormant filter
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const recentPatientIds = new Set(allAppointments.filter(a => a.starts_at >= ninetyDaysAgo).map(a => a.patient_id).filter(Boolean));
+    const deptMatchIds = b.segment === "department" && b.department
+      ? new Set(allAppointments.filter(a => String(a.service_name || "").toLowerCase().includes(String(b.department).toLowerCase())).map(a => a.patient_id).filter(Boolean))
+      : null;
+
+    eligible=(patients??[]).filter(p=>{
+      if(!p.phone)return false;
+      const scope=type==="marketing"?"marketing":"care";
+      if(type==="marketing"?!p.marketing_consent:!p.care_communications_consent)return false;
+      if((outs??[]).some(o=>normalizeAddress(o.address)===normalizeAddress(p.phone!)&&(o.scope==="all"||o.scope===scope)))return false;
+      if(type==="emergency"&&!affected.has(p.id))return false;
+      if (b.segment === "health" && !String(p.health_concern ?? "").toLowerCase().includes(String(b.keyword ?? "").toLowerCase())) return false;
+      if (b.segment === "department" && deptMatchIds && !deptMatchIds.has(p.id) && !String(p.health_concern ?? "").toLowerCase().includes(String(b.department).toLowerCase())) return false;
+      if (b.segment === "dormant" && recentPatientIds.has(p.id)) return false;
+      return true;
+    });
   }
 
  if(type==="emergency"&&!affectedRows.length)return NextResponse.json({error:"No active appointments match that doctor, chamber and date."},{status:400});
  if(!eligible.length)return NextResponse.json({error:"No patients remain after consent and audience safeguards."},{status:400});
  const scheduled=b.scheduledFor?new Date(b.scheduledFor).toISOString():new Date().toISOString();
- const {data:c,error}=await supabase.from("campaigns").insert({organization_id:organization.id,name,campaign_type:type,template_id:template.id,status:"scheduled",scheduled_for:scheduled,message_note:messageNote,audience_filter:{segment:b.segment,keyword:b.keyword,location_id:b.locationId,resource_id:b.resourceId,appointment_date:b.appointmentDate,action:emergencyAction},created_by:user.id}).select("id").single();
+ const {data:c,error}=await supabase.from("campaigns").insert({organization_id:organization.id,name,campaign_type:type,template_id:template.id,status:"scheduled",scheduled_for:scheduled,message_note:messageNote,audience_filter:{segment:b.segment,department:b.department||null,keyword:b.keyword||null,mediaType:b.mediaType||"none",mediaUrl:b.mediaUrl||null,actionLink:b.actionLink||null,location_id:b.locationId,resource_id:b.resourceId,appointment_date:b.appointmentDate,action:emergencyAction},created_by:user.id}).select("id").single();
  if(error||!c)return NextResponse.json({error:error?.message??"Creation failed."},{status:400});
  const {error:re}=await supabase.from("campaign_recipients").insert(eligible.map(p=>({campaign_id:c.id,organization_id:organization.id,patient_id:p.id,recipient_address:p.phone,consent_basis:type,scheduled_for:scheduled,status:"approved"})));
  if(re)return NextResponse.json({error:re.message},{status:400});
@@ -99,6 +120,17 @@ export async function PATCH(request:Request){
  const {supabase,organization}=await getWorkspace(),{data:{user}}=await supabase.auth.getUser();
  if(!user||!organization)return NextResponse.json({error:"Authentication required."},{status:401});
  const b=await request.json(),action=String(b.action??""),id=String(b.id??"");
+ if(action==="send_test"){
+  const testPhone = String(b.testPhone || "");
+  if(!testPhone || testPhone.replace(/\D/g,"").length < 10) {
+   return NextResponse.json({ error: "Please enter a valid 10+ digit WhatsApp phone number for testing." }, { status: 400 });
+  }
+  const testResult = await executeCampaignTestDispatch(id, organization.id, testPhone, user.id);
+  if (!testResult.ok) {
+   return NextResponse.json({ error: testResult.error || "Test dispatch failed." }, { status: 400 });
+  }
+  return NextResponse.json({ ok: true, testDelivered: true, messageId: testResult.messageId });
+ }
  if(action==="send_now"||action==="resume"){
   const pauseCheck=await isWorkerPaused("campaign_dispatch",organization.id);
   if(pauseCheck.paused){

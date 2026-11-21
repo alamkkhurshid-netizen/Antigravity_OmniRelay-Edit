@@ -4,17 +4,88 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { parseCampaignCsv, generateSampleCampaignCsv, ParsedContact } from "@/lib/campaign-csv";
 import { CampaignList } from "./campaign-list";
+import { Check, Send, AlertCircle, Users, FileSpreadsheet, Sparkles, PhoneCall, Calendar } from "lucide-react";
 
 type P = { id: string; full_name: string; phone: string | null; health_concern: string | null; care_communications_consent: boolean; marketing_consent: boolean };
 type C = { id: string; name: string; campaign_type: string; status: string; scheduled_for: string | null; eligible_count: number; sent_count: number; delivered_count: number; read_count: number; failed_count: number; skipped_count: number };
 type T = { id: string; event_type: string; provider_template_name: string; language_code: string; status: string };
 type L = { id: string; name: string };
-type A = { patient_id: string | null; location_id: string | null; resource_id: string | null; starts_at: string; status: string };
+type A = { patient_id: string | null; location_id: string | null; resource_id: string | null; service_name?: string | null; starts_at: string; status: string };
 
 const normalizeAddress = (value: string) => value.replace(/\D/g, "");
 const doctorLabel = (name: string) => /^dr\b/i.test(name.trim()) ? name.trim() : `Dr ${name.trim()}`;
 
+const HEALTHCARE_PRESETS = [
+  {
+    id: "health_package",
+    icon: "🩺",
+    title: "Health Package",
+    desc: "Senior cardiac or full-body checkup",
+    type: "marketing",
+    name: "Preventive Health Package",
+    message: "Comprehensive Health Checkup Package is now open for bookings. Inclusions: Doctor consultation, blood profile, ECG & vitals at ₹999. Book early to secure your slot.",
+    segment: "all",
+    department: "",
+  },
+  {
+    id: "specialty_camp",
+    icon: "👁️",
+    title: "Specialty Screening Camp",
+    desc: "Free eye, cataract, dental, or ortho camp",
+    type: "marketing",
+    name: "Free Eye & Vision Screening Camp",
+    message: "Free Eye & Vision Screening Camp this Sunday from 10:00 AM to 2:00 PM. Consult our expert ophthalmologists for full diagnostic evaluations.",
+    segment: "department",
+    department: "Ophthalmology",
+  },
+  {
+    id: "chronic_care",
+    icon: "🔄",
+    title: "Chronic Care 90-Day Recall",
+    desc: "Diabetic sugar & BP periodic review",
+    type: "care",
+    name: "Diabetic & BP Periodic Review",
+    message: "Regular monitoring is recommended for diabetes and blood pressure management. Contact our care desk to schedule your routine follow-up checkup.",
+    segment: "dormant",
+    department: "",
+  },
+  {
+    id: "doctor_opd",
+    icon: "👨‍⚕️",
+    title: "Doctor OPD Addition",
+    desc: "New specialist or extended chamber hours",
+    type: "marketing",
+    name: "New Specialist Consultation",
+    message: "We are pleased to introduce Dr. Sunita Roy (Gynecology & Obstetrics) to our clinical team. Consultations available Mon & Thu 3:00 PM - 6:00 PM. Bookings open.",
+    segment: "all",
+    department: "",
+  },
+  {
+    id: "vaccine_drive",
+    icon: "🛡️",
+    title: "Vaccine & Health Drive",
+    desc: "Seasonal flu, pediatric, or dengue alert",
+    type: "marketing",
+    name: "Seasonal Flu Vaccine Drive",
+    message: "Seasonal Influenza & Flu Vaccination Drive is now active. Protect your children and senior family members before the change of weather. Reserve your doses today.",
+    segment: "all",
+    department: "",
+  },
+  {
+    id: "festive_schedule",
+    icon: "✨",
+    title: "Festive Greeting & Hours",
+    desc: "Diwali/Puja wishes + holiday OPD schedule",
+    type: "marketing",
+    name: "Festive Greetings & Holiday Timings",
+    message: "Wishing you and your family vibrant health and happiness on this festive occasion! Emergency OPD remains active 24/7. Regular chambers resume normal timings from 2nd Nov.",
+    segment: "all",
+    department: "",
+  },
+];
+
 export function CampaignWorkspace({
+  organizationName = "Neoclinic",
   patients,
   campaigns,
   templates,
@@ -23,6 +94,7 @@ export function CampaignWorkspace({
   appointments,
   optOuts,
 }: {
+  organizationName?: string;
   patients: P[];
   campaigns: C[];
   templates: T[];
@@ -39,9 +111,10 @@ export function CampaignWorkspace({
 
   const [f, setF] = useState({
     name: "",
-    campaignType: "care",
+    campaignType: "marketing",
     templateId: "",
     segment: "all",
+    department: "",
     keyword: "",
     locationId: "",
     resourceId: "",
@@ -49,12 +122,35 @@ export function CampaignWorkspace({
     action: "reschedule_required",
     scheduledFor: "",
     messageNote: "",
+    mediaType: "none",
+    mediaUrl: "",
+    actionLink: "",
   });
+
+  // Audience Source Mode: 'crm' (Option 1) vs 'csv' (Option 2)
+  const [audienceMode, setAudienceMode] = useState<"crm" | "csv">("crm");
 
   // CSV Audience Upload State
   const [csvContacts, setCsvContacts] = useState<ParsedContact[]>([]);
   const [csvMeta, setCsvMeta] = useState<{ invalidCount: number; duplicateCount: number; totalRows: number } | null>(null);
   const [csvFileName, setCsvFileName] = useState("");
+
+  // Test Message State
+  const [testPhone, setTestPhone] = useState("+919831582626");
+  const [testBusy, setTestBusy] = useState(false);
+  const [testFeedback, setTestFeedback] = useState<string | null>(null);
+
+  // Extract distinct departments from appointments
+  const availableDepartments = useMemo(() => {
+    const set = new Set<string>();
+    appointments.forEach((a) => {
+      if (a.service_name && a.service_name.trim().length > 1) {
+        set.add(a.service_name.trim());
+      }
+    });
+    ["Gynecology", "Ophthalmology", "Pediatrics", "Cardiology", "Orthopedics", "General Medicine"].forEach((d) => set.add(d));
+    return Array.from(set).sort();
+  }, [appointments]);
 
   useEffect(() => {
     if (searchParams.get("new") === "1") {
@@ -96,6 +192,29 @@ export function CampaignWorkspace({
     ? `${doctorLabel(selectedDoctor)} is unavailable. ${f.messageNote.trim() || "Please contact the clinic for assistance."}`
     : "Select a doctor to preview the patient message.";
 
+  // Sync template selection when approved templates load or type changes
+  useEffect(() => {
+    if (!f.templateId && approved.length > 0) {
+      setF((prev) => ({ ...prev, templateId: approved[0].id }));
+    }
+  }, [approved, f.templateId]);
+
+  function applyPreset(p: typeof HEALTHCARE_PRESETS[0]) {
+    const targetEvent = { care: "care_campaign", marketing: "marketing_campaign", emergency: "emergency_notice" }[p.type];
+    const match = templates.find((t) => t.event_type === targetEvent && t.status === "approved");
+
+    setAudienceMode("crm");
+    setF((prev) => ({
+      ...prev,
+      name: p.name,
+      campaignType: p.type,
+      templateId: match?.id || prev.templateId,
+      segment: p.segment,
+      department: p.department || "",
+      messageNote: p.message,
+    }));
+  }
+
   function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -128,15 +247,32 @@ export function CampaignWorkspace({
       optOuts.filter((o) => o.scope === "all" || o.scope === scope).map((o) => normalizeAddress(o.address))
     );
 
-    if (f.segment === "csv") {
+    if (audienceMode === "csv") {
       return csvContacts.filter((c) => !optedOutSet.has(normalizeAddress(c.phone))).length;
     }
+
+    // 90 days ago cutoff for dormant filter
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const recentPatientIds = new Set(
+      appointments.filter((a) => a.starts_at >= ninetyDaysAgo).map((a) => a.patient_id).filter(Boolean)
+    );
+    const deptMatchIds =
+      f.segment === "department" && f.department
+        ? new Set(
+            appointments
+              .filter((a) => String(a.service_name || "").toLowerCase().includes(f.department.toLowerCase()))
+              .map((a) => a.patient_id)
+              .filter(Boolean)
+          )
+        : null;
 
     const filtered = patients.filter((p) => {
       if (!p.phone) return false;
       if (scope === "marketing" ? !p.marketing_consent : !p.care_communications_consent) return false;
       if (optedOutSet.has(normalizeAddress(p.phone))) return false;
       if (f.segment === "health" && !String(p.health_concern ?? "").toLowerCase().includes(f.keyword.toLowerCase())) return false;
+      if (f.segment === "department" && deptMatchIds && !deptMatchIds.has(p.id) && !String(p.health_concern ?? "").toLowerCase().includes(f.department.toLowerCase())) return false;
+      if (f.segment === "dormant" && recentPatientIds.has(p.id)) return false;
       if (f.campaignType === "emergency") {
         return appointments.some(
           (a) =>
@@ -151,14 +287,14 @@ export function CampaignWorkspace({
     });
 
     return filtered.length;
-  }, [patients, appointments, optOuts, f, csvContacts]);
+  }, [patients, appointments, optOuts, f, audienceMode, csvContacts]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError("");
 
-    if (f.segment === "csv" && csvContacts.length === 0) {
+    if (audienceMode === "csv" && csvContacts.length === 0) {
       setError("Please upload a valid CSV file containing patient contact numbers.");
       setBusy(false);
       return;
@@ -166,7 +302,8 @@ export function CampaignWorkspace({
 
     const payload = {
       ...f,
-      csvContacts: f.segment === "csv" ? csvContacts : undefined,
+      segment: audienceMode === "csv" ? "csv" : f.segment,
+      csvContacts: audienceMode === "csv" ? csvContacts : undefined,
     };
 
     const r = await fetch("/api/campaigns", {
@@ -188,16 +325,20 @@ export function CampaignWorkspace({
     setBusy(false);
   }
 
-  async function action(id: string, actionName: string) {
+  async function action(id: string, actionName: string, extra?: { testPhone?: string }) {
     setBusy(true);
     setError("");
     const r = await fetch("/api/campaigns", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id, action: actionName }),
+      body: JSON.stringify({ id, action: actionName, ...extra }),
     });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) setError(d.error ?? "Campaign could not be updated.");
+    if (!r.ok) {
+      setError(d.error ?? "Campaign could not be updated.");
+    } else if (actionName === "send_test") {
+      alert(`Test message dispatched to ${extra?.testPhone || "phone"}! Check your WhatsApp.`);
+    }
     router.refresh();
     setBusy(false);
   }
@@ -205,7 +346,6 @@ export function CampaignWorkspace({
   return (
     <div className="mx-auto grid max-w-7xl gap-5 pb-12">
       <section className="relative flex flex-col gap-6 overflow-hidden rounded-2xl bg-slate-950 px-6 py-8 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between sm:px-8 isolate mb-6">
-        {/* Ambient Orbs & Grain */}
         <div className="absolute -top-32 -right-32 h-[30rem] w-[30rem] rounded-full bg-teal-500/20 blur-[120px] -z-10 pointer-events-none" />
         <div className="absolute -bottom-32 -left-32 h-[30rem] w-[30rem] rounded-full bg-blue-600/20 blur-[120px] -z-10 pointer-events-none" />
         <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay pointer-events-none -z-10" />
@@ -216,41 +356,56 @@ export function CampaignWorkspace({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-teal-500"></span>
             </span>
-            CONSENT-FIRST OUTREACH
+            HEALTHCARE BROADCAST & OUTREACH
           </span>
           <h2 className="mt-4 text-2xl sm:text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-slate-100 to-slate-400 leading-[1.15]">
-            Reach the right patients—never the wrong ones.
+            Reach patients with verified health campaigns.
           </h2>
           <p className="mt-4 text-sm sm:text-base text-slate-400 font-medium tracking-wide">
-            Coordinate care updates, festive greetings, health camps and emergency notices with consent and opt-out safeguards built in.
+            Broadcast health packages, eye checkup camps, specialty recalls, and chamber disruptions to both registered CRM patients and external CSV lists.
           </p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3 z-10">
-          <button className="inline-flex min-h-10 items-center justify-center rounded-xl bg-gradient-to-r from-teal-400 to-blue-500 px-4 text-[13px] font-bold text-slate-950 shadow-[0_0_20px_rgba(45,212,191,0.25)] transition-all hover:from-teal-300 hover:to-blue-400 hover:scale-[1.02]" onClick={() => setOpen(true)}>New campaign →</button>
+          <button
+            type="button"
+            onClick={downloadSampleCsv}
+            className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-700 bg-slate-900/80 px-4 text-[13px] font-semibold text-slate-200 transition-all hover:bg-slate-800 hover:text-white"
+          >
+            📥 Download Sample CSV
+          </button>
+          <button
+            className="inline-flex min-h-10 items-center justify-center rounded-xl bg-gradient-to-r from-teal-400 to-blue-500 px-5 text-[13px] font-bold text-slate-950 shadow-[0_0_20px_rgba(45,212,191,0.25)] transition-all hover:from-teal-300 hover:to-blue-400 hover:scale-[1.02]"
+            onClick={() => {
+              setError("");
+              setOpen(true);
+            }}
+          >
+            + Create New Campaign →
+          </button>
         </div>
       </section>
 
       <section className="campaign-metrics">
         <article>
-          <span>Patient profiles</span>
+          <span>Registered CRM Patients</span>
           <b>{patients.length}</b>
-          <small>Available in CRM</small>
+          <small>Accumulated via Web, Bot & Voice</small>
         </article>
         <article>
-          <span>Care consent</span>
-          <b>{patients.filter((p) => p.care_communications_consent).length}</b>
-          <small>Before audience filters</small>
+          <span>Consented Audience</span>
+          <b>{patients.filter((p) => p.marketing_consent || p.care_communications_consent).length}</b>
+          <small>Active WhatsApp recipients</small>
         </article>
         <article>
           <span>Delivered</span>
           <b>{campaigns.reduce((n, c) => n + c.delivered_count, 0)}</b>
-          <small>{campaigns.reduce((n, c) => n + c.read_count, 0)} read</small>
+          <small>{campaigns.reduce((n, c) => n + c.read_count, 0)} confirmed read</small>
         </article>
         <article>
-          <span>Opt-outs</span>
+          <span>Opt-Out Protection</span>
           <b>{optOuts.length}</b>
-          <small>Always excluded</small>
+          <small>Auto-skipped on STOP</small>
         </article>
       </section>
 
@@ -261,82 +416,235 @@ export function CampaignWorkspace({
         onAction={action}
       />
 
-      <section className="campaign-safety">
-        <b>OmniRelay safety gate</b>
-        <p>Consent, opt-outs and affected appointments are re-evaluated by the server. Dispatch remains blocked until the matching Meta template is approved.</p>
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-50 text-teal-700 font-bold text-xs">
+              ℹ
+            </span>
+            <h4 className="text-sm font-bold text-slate-900">
+              Meta WhatsApp Broadcast Guidelines & Safe Sending Limits
+            </h4>
+          </div>
+          <span className="text-[11px] font-semibold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full border border-teal-200/60">
+            Official Cloud API Tier Rules
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+          <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 space-y-1.5">
+            <b className="text-xs text-slate-900 flex items-center gap-1.5">
+              <span>📈</span> Daily Contact Tiers
+            </b>
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              • <strong>Tier 1:</strong> 250 unique patients / 24h (new unverified)<br />
+              • <strong>Tier 2:</strong> 1,000 unique patients / 24h (verified)<br />
+              • <strong>Tier 3:</strong> 10,000 / day &rarr; Auto-upgrades as quality stays green.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 space-y-1.5">
+            <b className="text-xs text-slate-900 flex items-center gap-1.5">
+              <span>🛡️</span> Quality Rating & Safety
+            </b>
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              Meta monitors user blocks. OmniRelay auto-applies a <strong>72-hour frequency cap</strong> and mandatory <strong>STOP opt-out</strong> to keep your number rating <em>High (Green)</em>.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 space-y-1.5">
+            <b className="text-xs text-slate-900 flex items-center gap-1.5">
+              <span>📎</span> Media & Link Support
+            </b>
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              Campaigns support <strong>PDF brochures</strong> (up to 100MB), <strong>JPEG/PNG posters</strong> (up to 5MB), and <strong>clickable booking links</strong> directly inside the template.
+            </p>
+          </div>
+        </div>
       </section>
 
+      {/* Campaign Creation Modal */}
       {open && (
         <div className="care-modal-backdrop">
-          <form className="care-modal" onSubmit={submit}>
+          <form className="care-modal max-w-4xl max-h-[92vh] overflow-y-auto" onSubmit={submit}>
             <header>
               <div>
-                <span className="app-eyebrow">NEW CAMPAIGN</span>
-                <h3>Build a safe audience</h3>
+                <span className="app-eyebrow">HEALTHCARE BROADCAST WIZARD</span>
+                <h3>Create Patient Campaign</h3>
               </div>
               <button type="button" onClick={() => setOpen(false)}>
                 ×
               </button>
             </header>
 
+            {/* Presets Header */}
+            <div className="wide space-y-2 border-b border-slate-100 pb-3">
+              <label className="text-xs font-semibold text-slate-700 block">
+                ⚡ Quick Healthcare Presets (Click to Auto-fill):
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {HEALTHCARE_PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => applyPreset(p)}
+                    className="flex flex-col items-start p-2.5 rounded-xl border border-slate-200 bg-white hover:border-teal-500 hover:bg-teal-50/40 text-left transition-all"
+                  >
+                    <span className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
+                      <span>{p.icon}</span> {p.title}
+                    </span>
+                    <span className="text-[11px] text-slate-500 line-clamp-1">{p.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Campaign Name & Type */}
             <label>
-              Name
-              <input required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="e.g. Diwali Greeting 2026 or Free Health Camp" />
+              Campaign Name
+              <input
+                required
+                value={f.name}
+                onChange={(e) => setF({ ...f, name: e.target.value })}
+                placeholder="e.g. Senior Cardiac Health Package or Free Eye Screening Camp"
+              />
             </label>
 
             <label>
-              Type
-              <select value={f.campaignType} onChange={(e) => setF({ ...f, campaignType: e.target.value, templateId: "" })}>
-                <option value="care">Care update</option>
-                <option value="marketing">Marketing / news (Festive, health camps, announcements)</option>
-                <option value="emergency">Emergency chamber notice</option>
+              Campaign Category
+              <select
+                value={f.campaignType}
+                onChange={(e) => setF({ ...f, campaignType: e.target.value, templateId: "" })}
+              >
+                <option value="marketing">Marketing (Health Packages, Eye Camps, Offers, Announcements)</option>
+                <option value="care">Clinical Care Update (Chronic Disease Recall, Seasonal Health)</option>
+                <option value="emergency">Emergency Disruption (Doctor unavailable, Chamber maintenance)</option>
               </select>
             </label>
 
+            {/* AUDIENCE SOURCE SELECTION (The 2 Options) */}
             {f.campaignType !== "emergency" && (
-              <label>
-                Audience source
-                <select value={f.segment} onChange={(e) => setF({ ...f, segment: e.target.value })}>
-                  <option value="all">All consented CRM patients</option>
-                  <option value="health">Filter by health concern keyword</option>
-                  <option value="csv">Import audience from CSV file</option>
-                </select>
-              </label>
-            )}
+              <div className="wide space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-600 block">
+                  Select Audience Source:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setAudienceMode("crm")}
+                    className={`flex items-start gap-3 p-3 rounded-xl border text-left transition-all ${
+                      audienceMode === "crm"
+                        ? "border-teal-600 bg-white shadow-sm ring-2 ring-teal-500/20"
+                        : "border-slate-200 bg-white/70 hover:bg-white"
+                    }`}
+                  >
+                    <Users className={`h-5 w-5 mt-0.5 ${audienceMode === "crm" ? "text-teal-600" : "text-slate-400"}`} />
+                    <div>
+                      <b className="text-xs text-slate-900 block">Option 1: Registered CRM Patients</b>
+                      <span className="text-[11px] text-slate-500">
+                        Patients accumulated automatically through Web, WhatsApp Bot, and Voice AI bookings.
+                      </span>
+                    </div>
+                  </button>
 
-            {f.segment === "health" && f.campaignType !== "emergency" && (
-              <label>
-                Concern keyword
-                <input required value={f.keyword} onChange={(e) => setF({ ...f, keyword: e.target.value })} placeholder="e.g. Diabetes, Cardiology" />
-              </label>
-            )}
-
-            {/* CSV Audience File Upload Section */}
-            {f.segment === "csv" && f.campaignType !== "emergency" && (
-              <div className="wide p-4 rounded-xl border border-dashed border-[#159ab6] bg-[#f7fcfd] space-y-2">
-                <div className="flex items-center justify-between">
-                  <b className="text-xs text-[#1e3a4b]">Upload Patient Contacts CSV</b>
-                  <button type="button" className="text-xs text-[#087fa3] font-bold underline" onClick={downloadSampleCsv}>
-                    📥 Download Sample CSV
+                  <button
+                    type="button"
+                    onClick={() => setAudienceMode("csv")}
+                    className={`flex items-start gap-3 p-3 rounded-xl border text-left transition-all ${
+                      audienceMode === "csv"
+                        ? "border-teal-600 bg-white shadow-sm ring-2 ring-teal-500/20"
+                        : "border-slate-200 bg-white/70 hover:bg-white"
+                    }`}
+                  >
+                    <FileSpreadsheet className={`h-5 w-5 mt-0.5 ${audienceMode === "csv" ? "text-teal-600" : "text-slate-400"}`} />
+                    <div>
+                      <b className="text-xs text-slate-900 block">Option 2: Upload CSV / Excel List</b>
+                      <span className="text-[11px] text-slate-500">
+                        Import audience from CSV file. Add historical patients or external camp attendees.
+                      </span>
+                    </div>
                   </button>
                 </div>
-                <input type="file" accept=".csv" onChange={handleCsvFile} className="w-full text-xs" />
-                {csvFileName && (
-                  <p className="text-xs text-[#059669] font-medium">
-                    ✓ {csvFileName} loaded: {csvContacts.length} valid numbers
-                    {csvMeta ? ` (${csvMeta.duplicateCount} duplicates, ${csvMeta.invalidCount} invalid rows skipped)` : ""}
-                  </p>
+
+                {/* Sub-Filters for Option 1: CRM */}
+                {audienceMode === "crm" && (
+                  <div className="pt-2 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="text-xs">
+                      CRM Segment Filter
+                      <select
+                        value={f.segment}
+                        onChange={(e) => setF({ ...f, segment: e.target.value })}
+                        className="mt-1"
+                      >
+                        <option value="all">All Consented Patients ({patients.length})</option>
+                        <option value="department">Filter by Specialty / Department Visited</option>
+                        <option value="dormant">Dormant Patients (&gt; 90 days without visit)</option>
+                        <option value="health">Filter by Health Concern Tag</option>
+                      </select>
+                    </label>
+
+                    {f.segment === "department" && (
+                      <label className="text-xs">
+                        Department / Specialty
+                        <select
+                          value={f.department}
+                          onChange={(e) => setF({ ...f, department: e.target.value })}
+                          className="mt-1"
+                        >
+                          <option value="">Select Specialty</option>
+                          {availableDepartments.map((dept) => (
+                            <option key={dept} value={dept}>
+                              {dept}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+
+                    {f.segment === "health" && (
+                      <label className="text-xs">
+                        Health Concern Keyword
+                        <input
+                          required
+                          value={f.keyword}
+                          onChange={(e) => setF({ ...f, keyword: e.target.value })}
+                          placeholder="e.g. Diabetes, Cardiac, Eye"
+                          className="mt-1"
+                        />
+                      </label>
+                    )}
+                  </div>
                 )}
-                <small className="block text-[11px] text-[#64748b]">
-                  Accepts CSV with columns: <code>Name, Phone, Notes</code>. Indian (+91) and international numbers are supported.
-                </small>
+
+                {/* Sub-Uploader for Option 2: CSV */}
+                {audienceMode === "csv" && (
+                  <div className="p-3 rounded-xl border border-dashed border-[#159ab6] bg-[#f7fcfd] space-y-2">
+                    <div className="flex items-center justify-between">
+                      <b className="text-xs text-[#1e3a4b]">Upload Patient Contacts CSV</b>
+                      <button type="button" className="text-xs text-[#087fa3] font-bold underline" onClick={downloadSampleCsv}>
+                        📥 Download Sample CSV
+                      </button>
+                    </div>
+                    <input type="file" accept=".csv" onChange={handleCsvFile} className="w-full text-xs" />
+                    {csvFileName && (
+                      <p className="text-xs text-[#059669] font-medium">
+                        ✓ {csvFileName} loaded: {csvContacts.length} valid numbers
+                        {csvMeta ? ` (${csvMeta.duplicateCount} duplicates, ${csvMeta.invalidCount} invalid rows skipped)` : ""}
+                      </p>
+                    )}
+                    <small className="block text-[11px] text-[#64748b]">
+                      Required CSV format: <code>Name, Phone, Notes</code>. Indian (+91) and international formats supported.
+                    </small>
+                  </div>
+                )}
               </div>
             )}
 
+            {/* Emergency Chamber Specific Controls */}
             {f.campaignType === "emergency" && (
               <>
                 <p className="wide rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
-                  Doctor-specific emergency only. OmniRelay will never notify other doctors&apos; patients sharing the chamber.
+                  Doctor-specific emergency only. OmniRelay will only notify scheduled patients for that specific doctor and chamber.
                 </p>
                 <label>
                   Doctor
@@ -350,7 +658,7 @@ export function CampaignWorkspace({
                   </select>
                 </label>
                 <label>
-                  Chamber
+                  Chamber / Location
                   <select required value={f.locationId} onChange={(e) => setF({ ...f, locationId: e.target.value })}>
                     <option value="">Select chamber</option>
                     {locations.map((l) => (
@@ -361,11 +669,11 @@ export function CampaignWorkspace({
                   </select>
                 </label>
                 <label>
-                  Affected date
+                  Affected Date
                   <input required type="date" value={f.appointmentDate} onChange={(e) => setF({ ...f, appointmentDate: e.target.value })} />
                 </label>
                 <label>
-                  Appointment action
+                  Appointment Action
                   <select value={f.action} onChange={(e) => setF({ ...f, action: e.target.value })}>
                     <option value="reschedule_required">Mark future appointments for rescheduling</option>
                     <option value="notify_only">Notify only — staff will decide each appointment</option>
@@ -374,26 +682,36 @@ export function CampaignWorkspace({
               </>
             )}
 
+            {/* Approved Meta Template */}
             <label>
-              Approved template
+              Approved Meta Template
               <select required value={f.templateId} onChange={(e) => setF({ ...f, templateId: e.target.value })}>
-                <option value="">Select template</option>
+                <option value="">Select approved template</option>
                 {approved.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.provider_template_name} · {t.language_code}
+                    {t.provider_template_name} · {t.language_code.toUpperCase()}
                   </option>
                 ))}
               </select>
-              {approved.length === 0 && <small>No approved template for this type yet.</small>}
+              {approved.length === 0 && (
+                <small className="text-amber-600 block mt-1">
+                  ⚠️ No approved template found for this category yet. Create or activate it in Meta Integrations.
+                </small>
+              )}
             </label>
 
             <label>
-              Schedule
-              <input type="datetime-local" value={f.scheduledFor} onChange={(e) => setF({ ...f, scheduledFor: e.target.value })} />
+              Schedule Dispatch
+              <input
+                type="datetime-local"
+                value={f.scheduledFor}
+                onChange={(e) => setF({ ...f, scheduledFor: e.target.value })}
+              />
             </label>
 
+            {/* Campaign Message / Details */}
             <label className="wide">
-              Patient-safe message/context
+              Campaign Message / Package Details
               <textarea
                 required
                 minLength={3}
@@ -401,34 +719,151 @@ export function CampaignWorkspace({
                 rows={3}
                 value={f.messageNote}
                 onChange={(e) => setF({ ...f, messageNote: e.target.value })}
-                placeholder="Message summary or context for audit records"
+                placeholder="e.g. Free Eye Checkup Camp this Sunday from 10 AM to 2 PM. Consult our expert ophthalmologists."
               />
-              <small>Do not include diagnosis, reports or other sensitive clinical details.</small>
+              <small className="text-slate-500">
+                This content binds directly to Meta template variable <code>&#123;&#123;3&#125;&#125;</code> and will be delivered to recipients.
+              </small>
             </label>
 
-            {f.campaignType === "emergency" && (
-              <div className="campaign-preview wide">
-                <b>Patient message preview</b>
-                <span>{emergencyPreview}</span>
+            {/* MEDIA ATTACHMENTS & CLICKABLE ACTION LINKS */}
+            <div className="wide rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3.5">
+              <div className="flex items-center justify-between">
+                <b className="text-xs text-slate-900 flex items-center gap-1.5">
+                  <span>📎</span> Attach Media or Action Link (Optional)
+                </b>
+                <span className="text-[10px] text-teal-700 bg-teal-50 px-2 py-0.5 rounded font-medium border border-teal-200/50">
+                  PDF · Image · Website Link
+                </span>
               </div>
-            )}
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="text-xs">
+                  Attachment Type
+                  <select
+                    value={f.mediaType}
+                    onChange={(e) => setF({ ...f, mediaType: e.target.value })}
+                    className="mt-1"
+                  >
+                    <option value="none">None (Standard Text Broadcast)</option>
+                    <option value="image">🖼️ Image Poster / Flyer (JPEG, PNG up to 5MB)</option>
+                    <option value="document">📑 PDF Document / Test Package Tariff (PDF up to 100MB)</option>
+                  </select>
+                </label>
+
+                {f.mediaType !== "none" && (
+                  <label className="text-xs">
+                    {f.mediaType === "document" ? "PDF Document Link (URL)" : "Image Flyer Link (URL)"}
+                    <input
+                      type="url"
+                      value={f.mediaUrl}
+                      onChange={(e) => setF({ ...f, mediaUrl: e.target.value })}
+                      placeholder={f.mediaType === "document" ? "https://example.com/health_package.pdf" : "https://example.com/eye_camp_poster.jpg"}
+                      className="mt-1"
+                    />
+                  </label>
+                )}
+              </div>
+
+              <label className="text-xs block">
+                Website / Online Booking Link (Rendered as Clickable Link in WhatsApp)
+                <input
+                  type="url"
+                  value={f.actionLink}
+                  onChange={(e) => setF({ ...f, actionLink: e.target.value })}
+                  placeholder="e.g. https://neoclinic.in/camp or https://omnirelay.in/book/neoclinic"
+                  className="mt-1"
+                />
+              </label>
+            </div>
+
+            {/* REAL-TIME WHATSAPP PREVIEW BUBBLE */}
+            <div className="wide rounded-xl border border-slate-200 bg-slate-100/70 p-4 space-y-2">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                📱 Live Patient WhatsApp Preview
+              </span>
+              <div className="max-w-md mx-auto bg-white rounded-2xl shadow-sm border border-slate-200/80 p-3.5 space-y-2.5 text-xs text-slate-800">
+                <div className="font-semibold text-slate-900 flex items-center justify-between border-b pb-1.5">
+                  <span>{organizationName}</span>
+                  <span className="text-[10px] text-slate-400">Official Business</span>
+                </div>
+
+                {/* Attached Image Poster Preview */}
+                {f.mediaType === "image" && f.mediaUrl && (
+                  <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-100 h-32 flex items-center justify-center text-slate-400">
+                    <img
+                      src={f.mediaUrl}
+                      alt="Campaign Flyer"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = "none";
+                      }}
+                    />
+                    <span className="absolute bottom-1 right-2 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded">
+                      🖼️ Image Poster Attached
+                    </span>
+                  </div>
+                )}
+
+                {/* Attached PDF Document Card Preview */}
+                {f.mediaType === "document" && (
+                  <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                    <span className="text-xl">📑</span>
+                    <div className="truncate flex-1">
+                      <b className="text-[11px] text-slate-900 block truncate">
+                        {f.mediaUrl ? f.mediaUrl.split("/").pop() : "Health_Checkup_Brochure.pdf"}
+                      </b>
+                      <span className="text-[10px] text-slate-400">PDF Document</span>
+                    </div>
+                  </div>
+                )}
+
+                <p className="leading-relaxed">
+                  Hello <strong>Rahul Sharma</strong>,
+                </p>
+                <p className="leading-relaxed text-slate-700">
+                  {f.campaignType === "emergency" ? emergencyPreview : f.messageNote || "Your campaign announcement or health camp details will appear here."}
+                </p>
+
+                {/* Attached Clickable Action Link */}
+                {f.actionLink && (
+                  <div className="p-2 rounded-lg bg-teal-50/60 border border-teal-100 text-[11px] text-teal-800 truncate">
+                    🔗 <strong>Link:</strong> <span className="underline">{f.actionLink}</span>
+                  </div>
+                )}
+
+                <div className="border-t border-slate-100 pt-1 text-[10px] text-slate-400">
+                  Reply STOP anytime to unsubscribe.
+                </div>
+                <div className="pt-1.5 grid grid-cols-2 gap-2">
+                  <div className="text-center py-1.5 bg-slate-50 rounded-lg text-teal-700 font-semibold border border-teal-100 text-[11px] flex items-center justify-center gap-1">
+                    <Calendar className="w-3.5 h-3.5" /> Book Slot
+                  </div>
+                  <div className="text-center py-1.5 bg-slate-50 rounded-lg text-slate-600 font-semibold border border-slate-200 text-[11px] flex items-center justify-center gap-1">
+                    <PhoneCall className="w-3.5 h-3.5" /> Call Reception
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Audience Summary Box */}
             <div className="campaign-preview wide">
-              <b>{eligibleCount} eligible recipients</b>
+              <b>{eligibleCount} eligible patient recipients</b>
               <span>
-                {f.segment === "csv"
-                  ? "Filtered by WhatsApp formatting, duplicates, and communication opt-out registry"
-                  : `${patients.length - eligibleCount} excluded by consent, opt-out and affected-appointment safeguards`}
+                {audienceMode === "csv"
+                  ? "Screened for E.164 formatting, duplicate mobile numbers, and active communication opt-outs"
+                  : `${patients.length - eligibleCount} excluded by consent status, duplicate mobile, or opt-out registry`}
               </span>
             </div>
 
             {error && <p className="care-error wide">{error}</p>}
 
             <button
+              type="submit"
               className="care-submit wide"
               disabled={busy || !approved.length || eligibleCount === 0}
             >
-              {busy ? "Creating…" : "Create scheduled campaign"}
+              {busy ? "Scheduling Campaign…" : `Schedule Campaign (${eligibleCount} Patients)`}
             </button>
           </form>
         </div>

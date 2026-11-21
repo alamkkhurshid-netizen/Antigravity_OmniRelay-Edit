@@ -228,6 +228,44 @@ const lifecycleSpecs: LifecycleGroupSpec[] = [
       "1": "Rahul Sharma",
       "2": "Neoclinic"
     }
+  },
+  {
+    key: "marketing-campaign",
+    title: "Health packages & screening campaigns",
+    description: "Broadcast promotional health camps, eye checkups, and clinic announcements with opt-out protection.",
+    events: ["marketing_campaign"],
+    defaultTemplateName: "omnirelay_patient_news",
+    category: "MARKETING",
+    bodyText: "Hello {{1}}, {{2}}:\n{{3}}\n\nReply STOP anytime to unsubscribe.",
+    variables: {
+      "1": "patient_name",
+      "2": "clinic_name",
+      "3": "campaign_message"
+    },
+    sampleValues: {
+      "1": "Rahul Sharma",
+      "2": "Neoclinic",
+      "3": "Free Eye & Vision Screening Camp this Sunday from 10 AM to 2 PM. Consult our expert ophthalmologists."
+    }
+  },
+  {
+    key: "care-campaign",
+    title: "Clinical care updates & chronic recall",
+    description: "Send clinical advisories, seasonal tips, and periodic review reminders to consented patients.",
+    events: ["care_campaign"],
+    defaultTemplateName: "omnirelay_care_update",
+    category: "UTILITY",
+    bodyText: "Hello {{1}}, this is a health update from {{2}}:\n{{3}}\n\nPlease reply if you need assistance.",
+    variables: {
+      "1": "patient_name",
+      "2": "clinic_name",
+      "3": "care_update_details"
+    },
+    sampleValues: {
+      "1": "Rahul Sharma",
+      "2": "Neoclinic",
+      "3": "Regular blood sugar monitoring is recommended for diabetic care. Contact us to schedule your routine review."
+    }
   }
 ];
 

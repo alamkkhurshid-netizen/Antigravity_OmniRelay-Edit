@@ -110,4 +110,58 @@ test("Campaign CSV Broadcast: Campaign Workspace UI Component Integrity", async 
     uiContent.includes("optedOutSet"),
     "UI must compute opt-out exclusions before launch"
   );
+  assert.ok(
+    uiContent.includes("HEALTHCARE_PRESETS"),
+    "UI must provide curated healthcare presets"
+  );
+  assert.ok(
+    uiContent.includes("Live Patient WhatsApp Preview"),
+    "UI must include live WhatsApp chat bubble preview"
+  );
+  assert.ok(
+    uiContent.includes("availableDepartments"),
+    "UI must derive available departments for specialty filtering"
+  );
+  assert.ok(
+    uiContent.includes("Attach Media or Action Link"),
+    "UI must provide media attachment and action link controls"
+  );
+  assert.ok(
+    uiContent.includes("Image Flyer Link"),
+    "UI must support Image poster flyer URL"
+  );
+  assert.ok(
+    uiContent.includes("PDF Document Link"),
+    "UI must support PDF document brochure URL"
+  );
+});
+
+test("Campaign Engine: Healthcare Curated Presets and Test Dispatch Verification", async () => {
+  const dispatcherPath = path.join(projectRoot, "lib", "campaign-dispatcher.ts");
+  const dispatcherContent = fs.readFileSync(dispatcherPath, "utf-8");
+
+  assert.ok(
+    dispatcherContent.includes("executeCampaignTestDispatch"),
+    "Dispatcher must export executeCampaignTestDispatch"
+  );
+  assert.ok(
+    dispatcherContent.includes("setTimeout(resolve, 65)"),
+    "Dispatcher must pace outgoing messages to protect phone quality score"
+  );
+
+  const routePath = path.join(projectRoot, "app", "api", "campaigns", "route.ts");
+  const routeContent = fs.readFileSync(routePath, "utf-8");
+
+  assert.ok(
+    routeContent.includes('action==="send_test"'),
+    "API Route must support send_test action"
+  );
+  assert.ok(
+    routeContent.includes('b.segment === "department"'),
+    "API Route must support filtering by visited department/specialty"
+  );
+  assert.ok(
+    routeContent.includes('b.segment === "dormant"'),
+    "API Route must support filtering dormant patients"
+  );
 });

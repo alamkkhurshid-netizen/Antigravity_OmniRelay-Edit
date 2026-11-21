@@ -158,10 +158,16 @@ export async function executeCampaignDispatch(
   const templateName = rawTemplate?.provider_template_name || "emergency_chamber_disruption";
   const languageCode = rawTemplate?.language_code || "en";
 
-  for (const item of recipients) {
+  for (let i = 0; i < recipients.length; i++) {
+    const item = recipients[i];
     const rawPatient = item.patient as unknown as { full_name?: string; care_communications_consent?: boolean; marketing_consent?: boolean } | null;
-    const patientName = rawPatient?.full_name || "Patient";
+    const patientName = (rawPatient?.full_name || "").trim() || "Patient";
     const cleanAddress = digits(item.recipient_address);
+
+    if (i > 0) {
+      // Gentle pacing (~15 msgs/sec) to protect Meta phone number quality score
+      await new Promise((resolve) => setTimeout(resolve, 65));
+    }
 
     if (!cleanAddress || cleanAddress.length < 10) {
       await admin.from("campaign_recipients").update({
@@ -204,7 +210,15 @@ export async function executeCampaignDispatch(
       continue;
     }
 
-    const contextText = campaign.campaign_type === "emergency" ? emergencyContextNote : (campaign.message_note || campaign.name);
+    let contextText = campaign.campaign_type === "emergency" ? emergencyContextNote : (campaign.message_note || campaign.name);
+    const filter = campaign.audience_filter as { mediaUrl?: string; mediaType?: string; actionLink?: string } | null;
+    if (filter?.actionLink) {
+      contextText += `\n\nBooking / Info: ${filter.actionLink}`;
+    }
+    if (filter?.mediaUrl) {
+      const label = filter.mediaType === "document" ? "Health Brochure (PDF)" : "Camp Flyer";
+      contextText += `\n${label}: ${filter.mediaUrl}`;
+    }
 
     // If sandbox/demo or no live WhatsApp API credentials: simulate successful delivery for test/safety
     if (org?.is_demo || !phoneId || !accessToken) {
@@ -318,5 +332,145 @@ export async function executeCampaignDispatch(
     failed,
     skipped,
   };
+}
+
+/**
+ * Send a single test message for a campaign to the administrator/doctor's phone
+ * to verify template layout, parameters, and buttons before launching the bulk run.
+ */
+export async function executeCampaignTestDispatch(
+  campaignId: string,
+  organizationId: string,
+  testPhoneNumber: string,
+  userId?: string
+): Promise<{ ok: boolean; messageId?: string; error?: string }> {
+  const admin = createAdminClient();
+  const cleanAddress = digits(testPhoneNumber);
+
+  if (!cleanAddress || cleanAddress.length < 10) {
+    return { ok: false, error: "Please provide a valid 10+ digit WhatsApp phone number for testing." };
+  }
+
+  // 1. Fetch Campaign Details & Template
+  const { data: campaign, error: campError } = await admin
+    .from("campaigns")
+    .select(`
+      id,
+      name,
+      campaign_type,
+      message_note,
+      audience_filter,
+      template:channel_message_templates(
+        provider_template_name,
+        language_code,
+        status,
+        event_type
+      )
+    `)
+    .eq("id", campaignId)
+    .eq("organization_id", organizationId)
+    .single();
+
+  if (campError || !campaign) {
+    return { ok: false, error: campError?.message ?? "Campaign not found." };
+  }
+
+  // 2. Fetch Organization Info & WhatsApp Credentials
+  const [{ data: org }, { data: connection }] = await Promise.all([
+    admin.from("organizations").select("id, name, is_demo").eq("id", organizationId).single(),
+    admin.from("channel_connections").select("external_phone_number_id, status").eq("organization_id", organizationId).eq("channel", "whatsapp").in("status", ["live", "connected", "test"]).maybeSingle(),
+  ]);
+
+  const orgName = org?.name || "Neoclinic";
+  const phoneId = connection?.external_phone_number_id;
+
+  let accessToken: string | null = null;
+  if (phoneId) {
+    try {
+      const { data: vaultToken } = await admin.rpc("get_whatsapp_access_token", { p_organization_id: organizationId });
+      if (vaultToken && typeof vaultToken === "string") accessToken = vaultToken;
+    } catch {}
+    if (!accessToken) {
+      const { data: addressRow } = await admin.from("organizations_addresses").select("extra").eq("organization_id", organizationId).eq("address", phoneId).eq("service", "whatsapp").maybeSingle();
+      const extra = addressRow?.extra as { access_token?: string } | null;
+      accessToken = extra?.access_token || process.env.WHATSAPP_SYSTEM_TOKEN || process.env.META_SYSTEM_USER_ACCESS_TOKEN || null;
+    }
+  }
+
+  const rawTemplate = campaign.template as unknown as { provider_template_name?: string; language_code?: string } | null;
+  const templateName = rawTemplate?.provider_template_name || "omnirelay_patient_news";
+  const languageCode = rawTemplate?.language_code || "en";
+  let contextText = campaign.message_note || campaign.name || "Campaign Preview";
+  const filter = campaign.audience_filter as { mediaUrl?: string; mediaType?: string; actionLink?: string } | null;
+  if (filter?.actionLink) {
+    contextText += `\n\nBooking / Info: ${filter.actionLink}`;
+  }
+  if (filter?.mediaUrl) {
+    const label = filter.mediaType === "document" ? "Health Brochure (PDF)" : "Camp Flyer";
+    contextText += `\n${label}: ${filter.mediaUrl}`;
+  }
+
+  // Demo / Simulation fallback
+  if (org?.is_demo || !phoneId || !accessToken) {
+    const simId = `sim_test_${Date.now()}`;
+    await admin.from("campaign_events").insert({
+      organization_id: organizationId,
+      campaign_id: campaignId,
+      event_type: "test_dispatched",
+      actor_user_id: userId || null,
+      payload: { testPhoneNumber: cleanAddress, simulated: true, messageId: simId },
+    });
+    return { ok: true, messageId: simId };
+  }
+
+  // Live Meta Dispatch
+  try {
+    const graphVersion = process.env.WHATSAPP_CLOUD_API_VERSION || "v24.0";
+    const metaRes = await fetch(`https://graph.facebook.com/${graphVersion}/${phoneId}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: cleanAddress,
+        type: "template",
+        template: {
+          name: templateName,
+          language: { code: languageCode },
+          components: [
+            {
+              type: "body",
+              parameters: [
+                { type: "text", text: "Dr/Admin (Test)" },
+                { type: "text", text: orgName },
+                { type: "text", text: contextText },
+              ],
+            },
+          ],
+        },
+      }),
+    });
+
+    const metaResult = await metaRes.json().catch(() => ({}));
+    if (metaRes.ok && metaResult.messages?.[0]?.id) {
+      const messageId = metaResult.messages[0].id;
+      await admin.from("campaign_events").insert({
+        organization_id: organizationId,
+        campaign_id: campaignId,
+        event_type: "test_dispatched",
+        actor_user_id: userId || null,
+        payload: { testPhoneNumber: cleanAddress, messageId },
+      });
+      return { ok: true, messageId };
+    }
+
+    const errMessage = metaResult.error?.message || "Meta API test dispatch rejected";
+    return { ok: false, error: errMessage };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || "Network error during test dispatch" };
+  }
 }
 
