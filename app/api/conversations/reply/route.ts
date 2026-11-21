@@ -74,10 +74,20 @@ export async function POST(request: Request) {
       agent_id: agent?.id ?? null,
       content: {
         version: "1",
-        type: mediaType || "text",
+        type: mediaUrl ? "file" : "text",
         kind: mediaType || "text",
         text,
-        ...(mediaUrl ? { url: mediaUrl, fileName: payload.fileName || undefined } : {}),
+        ...(mediaUrl
+          ? {
+              url: mediaUrl,
+              fileName: payload.fileName || undefined,
+              file: {
+                name: payload.fileName || (mediaType === "document" ? "document.pdf" : "photo.jpg"),
+                url: mediaUrl,
+                type: mediaType === "document" ? "application/pdf" : "image/jpeg",
+              },
+            }
+          : {}),
       },
       status: { pending: nowIso },
     })

@@ -310,11 +310,15 @@ export async function executeCampaignDispatch(
   }).eq("id", campaignId);
 
   // 8. Auto-cleanup attached temporary media from storage post-dispatch
-  const filter = campaign.audience_filter as { storagePath?: string } | null;
+  const filter = campaign.audience_filter as { storagePath?: string; storageBucket?: string } | null;
   if (filter?.storagePath) {
     try {
-      await admin.storage.from("creative-assets").remove([filter.storagePath]);
-      console.log(`[Campaign Dispatch] Cleaned up temporary campaign media: ${filter.storagePath}`);
+      const bucket = filter.storageBucket || "creative-assets";
+      await admin.storage.from(bucket).remove([filter.storagePath]);
+      if (bucket !== "clinical-documents") {
+        await admin.storage.from("clinical-documents").remove([filter.storagePath]).catch(() => {});
+      }
+      console.log(`[Campaign Dispatch] Cleaned up temporary campaign media from ${bucket}: ${filter.storagePath}`);
     } catch (cleanupErr) {
       console.warn("[Campaign Dispatch] Storage cleanup notice:", cleanupErr);
     }

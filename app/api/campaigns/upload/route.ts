@@ -32,35 +32,61 @@ export async function POST(request: Request) {
     }
 
     const admin = createAdminClient();
-    const bucket = "creative-assets";
+    let bucket = "creative-assets";
 
-    // Ensure bucket exists
+    // Ensure creative-assets allows PDF documents alongside images
     try {
-      await admin.storage.createBucket(bucket, { public: true, fileSizeLimit: 10485760 });
-    } catch {}
+      await admin.storage.updateBucket(bucket, {
+        public: true,
+        fileSizeLimit: 10485760,
+        allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf"],
+      });
+    } catch {
+      try {
+        await admin.storage.createBucket(bucket, {
+          public: true,
+          fileSizeLimit: 10485760,
+          allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf"],
+        });
+      } catch {}
+    }
 
-    const extension = file.name.split(".").pop() || (file.type === "application/pdf" ? "pdf" : "jpg");
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const storagePath = `campaigns/${organization.id}/${Date.now()}_${safeName}`;
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    const { error: uploadError } = await admin.storage
+    let { error: uploadError } = await admin.storage
       .from(bucket)
       .upload(storagePath, buffer, {
         contentType: file.type,
         upsert: true,
       });
 
+    // Resilient fallback: if creative-assets still has legacy restriction, store in clinical-documents
+    if (uploadError && uploadError.message?.toLowerCase().includes("mime type")) {
+      bucket = "clinical-documents";
+      const fallbackUpload = await admin.storage
+        .from(bucket)
+        .upload(storagePath, buffer, {
+          contentType: file.type,
+          upsert: true,
+        });
+      uploadError = fallbackUpload.error;
+    }
+
     if (uploadError) {
       return NextResponse.json({ error: `Upload failed: ${uploadError.message}` }, { status: 500 });
     }
 
-    const { data: publicData } = admin.storage.from(bucket).getPublicUrl(storagePath);
-    let fileUrl = publicData.publicUrl;
+    let fileUrl = "";
+    if (bucket === "creative-assets") {
+      const { data: publicData } = admin.storage.from(bucket).getPublicUrl(storagePath);
+      fileUrl = publicData?.publicUrl || "";
+    }
 
-    // Fallback to signed URL if not public
+    // Fallback to signed URL if not public or in clinical-documents
     if (!fileUrl) {
       const { data: signedData } = await admin.storage.from(bucket).createSignedUrl(storagePath, 60 * 60 * 24 * 7);
       fileUrl = signedData?.signedUrl || "";
@@ -72,6 +98,7 @@ export async function POST(request: Request) {
       ok: true,
       url: fileUrl,
       storagePath,
+      storageBucket: bucket,
       fileName: file.name,
       fileSize: file.size,
       mediaType,

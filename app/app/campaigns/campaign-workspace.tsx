@@ -128,6 +128,7 @@ export function CampaignWorkspace({
     mediaType: "none",
     mediaUrl: "",
     storagePath: "",
+    storageBucket: "",
     fileName: "",
     actionLink: "",
   });
@@ -156,6 +157,7 @@ export function CampaignWorkspace({
           mediaType: data.mediaType,
           mediaUrl: data.url,
           storagePath: data.storagePath,
+          storageBucket: data.storageBucket || "creative-assets",
           fileName: data.fileName,
         }));
       }
@@ -857,7 +859,7 @@ export function CampaignWorkspace({
                     </div>
                     <button
                       type="button"
-                      onClick={() => setF((prev) => ({ ...prev, mediaType: "none", mediaUrl: "", storagePath: "", fileName: "" }))}
+                      onClick={() => setF((prev) => ({ ...prev, mediaType: "none", mediaUrl: "", storagePath: "", storageBucket: "", fileName: "" }))}
                       className="text-xs font-semibold text-rose-600 hover:text-rose-800 shrink-0 ml-3"
                     >
                       Remove

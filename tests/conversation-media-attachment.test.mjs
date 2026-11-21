@@ -20,6 +20,31 @@ test("Conversation & Campaign: Media Attachment & Direct File Upload Verificatio
     );
   });
 
+  await t.test("Conversation reply content strictly complies with messages_content_schema constraint", () => {
+    const replyRoutePath = path.join(rootDir, "app/api/conversations/reply/route.ts");
+    const content = fs.readFileSync(replyRoutePath, "utf-8");
+
+    // messages_content_schema requires ("content" ->> 'type') = ANY (ARRAY['text', 'file', 'data'])
+    assert.ok(
+      content.includes('type: mediaUrl ? "file" : "text"'),
+      "Message content type must be strictly 'file' or 'text' to satisfy messages_content_schema"
+    );
+    assert.ok(
+      content.includes('kind: mediaType || "text"'),
+      "Message content kind must identify the media flavor (image, document, text)"
+    );
+  });
+
+  await t.test("Upload route enables PDF support and fallback", () => {
+    const uploadRoutePath = path.join(rootDir, "app/api/campaigns/upload/route.ts");
+    assert.ok(fs.existsSync(uploadRoutePath), "Upload route must exist");
+    const content = fs.readFileSync(uploadRoutePath, "utf-8");
+
+    assert.ok(content.includes("application/pdf"), "Upload route must allow application/pdf");
+    assert.ok(content.includes("updateBucket"), "Upload route must attempt to update allowed mime types");
+    assert.ok(content.includes("clinical-documents"), "Upload route must include fallback bucket for documents");
+  });
+
   await t.test("ThreadView component activates Paperclip attachment button", () => {
     const threadViewPath = path.join(rootDir, "components/conversations/thread-view.tsx");
     assert.ok(fs.existsSync(threadViewPath), "ThreadView component must exist");
@@ -50,8 +75,8 @@ test("Conversation & Campaign: Media Attachment & Direct File Upload Verificatio
 
     assert.ok(content.includes("storagePath"), "Dispatcher must check audience_filter storagePath");
     assert.ok(
-      content.includes('.from("creative-assets").remove('),
-      "Dispatcher must purge uploaded media from creative-assets bucket after dispatch completes"
+      content.includes('.from(bucket).remove('),
+      "Dispatcher must purge uploaded media from storage bucket after dispatch completes"
     );
   });
 });
