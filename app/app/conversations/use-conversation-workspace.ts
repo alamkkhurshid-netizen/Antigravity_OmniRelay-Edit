@@ -3,6 +3,14 @@ import { AiSuggestion, Contact, ContactAddress, Conversation, Message } from "./
 import { object, textFromContent } from "./utils";
 import { useRealtimeMessages } from "./use-realtime-messages";
 
+export interface ActiveAttachment {
+  url: string;
+  storagePath?: string;
+  fileName: string;
+  mediaType: "image" | "document";
+  fileSize?: number;
+}
+
 export function useConversationWorkspace(
   organizationId: string,
   initialConversations: Conversation[],
@@ -17,6 +25,8 @@ export function useConversationWorkspace(
   const [addressRows, setAddressRows] = useState(initialContactAddresses);
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState("");
+  const [attachment, setAttachment] = useState<ActiveAttachment | null>(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [sending, setSending] = useState(false);
   const [contactEditorOpen, setContactEditorOpen] = useState(false);
   const [newConversationOpen, setNewConversationOpen] = useState(false);
@@ -68,6 +78,7 @@ export function useConversationWorkspace(
     setActiveId(id);
     setMobilePanel("thread");
     setDraft("");
+    setAttachment(null);
     setAiSuggestion(null);
     setError("");
   }
@@ -80,15 +91,51 @@ export function useConversationWorkspace(
     setNewConversationOpen(true);
   }
 
+  async function uploadAttachment(file: File) {
+    if (!file) return;
+    setUploadingAttachment(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/campaigns/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Attachment upload failed.");
+      } else {
+        setAttachment({
+          url: data.url,
+          storagePath: data.storagePath,
+          fileName: data.fileName,
+          mediaType: data.mediaType,
+          fileSize: data.fileSize,
+        });
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to upload attachment.");
+    } finally {
+      setUploadingAttachment(false);
+    }
+  }
+
   async function send(event: FormEvent) {
     event.preventDefault();
-    if (!active || !draft.trim() || sending) return;
+    if (!active || (!draft.trim() && !attachment) || sending || uploadingAttachment) return;
     setSending(true);
     setError("");
     const response = await fetch("/api/conversations/reply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversationId: active.id, text: draft.trim() }),
+      body: JSON.stringify({
+        conversationId: active.id,
+        text: draft.trim(),
+        mediaUrl: attachment?.url,
+        mediaType: attachment?.mediaType,
+        fileName: attachment?.fileName,
+      }),
     });
     const result = await response.json().catch(() => ({})) as { message?: Message; error?: string; code?: string };
     if (!response.ok || !result.message) {
@@ -98,6 +145,7 @@ export function useConversationWorkspace(
       setMessages((current) => [...current.filter((item) => item.id !== result.message!.id), result.message!]);
       setConversations((current) => current.map((item) => item.id === active.id ? { ...item, ai_paused: true, updated_at: new Date().toISOString() } : item));
       setDraft("");
+      setAttachment(null);
     }
     setSending(false);
   }
@@ -209,6 +257,7 @@ export function useConversationWorkspace(
   return {
     activeId, setActiveId, realtimeStatus,
     query, setQuery, draft, setDraft,
+    attachment, setAttachment, uploadingAttachment, uploadAttachment,
     sending, setSending, contactEditorOpen, setContactEditorOpen,
     newConversationOpen, setNewConversationOpen, startingConversation,
     savingContact, suggesting, aiSuggestion, setAiSuggestion,

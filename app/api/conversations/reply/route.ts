@@ -8,9 +8,20 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   if (!organization) return NextResponse.json({ error: "Workspace not found." }, { status: 409 });
 
-  const payload = await request.json().catch(() => ({})) as { conversationId?: string; text?: string };
-  const text = payload.text?.trim();
-  if (!payload.conversationId || !text) return NextResponse.json({ error: "Conversation and message are required." }, { status: 400 });
+  const payload = await request.json().catch(() => ({})) as {
+    conversationId?: string;
+    text?: string;
+    mediaUrl?: string;
+    mediaType?: "image" | "document";
+    fileName?: string;
+  };
+  const text = payload.text?.trim() || "";
+  const mediaUrl = payload.mediaUrl?.trim() || null;
+  const mediaType = payload.mediaType === "document" ? "document" : payload.mediaType === "image" ? "image" : null;
+
+  if (!payload.conversationId || (!text && !mediaUrl)) {
+    return NextResponse.json({ error: "Conversation ID and either a message or an attachment are required." }, { status: 400 });
+  }
   if (text.length > 4096) return NextResponse.json({ error: "WhatsApp replies cannot exceed 4,096 characters." }, { status: 400 });
 
   const { data: conversation } = await supabase
@@ -61,7 +72,13 @@ export async function POST(request: Request) {
       group_address: conversation.group_address,
       direction: "outgoing",
       agent_id: agent?.id ?? null,
-      content: { version: "1", type: "text", kind: "text", text },
+      content: {
+        version: "1",
+        type: mediaType || "text",
+        kind: mediaType || "text",
+        text,
+        ...(mediaUrl ? { url: mediaUrl, fileName: payload.fileName || undefined } : {}),
+      },
       status: { pending: nowIso },
     })
     .select("id,conversation_id,external_id,direction,content,status,timestamp,agent_id")
@@ -137,6 +154,27 @@ export async function POST(request: Request) {
   const recipientPhone = conversation.contact_address.replace(/\D/g, "");
 
   try {
+    const metaPayload: Record<string, any> = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: recipientPhone,
+    };
+
+    if (mediaUrl && mediaType) {
+      metaPayload.type = mediaType;
+      metaPayload[mediaType] = {
+        link: mediaUrl,
+        ...(text ? { caption: text } : {}),
+        ...(mediaType === "document" && payload.fileName ? { filename: payload.fileName } : {}),
+      };
+    } else {
+      metaPayload.type = "text";
+      metaPayload.text = {
+        preview_url: false,
+        body: text,
+      };
+    }
+
     const metaRes = await fetch(
       `https://graph.facebook.com/${graphVersion}/${encodeURIComponent(phoneId)}/messages`,
       {
@@ -145,16 +183,7 @@ export async function POST(request: Request) {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          recipient_type: "individual",
-          to: recipientPhone,
-          type: "text",
-          text: {
-            preview_url: false,
-            body: text,
-          },
-        }),
+        body: JSON.stringify(metaPayload),
       }
     );
 

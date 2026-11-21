@@ -6,9 +6,13 @@ export function object(value: unknown): Record<string, unknown> {
 
 export function textFromContent(content: Json) {
   const value = object(content);
-  if (typeof value.text === "string") return value.text;
+  if (typeof value.text === "string" && value.text.trim()) return value.text;
+  if (typeof value.caption === "string" && value.caption.trim()) return value.caption;
   const file = object(value.file);
   if (typeof file.name === "string") return `Attachment · ${file.name}`;
+  if (typeof value.fileName === "string") return `Attachment · ${value.fileName}`;
+  if (value.type === "image" || value.kind === "image") return "Photo";
+  if (value.type === "document" || value.kind === "document") return "Document";
   if (typeof value.kind === "string") return value.kind.replaceAll("_", " ");
   return "Message";
 }

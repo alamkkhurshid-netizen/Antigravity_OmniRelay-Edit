@@ -75,6 +75,8 @@ export function ConversationWorkspace({
           serviceWindowOpen={serviceWindowOpen} aiSuggestion={state.aiSuggestion}
           setAiSuggestion={state.setAiSuggestion} draft={state.draft}
           setDraft={state.setDraft} sending={state.sending}
+          attachment={state.attachment} setAttachment={state.setAttachment}
+          uploadingAttachment={state.uploadingAttachment} uploadAttachment={state.uploadAttachment}
           serviceWindowEndsAt={serviceWindowEndsAt} openTemplateComposer={state.openTemplateComposer}
         />
         <ContactSidebar

@@ -1,9 +1,10 @@
 "use client";
 
-import { FormEvent, RefObject } from "react";
-import { Info, Paperclip, Phone, SendHorizontal, Smile, Video } from "lucide-react";
+import { ChangeEvent, FormEvent, RefObject, useRef } from "react";
+import { Info, Paperclip, Phone, SendHorizontal, Smile, Video, X } from "lucide-react";
 import { Agent, AiSuggestion, Conversation, Message } from "@/app/app/conversations/types";
-import { deliveryPresentation, messageOrigin, textFromContent, timeLabel } from "@/app/app/conversations/utils";
+import { ActiveAttachment } from "@/app/app/conversations/use-conversation-workspace";
+import { deliveryPresentation, messageOrigin, object, textFromContent, timeLabel } from "@/app/app/conversations/utils";
 import { whatsappFailure } from "@/lib/whatsapp-delivery";
 
 interface ThreadViewProps {
@@ -25,6 +26,10 @@ interface ThreadViewProps {
   draft: string;
   setDraft: (val: string) => void;
   sending: boolean;
+  attachment?: ActiveAttachment | null;
+  setAttachment?: (val: ActiveAttachment | null) => void;
+  uploadingAttachment?: boolean;
+  uploadAttachment?: (file: File) => void;
   serviceWindowEndsAt: number;
   openTemplateComposer: (useActiveContact: boolean) => void;
 }
@@ -32,8 +37,22 @@ interface ThreadViewProps {
 export function ThreadView({
   mobilePanel, setMobilePanel, active, activeName, agents, updateConversation,
   thread, endRef, send, error, suggesting, suggestReply, serviceWindowOpen,
-  aiSuggestion, setAiSuggestion, draft, setDraft, sending, serviceWindowEndsAt, openTemplateComposer
+  aiSuggestion, setAiSuggestion, draft, setDraft, sending,
+  attachment, setAttachment, uploadingAttachment, uploadAttachment,
+  serviceWindowEndsAt, openTemplateComposer
 }: ThreadViewProps) {
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file && uploadAttachment) {
+      uploadAttachment(file);
+    }
+    if (attachmentInputRef.current) {
+      attachmentInputRef.current.value = "";
+    }
+  }
+
   if (!active) {
     return (
       <section className={`${mobilePanel === "list" ? "hidden" : "flex"} min-h-0 flex-col bg-background lg:flex`}>
@@ -81,11 +100,42 @@ export function ThreadView({
             const outgoing = message.direction === "outgoing";
             const origin = messageOrigin(message);
             const showOriginTag = origin !== "Staff reply" && origin !== "Patient reply";
+
+            const val = object(message.content);
+            const mediaUrl = typeof val.url === "string" ? val.url : null;
+            const isImage = val.type === "image" || val.kind === "image";
+            const isDoc = val.type === "document" || val.kind === "document";
+            const fileName = typeof val.fileName === "string" ? val.fileName : "Document.pdf";
+            const messageBody = textFromContent(message.content);
+
             return (
               <article className={`mb-2 flex ${outgoing ? "justify-end" : "justify-start"}`} key={message.id}>
                 <div className={`max-w-[78%] rounded-xl px-3 py-2 text-xs sm:text-[13px] shadow-xs ${outgoing ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm border border-border bg-panel text-foreground"}`}>
                   {showOriginTag && <span className={`mb-1 block text-[10px] font-bold ${outgoing ? "text-primary-foreground/80" : "text-muted-foreground"}`}>{origin}</span>}
-                  <p className="whitespace-pre-wrap leading-relaxed">{textFromContent(message.content)}</p>
+                  
+                  {/* Photo attachment preview */}
+                  {mediaUrl && isImage && (
+                    <div className="mb-2 max-w-xs overflow-hidden rounded-lg bg-black/10">
+                      <a href={mediaUrl} target="_blank" rel="noopener noreferrer" className="block cursor-pointer">
+                        <img src={mediaUrl} alt="Photo" className="max-h-60 w-auto rounded object-cover" />
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Document / PDF attachment card */}
+                  {mediaUrl && isDoc && (
+                    <div className={`mb-2 flex items-center gap-2 rounded-lg p-2 text-xs ${outgoing ? "bg-black/20 text-white" : "bg-black/5 text-foreground"}`}>
+                      <span className="text-lg">📑</span>
+                      <a href={mediaUrl} target="_blank" rel="noopener noreferrer" className="truncate font-semibold underline">
+                        {fileName}
+                      </a>
+                    </div>
+                  )}
+
+                  {messageBody && (!mediaUrl || messageBody !== "Photo" && messageBody !== "Document") && (
+                    <p className="whitespace-pre-wrap leading-relaxed">{messageBody}</p>
+                  )}
+
                   <footer className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${outgoing ? "text-primary-foreground/75" : "text-muted-foreground"}`}>
                     <time>{timeLabel(message.timestamp)}</time>
                     {outgoing && <span title={delivery.label} aria-label={`Message ${delivery.label.toLowerCase()}`}>{delivery.icon} {delivery.label}</span>}
@@ -125,11 +175,64 @@ export function ThreadView({
         )}
         {serviceWindowOpen ? (
           <>
+            {/* Attachment preview pill if selected or uploading */}
+            {(uploadingAttachment || attachment) && (
+              <div className="mb-2 flex items-center justify-between rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1.5 text-xs text-teal-900 shadow-2xs">
+                <div className="flex items-center gap-2 truncate">
+                  <span>{attachment?.mediaType === "document" ? "📑" : "🖼️"}</span>
+                  <span className="truncate font-medium">
+                    {uploadingAttachment ? "Uploading attachment..." : attachment?.fileName}
+                  </span>
+                </div>
+                {!uploadingAttachment && setAttachment && (
+                  <button
+                    type="button"
+                    onClick={() => setAttachment(null)}
+                    className="ml-2 font-bold text-rose-600 hover:text-rose-800"
+                    title="Remove attachment"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center gap-1.5 rounded-xl border border-input bg-background p-1 pl-2.5 shadow-2xs focus-within:ring-1 focus-within:ring-ring">
-              <button type="button" disabled className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground disabled:cursor-not-allowed opacity-50" title="Attachments are not enabled" aria-label="Attachments are not enabled"><Paperclip className="h-3.5 w-3.5" /></button>
-              <textarea className="max-h-24 min-h-6 flex-1 resize-none bg-transparent py-1 text-xs sm:text-[13px] leading-5 outline-none placeholder:text-muted-foreground" aria-label="Reply message" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Write a WhatsApp reply…" rows={1} />
+              {/* Hidden file input for Paperclip */}
+              <input
+                ref={attachmentInputRef}
+                type="file"
+                className="hidden"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                onChange={handleFileChange}
+              />
+              <button
+                type="button"
+                onClick={() => attachmentInputRef.current?.click()}
+                disabled={uploadingAttachment || sending}
+                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:cursor-not-allowed"
+                title="Attach image or PDF document"
+                aria-label="Attach file"
+              >
+                <Paperclip className="h-3.5 w-3.5" />
+              </button>
+
+              <textarea
+                className="max-h-24 min-h-6 flex-1 resize-none bg-transparent py-1 text-xs sm:text-[13px] leading-5 outline-none placeholder:text-muted-foreground"
+                aria-label="Reply message"
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder={attachment ? "Add a caption (optional)…" : "Write a WhatsApp reply…"}
+                rows={1}
+              />
               <button type="button" disabled className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground disabled:cursor-not-allowed opacity-50" title="Emoji reactions are not enabled" aria-label="Emoji reactions are not enabled"><Smile className="h-3.5 w-3.5" /></button>
-              <button className="grid h-7 w-7 place-items-center rounded-md bg-primary text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40" aria-label="Send message" disabled={!draft.trim() || sending}>{sending ? "…" : <SendHorizontal className="h-3.5 w-3.5" />}</button>
+              <button
+                className="grid h-7 w-7 place-items-center rounded-md bg-primary text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Send message"
+                disabled={(!draft.trim() && !attachment) || sending || uploadingAttachment}
+              >
+                {sending ? "…" : <SendHorizontal className="h-3.5 w-3.5" />}
+              </button>
             </div>
             <p className="mt-1 text-[10px] text-muted-foreground">24h reply window active until {new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(serviceWindowEndsAt))}.</p>
           </>

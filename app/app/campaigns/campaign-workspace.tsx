@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { parseCampaignCsv, generateSampleCampaignCsv, ParsedContact } from "@/lib/campaign-csv";
 import { CampaignList } from "./campaign-list";
-import { Check, Send, AlertCircle, Users, FileSpreadsheet, Sparkles, PhoneCall, Calendar } from "lucide-react";
+import { Check, Send, AlertCircle, Users, FileSpreadsheet, Sparkles, PhoneCall, Calendar, Upload, X, Trash2, Paperclip, FileText } from "lucide-react";
 
 type P = { id: string; full_name: string; phone: string | null; health_concern: string | null; care_communications_consent: boolean; marketing_consent: boolean };
 type C = { id: string; name: string; campaign_type: string; status: string; scheduled_for: string | null; eligible_count: number; sent_count: number; delivered_count: number; read_count: number; failed_count: number; skipped_count: number };
@@ -108,6 +108,9 @@ export function CampaignWorkspace({
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [mediaUploadError, setMediaUploadError] = useState("");
 
   const [f, setF] = useState({
     name: "",
@@ -124,8 +127,45 @@ export function CampaignWorkspace({
     messageNote: "",
     mediaType: "none",
     mediaUrl: "",
+    storagePath: "",
+    fileName: "",
     actionLink: "",
   });
+
+  async function handleMediaUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingMedia(true);
+    setMediaUploadError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/campaigns/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setMediaUploadError(data.error || "File upload failed.");
+      } else {
+        setF((prev) => ({
+          ...prev,
+          mediaType: data.mediaType,
+          mediaUrl: data.url,
+          storagePath: data.storagePath,
+          fileName: data.fileName,
+        }));
+      }
+    } catch (err: any) {
+      setMediaUploadError(err.message || "Failed to upload file.");
+    } finally {
+      setUploadingMedia(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
 
   // Audience Source Mode: 'crm' (Option 1) vs 'csv' (Option 2)
   const [audienceMode, setAudienceMode] = useState<"crm" | "csv">("crm");
@@ -727,41 +767,106 @@ export function CampaignWorkspace({
             </label>
 
             {/* MEDIA ATTACHMENTS & CLICKABLE ACTION LINKS */}
-            <div className="wide rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3.5">
+            <div className="wide rounded-xl border border-teal-200/80 bg-teal-50/30 p-4 space-y-3.5">
               <div className="flex items-center justify-between">
                 <b className="text-xs text-slate-900 flex items-center gap-1.5">
-                  <span>📎</span> Attach Media or Action Link (Optional)
+                  <Paperclip className="h-4 w-4 text-teal-600" /> Attach Media or Action Link (Optional)
                 </b>
-                <span className="text-[10px] text-teal-700 bg-teal-50 px-2 py-0.5 rounded font-medium border border-teal-200/50">
-                  PDF · Image · Website Link
+                <span className="text-[10px] text-teal-800 bg-teal-100/70 px-2 py-0.5 rounded font-semibold border border-teal-300">
+                  Auto-purged post-dispatch
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label className="text-xs">
-                  Attachment Type
-                  <select
-                    value={f.mediaType}
-                    onChange={(e) => setF({ ...f, mediaType: e.target.value })}
-                    className="mt-1"
-                  >
-                    <option value="none">None (Standard Text Broadcast)</option>
-                    <option value="image">🖼️ Image Poster / Flyer (JPEG, PNG up to 5MB)</option>
-                    <option value="document">📑 PDF Document / Test Package Tariff (PDF up to 100MB)</option>
-                  </select>
-                </label>
+              {/* Direct File Upload Zone */}
+              <div className="space-y-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  className="hidden"
+                  onChange={handleMediaUpload}
+                />
 
-                {f.mediaType !== "none" && (
-                  <label className="text-xs">
-                    {f.mediaType === "document" ? "PDF Document Link (URL)" : "Image Flyer Link (URL)"}
-                    <input
-                      type="url"
-                      value={f.mediaUrl}
-                      onChange={(e) => setF({ ...f, mediaUrl: e.target.value })}
-                      placeholder={f.mediaType === "document" ? "https://example.com/health_package.pdf" : "https://example.com/eye_camp_poster.jpg"}
-                      className="mt-1"
-                    />
-                  </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Direct upload trigger button */}
+                  <div
+                    className="flex flex-col justify-center items-center p-3 rounded-xl border-2 border-dashed border-teal-300 bg-white hover:bg-teal-50/50 transition-colors text-center cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-5 w-5 text-teal-600 mb-1" />
+                    <button
+                      type="button"
+                      disabled={uploadingMedia}
+                      className="text-xs font-semibold text-teal-700 hover:text-teal-800 disabled:opacity-50"
+                    >
+                      {uploadingMedia ? "Uploading to secure cloud..." : "📂 Upload Image or PDF from Computer"}
+                    </button>
+                    <span className="text-[10px] text-slate-500 mt-0.5">
+                      JPEG, PNG or PDF (up to 10 MB)
+                    </span>
+                  </div>
+
+                  {/* Manual Type / Link Fallback */}
+                  <div className="space-y-2">
+                    <label className="text-xs">
+                      Attachment Type
+                      <select
+                        value={f.mediaType}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setF((prev) => ({
+                            ...prev,
+                            mediaType: val,
+                            ...(val === "none" ? { mediaUrl: "", storagePath: "", fileName: "" } : {}),
+                          }));
+                        }}
+                        className="mt-1"
+                      >
+                        <option value="none">None (Standard Text Broadcast)</option>
+                        <option value="image">🖼️ Image Poster / Flyer (JPEG, PNG)</option>
+                        <option value="document">📑 PDF Document / Test Package Tariff (PDF)</option>
+                      </select>
+                    </label>
+
+                    {f.mediaType !== "none" && !f.storagePath && (
+                      <label className="text-xs">
+                        {f.mediaType === "document" ? "Or Paste PDF Document Link (URL)" : "Or Paste Image Flyer Link (URL)"}
+                        <input
+                          type="url"
+                          value={f.mediaUrl}
+                          onChange={(e) => setF({ ...f, mediaUrl: e.target.value })}
+                          placeholder={f.mediaType === "document" ? "https://example.com/health_package.pdf" : "https://example.com/eye_camp_poster.jpg"}
+                          className="mt-1"
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                {/* File Upload Progress or Status */}
+                {f.mediaUrl && (
+                  <div className="flex items-center justify-between rounded-lg bg-teal-100/70 border border-teal-300 px-3 py-2 text-xs text-teal-950">
+                    <div className="flex items-center gap-2 truncate">
+                      <span className="text-base">{f.mediaType === "document" ? "📑" : "🖼️"}</span>
+                      <div className="truncate">
+                        <span className="font-semibold block truncate">{f.fileName || (f.mediaType === "document" ? "Attached PDF Document" : "Attached Image Flyer")}</span>
+                        <span className="text-[10px] text-teal-800">
+                          {f.storagePath ? "✓ Stored securely · Will be automatically deleted after campaign finishes" : "External URL attached"}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setF((prev) => ({ ...prev, mediaType: "none", mediaUrl: "", storagePath: "", fileName: "" }))}
+                      className="text-xs font-semibold text-rose-600 hover:text-rose-800 shrink-0 ml-3"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
+                {mediaUploadError && (
+                  <p className="text-xs text-rose-600">{mediaUploadError}</p>
                 )}
               </div>
 
@@ -811,7 +916,7 @@ export function CampaignWorkspace({
                     <span className="text-xl">📑</span>
                     <div className="truncate flex-1">
                       <b className="text-[11px] text-slate-900 block truncate">
-                        {f.mediaUrl ? f.mediaUrl.split("/").pop() : "Health_Checkup_Brochure.pdf"}
+                        {f.fileName || (f.mediaUrl ? f.mediaUrl.split("/").pop() : "Health_Checkup_Brochure.pdf")}
                       </b>
                       <span className="text-[10px] text-slate-400">PDF Document</span>
                     </div>

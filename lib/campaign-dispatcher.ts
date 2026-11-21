@@ -309,7 +309,18 @@ export async function executeCampaignDispatch(
     updated_at: new Date().toISOString(),
   }).eq("id", campaignId);
 
-  // 8. Record Campaign Event
+  // 8. Auto-cleanup attached temporary media from storage post-dispatch
+  const filter = campaign.audience_filter as { storagePath?: string } | null;
+  if (filter?.storagePath) {
+    try {
+      await admin.storage.from("creative-assets").remove([filter.storagePath]);
+      console.log(`[Campaign Dispatch] Cleaned up temporary campaign media: ${filter.storagePath}`);
+    } catch (cleanupErr) {
+      console.warn("[Campaign Dispatch] Storage cleanup notice:", cleanupErr);
+    }
+  }
+
+  // 9. Record Campaign Event
   await admin.from("campaign_events").insert({
     organization_id: organizationId,
     campaign_id: campaignId,
