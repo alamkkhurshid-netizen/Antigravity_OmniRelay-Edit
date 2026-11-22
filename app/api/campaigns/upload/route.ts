@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     }
 
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const storagePath = `campaigns/${organization.id}/${Date.now()}_${safeName}`;
+    const storagePath = `${organization.id}/${Date.now()}_${safeName}`;
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -64,16 +64,23 @@ export async function POST(request: Request) {
         upsert: true,
       });
 
-    // Resilient fallback: if creative-assets still has legacy restriction, store in clinical-documents
+    // Resilient fallback: if creative-assets still has legacy restriction, store in clinic-brochures or clinical-documents
     if (uploadError && uploadError.message?.toLowerCase().includes("mime type")) {
-      bucket = "clinical-documents";
-      const fallbackUpload = await admin.storage
-        .from(bucket)
-        .upload(storagePath, buffer, {
-          contentType: file.type,
-          upsert: true,
-        });
-      uploadError = fallbackUpload.error;
+      const fallbackBuckets = file.type === "application/pdf"
+        ? ["clinic-brochures", "clinical-documents"]
+        : ["clinical-documents", "clinic-brochures"];
+
+      for (const fb of fallbackBuckets) {
+        bucket = fb;
+        const fallbackUpload = await admin.storage
+          .from(bucket)
+          .upload(storagePath, buffer, {
+            contentType: file.type,
+            upsert: true,
+          });
+        uploadError = fallbackUpload.error;
+        if (!uploadError) break;
+      }
     }
 
     if (uploadError) {

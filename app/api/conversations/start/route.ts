@@ -176,7 +176,7 @@ export async function POST(request: Request) {
       agent_id: agent?.id ?? null,
       content: {
         version: "1",
-        type: "template",
+        type: "data",
         kind: "template",
         text: isTestTemplate ? "Meta test message" : `${approvedTemplate!.event_type.replaceAll("_", " ")} template`,
         data: {
