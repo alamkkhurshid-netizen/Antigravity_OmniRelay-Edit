@@ -887,7 +887,7 @@ export function CampaignWorkspace({
             {/* REAL-TIME WHATSAPP PREVIEW BUBBLE */}
             <div className="wide rounded-xl border border-slate-200 bg-slate-100/70 p-4 space-y-2">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                📱 Live Patient WhatsApp Preview
+                📱 Live Patient WhatsApp Preview · Patient message preview
               </span>
               <div className="max-w-md mx-auto bg-white rounded-2xl shadow-sm border border-slate-200/80 p-3.5 space-y-2.5 text-xs text-slate-800">
                 <div className="font-semibold text-slate-900 flex items-center justify-between border-b pb-1.5">
@@ -959,7 +959,7 @@ export function CampaignWorkspace({
               <span>
                 {audienceMode === "csv"
                   ? "Screened for E.164 formatting, duplicate mobile numbers, and active communication opt-outs"
-                  : `${patients.length - eligibleCount} excluded by consent status, duplicate mobile, or opt-out registry`}
+                  : `${patients.length - eligibleCount} excluded by consent, opt-out and affected-appointment safeguards`}
               </span>
             </div>
 

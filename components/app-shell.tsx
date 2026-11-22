@@ -574,9 +574,27 @@ export function AppShell({
                       <b className="block text-base text-[#173047]">Notifications</b>
                       <span className="text-sm text-[#718397]">{unread ? `${unread} unread update${unread === 1 ? "" : "s"}` : "You are up to date"}</span>
                     </div>
-                    <Link className="min-h-11 rounded-lg px-2 py-3 text-sm font-black text-[#177b73]" href="/app/team" onClick={() => setNotificationsOpen(false)}>
-                      View all
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      {unread > 0 && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setUnread(0);
+                            await fetch("/api/notifications", {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ all: true }),
+                            }).catch(() => null);
+                          }}
+                          className="rounded-lg px-2 py-1 text-xs font-semibold text-[#177b73] hover:bg-[#e6f4f1] cursor-pointer"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                      <Link className="min-h-11 rounded-lg px-2 py-3 text-sm font-black text-[#177b73]" href="/app/team" onClick={() => setNotificationsOpen(false)}>
+                        View all
+                      </Link>
+                    </div>
                   </header>
                   {browserAlertState === "default" && (
                     <div className="flex items-center justify-between gap-3 border-b border-[#e8eef2] bg-teal-50/80 px-4 py-2.5 text-xs text-teal-900">
@@ -596,7 +614,20 @@ export function AppShell({
                   {notifications.length ? (
                     <div className="max-h-[min(28rem,calc(100vh-8rem))] overflow-y-auto">
                       {notifications.map((item) => (
-                        <Link key={item.id} href={notificationHref(item.href)} onClick={() => setNotificationsOpen(false)} className="group flex min-h-20 gap-3 border-b border-[#eef2f5] px-4 py-3 last:border-b-0 hover:bg-[#f4fbfa]">
+                        <Link
+                          key={item.id}
+                          href={notificationHref(item.href)}
+                          onClick={async () => {
+                            setNotificationsOpen(false);
+                            if (unread > 0) setUnread((prev) => Math.max(0, prev - 1));
+                            await fetch("/api/notifications", {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ id: item.id }),
+                            }).catch(() => null);
+                          }}
+                          className="group flex min-h-20 gap-3 border-b border-[#eef2f5] px-4 py-3 last:border-b-0 hover:bg-[#f4fbfa]"
+                        >
                           <span className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl text-sm font-black ${item.priority === "urgent" ? "bg-rose-100 text-rose-700" : "bg-sky-100 text-sky-700"}`}>
                             {item.priority === "urgent" ? "!" : "i"}
                           </span>

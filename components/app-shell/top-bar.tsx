@@ -135,13 +135,30 @@ export function TopBar({
                       : "You are up to date"}
                   </span>
                 </div>
-                <Link
-                  className="min-h-11 rounded-lg px-2 py-3 text-sm font-black text-[#177b73]"
-                  href="/app/team"
-                  onClick={() => setNotificationsOpen(false)}
-                >
-                  View all
-                </Link>
+                <div className="flex items-center gap-2">
+                  {unread > 0 && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await fetch("/api/notifications", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ all: true }),
+                        }).catch(() => null);
+                      }}
+                      className="rounded-lg px-2 py-1 text-xs font-semibold text-[#177b73] hover:bg-[#e6f4f1] cursor-pointer"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                  <Link
+                    className="min-h-11 rounded-lg px-2 py-3 text-sm font-black text-[#177b73]"
+                    href="/app/team"
+                    onClick={() => setNotificationsOpen(false)}
+                  >
+                    View all
+                  </Link>
+                </div>
               </header>
               {notifications.length ? (
                 <div className="max-h-[min(28rem,calc(100vh-8rem))] overflow-y-auto">
@@ -149,7 +166,14 @@ export function TopBar({
                     <Link
                       key={item.id}
                       href={notificationHref(item.href)}
-                      onClick={() => setNotificationsOpen(false)}
+                      onClick={async () => {
+                        setNotificationsOpen(false);
+                        await fetch("/api/notifications", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ id: item.id }),
+                        }).catch(() => null);
+                      }}
                       className="group flex min-h-20 gap-3 border-b border-[#eef2f5] px-4 py-3 last:border-b-0 hover:bg-[#f4fbfa]"
                     >
                       <span
