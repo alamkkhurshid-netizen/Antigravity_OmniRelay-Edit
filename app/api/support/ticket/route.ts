@@ -62,6 +62,40 @@ export async function POST(request: Request) {
       }).catch(() => null);
     }
 
+    // Dispatch email notification to support@synthycon.com if Resend is configured
+    if (process.env.RESEND_API_KEY) {
+      const fromEmail = process.env.NOTIFICATION_FROM_EMAIL || "support@omnirelay.in";
+      try {
+        await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: fromEmail,
+            to: ["support@synthycon.com"],
+            reply_to: email,
+            subject: `[OmniRelay Support ${ticketNumber}] ${subject} (${priority.toUpperCase()})`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <h2 style="color: #0d9488; margin-top: 0;">New Support Ticket: ${ticketNumber}</h2>
+                <p><strong>Priority:</strong> <span style="text-transform: uppercase; color: ${priority === 'urgent' ? '#e11d48' : '#0f172a'};">${priority}</span></p>
+                <p><strong>Clinic / Org:</strong> ${organization?.name || "OmniRelay Workspace"}</p>
+                <p><strong>User:</strong> ${name || "Staff Member"} (${email}${phone ? `, ${phone}` : ""})</p>
+                <p><strong>Page URL:</strong> ${pathname}</p>
+                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 16px 0;" />
+                <h3 style="margin-bottom: 8px;">Subject: ${subject}</h3>
+                <div style="background-color: #f8fafc; padding: 12px; border-radius: 6px; white-space: pre-wrap; font-size: 14px; color: #334155;">${message}</div>
+              </div>
+            `,
+          }),
+        }).catch((e) => console.error("[Resend Support Ticket Email Error]", e));
+      } catch (emailErr) {
+        console.error("[Resend Support Ticket Email Exception]", emailErr);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       ticketNumber,

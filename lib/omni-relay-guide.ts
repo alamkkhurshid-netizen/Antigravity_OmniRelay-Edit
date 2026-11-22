@@ -2,7 +2,7 @@ import { OMNIRELAY_MASTER_KNOWLEDGE, type KnowledgeCard } from "./omni-relay-kno
 
 export type GuideContext = { id: string; title: string; paths: string[]; keywords: string[]; overview: string; why: string; use: string[]; examples: string[]; mistakes: string[]; suggestions: string[] };
 type ChatTurn = { role?: string; text?: string };
-export const guideSupport = { email: "therasynergybiomedex@gmail.com" };
+export const guideSupport = { email: "support@synthycon.com", officialEmail: "support@synthycon.com", fallbackEmail: "therasynergybiomedex@gmail.com" };
 export const guideKnowledgeStatus = { source: "Verified OmniRelay product catalogue", reviewedOn: "2026-11-22", scope: "Complete OmniRelay platform capabilities: campaigns, CSV audience upload, media attachments, 11/14 WhatsApp templates, calendar scheduling, reception board, booking concierge, voice AI, PWA push alerts, billing, and action centre operations." };
 
 const modernKnowledge: GuideContext[] = OMNIRELAY_MASTER_KNOWLEDGE.map((card: KnowledgeCard) => ({
