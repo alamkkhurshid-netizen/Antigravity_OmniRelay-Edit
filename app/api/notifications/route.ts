@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { refreshAutomationWorkerAlerts } from "@/lib/automation-worker-alerts";
-import { refreshSystemNotifications } from "@/lib/system-notifications";
+import { refreshSystemNotifications, getUnreadConversationsCount } from "@/lib/system-notifications";
 import { getWorkspace } from "@/lib/workspace";
 
 export async function GET() {
@@ -10,9 +10,10 @@ export async function GET() {
   if (!organization) return NextResponse.json({ error: "Workspace not found." }, { status: 409 });
   await supabase.rpc("refresh_priority_action_alerts", { p_organization_id: organization.id }).catch(() => null);
   // Reconcile automation alerts and in-app booking & template notifications
-  await Promise.all([
+  const [, , unreadConversations] = await Promise.all([
     refreshAutomationWorkerAlerts(organization.id).catch(() => ({ created: 0, active: 0 })),
     refreshSystemNotifications(organization.id).catch(() => ({ created: 0 })),
+    getUnreadConversationsCount(organization.id).catch(() => 0),
   ]);
   const [{ count }, { data, error }, { data: notifications, error: notificationsError }] = await Promise.all([
     supabase.from("app_notifications").select("id", { count: "exact", head: true })
@@ -26,7 +27,12 @@ export async function GET() {
       .order("created_at", { ascending: false }).limit(10),
   ]);
   if (error || notificationsError) return NextResponse.json({ error: error?.message ?? notificationsError?.message }, { status: 400 });
-  return NextResponse.json({ unread: count ?? 0, critical: data ?? [], notifications: notifications ?? [] }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({
+    unread: count ?? 0,
+    critical: data ?? [],
+    notifications: notifications ?? [],
+    unreadConversations: unreadConversations ?? 0,
+  }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function PATCH(request: Request) {

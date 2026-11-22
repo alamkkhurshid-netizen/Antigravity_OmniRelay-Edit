@@ -143,7 +143,59 @@ export async function refreshSystemNotifications(organizationId: string): Promis
     }
   }
 
-  // 4. Batch insert new notifications
+  // 4. Reconcile Recent Incoming WhatsApp Patient Messages
+  const { data: recentIncoming } = await admin
+    .from("messages")
+    .select("id,conversation_id,contact_address,content,timestamp")
+    .eq("organization_id", organizationId)
+    .eq("service", "whatsapp")
+    .eq("direction", "incoming")
+    .gte("timestamp", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+    .order("timestamp", { ascending: false })
+    .limit(30);
+
+  if (recentIncoming && recentIncoming.length > 0) {
+    const incomingIds = recentIncoming.map((m) => m.id);
+    const { data: existingMsgAlerts } = await admin
+      .from("app_notifications")
+      .select("entity_id,recipient_user_id")
+      .eq("organization_id", organizationId)
+      .eq("entity_type", "incoming_whatsapp_message")
+      .in("entity_id", incomingIds);
+
+    const notifiedMsgPairs = new Set(
+      (existingMsgAlerts ?? []).map((item) => `${item.entity_id}:${item.recipient_user_id}`)
+    );
+
+    for (const msg of recentIncoming) {
+      const phone = (msg.contact_address || "Patient").trim();
+      const content = (msg.content ?? {}) as Record<string, unknown>;
+      const rawText = String(content.text ?? (content.text as any)?.body ?? "").trim();
+      const snippet = rawText || (content.type === "file" ? "Patient sent an attachment." : "New patient message received.");
+      const title = `WhatsApp from ${phone}`.slice(0, 150);
+      const body = `"${snippet.slice(0, 120)}" — Tap to reply.`;
+      const href = `/app/conversations?phone=${encodeURIComponent(phone)}`;
+
+      for (const userId of activeUserIds) {
+        if (!notifiedMsgPairs.has(`${msg.id}:${userId}`)) {
+          inserts.push({
+            organization_id: organizationId,
+            recipient_user_id: userId,
+            notification_type: "system",
+            title,
+            body,
+            href,
+            entity_type: "incoming_whatsapp_message",
+            entity_id: msg.id,
+            priority: "normal",
+            escalation_level: 0,
+          });
+        }
+      }
+    }
+  }
+
+  // 5. Batch insert new notifications
   if (inserts.length > 0) {
     // Insert in chunks of 50 to avoid payload size constraints
     for (let i = 0; i < inserts.length; i += 50) {
@@ -152,6 +204,49 @@ export async function refreshSystemNotifications(organizationId: string): Promis
   }
 
   return { created: inserts.length };
+}
+
+/**
+ * Calculates count of active conversations that have an unread incoming patient message.
+ */
+export async function getUnreadConversationsCount(organizationId: string): Promise<number> {
+  try {
+    const admin = createAdminClient();
+    const { data: conversations } = await admin
+      .from("conversations")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("status", "active")
+      .limit(100);
+
+    if (!conversations || conversations.length === 0) return 0;
+
+    const convIds = conversations.map((c) => c.id);
+    const { data: messages } = await admin
+      .from("messages")
+      .select("conversation_id,direction,timestamp")
+      .eq("organization_id", organizationId)
+      .in("conversation_id", convIds)
+      .order("timestamp", { ascending: false });
+
+    if (!messages || messages.length === 0) return 0;
+
+    const latestByConv = new Map<string, string>();
+    for (const m of messages) {
+      if (!latestByConv.has(m.conversation_id)) {
+        latestByConv.set(m.conversation_id, m.direction);
+      }
+    }
+
+    let unreadCount = 0;
+    for (const direction of latestByConv.values()) {
+      if (direction === "incoming") unreadCount++;
+    }
+
+    return unreadCount;
+  } catch {
+    return 0;
+  }
 }
 
 /**

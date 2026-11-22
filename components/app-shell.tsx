@@ -234,6 +234,7 @@ export function AppShell({
 
   const [unread, setUnread] = useState(unreadNotifications);
   const [critical, setCritical] = useState(criticalNotifications);
+  const [unreadConversations, setUnreadConversations] = useState(0);
   const [notifications, setNotifications] = useState(recentNotifications);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [browserAlertState, setBrowserAlertState] = useState<NotificationPermission | "unsupported">("unsupported");
@@ -298,10 +299,14 @@ export function AppShell({
         unread: number;
         critical: NotificationItem[];
         notifications: NotificationItem[];
+        unreadConversations?: number;
       };
       setUnread(payload.unread);
       setCritical(payload.critical);
       setNotifications(payload.notifications);
+      if (typeof payload.unreadConversations === "number") {
+        setUnreadConversations(payload.unreadConversations);
+      }
       for (const item of payload.critical) {
         const isNew = !knownCriticalIds.current.has(item.id);
         knownCriticalIds.current.add(item.id);
@@ -475,6 +480,11 @@ export function AppShell({
                         {href === "/app/action-centre" && critical.length > 0 && (
                           <em className="ml-auto grid min-w-5 place-items-center rounded-full bg-[#d74747] px-1.5 py-0.5 text-xs not-italic text-white lg:absolute lg:right-1.5 lg:top-1.5 lg:group-hover:static lg:group-hover:ml-auto lg:group-focus-within:static lg:group-focus-within:ml-auto">
                             {Math.min(critical.length, 99)}
+                          </em>
+                        )}
+                        {href === "/app/conversations" && unreadConversations > 0 && (
+                          <em className="ml-auto grid min-w-5 place-items-center rounded-full bg-[#059669] px-1.5 py-0.5 text-xs not-italic text-white lg:absolute lg:right-1.5 lg:top-1.5 lg:group-hover:static lg:group-hover:ml-auto lg:group-focus-within:static lg:group-focus-within:ml-auto">
+                            {Math.min(unreadConversations, 99)}
                           </em>
                         )}
                         {href === "/app/team" && unread > 0 && (

@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AiSuggestion, Contact, ContactAddress, Conversation, Message } from "./types";
 import { object, textFromContent } from "./utils";
 import { useRealtimeMessages } from "./use-realtime-messages";
@@ -39,6 +40,29 @@ export function useConversationWorkspace(
   const [clock, setClock] = useState(() => Date.now());
   const [templateTarget, setTemplateTarget] = useState<{ phone: string; name: string } | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+
+  const searchParams = useSearchParams();
+  const phoneParam = searchParams?.get("phone");
+  const nameParam = searchParams?.get("name");
+
+  useEffect(() => {
+    if (!phoneParam) return;
+    const cleanTarget = phoneParam.replace(/\D/g, "").slice(-10);
+    if (!cleanTarget) return;
+
+    const matched = conversations.find((c) => {
+      const cPhone = (c.contact_address || "").replace(/\D/g, "").slice(-10);
+      return cPhone === cleanTarget;
+    });
+
+    if (matched) {
+      setActiveId(matched.id);
+      setMobilePanel("thread");
+    } else {
+      setTemplateTarget({ phone: phoneParam, name: nameParam || "" });
+      setNewConversationOpen(true);
+    }
+  }, [phoneParam, nameParam, conversations]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setClock(Date.now()), 60_000);

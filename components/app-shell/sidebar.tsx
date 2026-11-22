@@ -16,6 +16,7 @@ export interface SidebarProps {
   isOperator: boolean;
   criticalCount: number;
   unreadCount: number;
+  unreadConversationsCount?: number;
 }
 
 export function Sidebar({
@@ -29,6 +30,7 @@ export function Sidebar({
   isOperator,
   criticalCount,
   unreadCount,
+  unreadConversationsCount = 0,
 }: SidebarProps) {
   const isRetail = businessCategory === "Retail & e-commerce" || pathname.startsWith("/app/retail");
 
@@ -117,6 +119,11 @@ export function Sidebar({
                       {href === "/app/action-centre" && criticalCount > 0 && (
                         <em className="ml-auto grid min-w-5 place-items-center rounded-full bg-[#d74747] px-1.5 py-0.5 text-xs not-italic text-white lg:absolute lg:right-1.5 lg:top-1.5 lg:group-hover:static lg:group-hover:ml-auto lg:group-focus-within:static lg:group-focus-within:ml-auto">
                           {Math.min(criticalCount, 99)}
+                        </em>
+                      )}
+                      {href === "/app/conversations" && unreadConversationsCount > 0 && (
+                        <em className="ml-auto grid min-w-5 place-items-center rounded-full bg-[#059669] px-1.5 py-0.5 text-xs not-italic text-white lg:absolute lg:right-1.5 lg:top-1.5 lg:group-hover:static lg:group-hover:ml-auto lg:group-focus-within:static lg:group-focus-within:ml-auto">
+                          {Math.min(unreadConversationsCount, 99)}
                         </em>
                       )}
                       {href === "/app/team" && unreadCount > 0 && (
